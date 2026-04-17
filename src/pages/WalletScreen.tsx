@@ -1,0 +1,117 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Wallet, Clock, Gift, Landmark, ArrowRight, History, ShieldAlert } from 'lucide-react';
+import { useWalletData } from '../hooks/useWalletData';
+import { useAuth } from '../context/AuthContext';
+import WalletCard from '../components/wallet/WalletCard';
+import WithdrawalModal from '../components/wallet/WithdrawalModal';
+import SkeletonWallet from '../components/wallet/SkeletonWallet';
+import toast from 'react-hot-toast';
+import ProgressiveProfilingWizard from '../components/profile/ProgressiveProfilingWizard';
+
+export default function WalletScreen() {
+  const { userData } = useAuth();
+  const { wallets, loading } = useWalletData();
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [isKycWizardOpen, setIsKycWizardOpen] = useState(false);
+
+  if (loading || !userData) return <SkeletonWallet />;
+
+  const isKycDone = !!userData.kycCompletedAt;
+  const tempWalletEarned = wallets.earned || 0;
+  const isCapReached = tempWalletEarned >= 500;
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] p-4 pb-24 text-white">
+      <h1 className="text-2xl font-bold mb-1">My Wallet</h1>
+      <p className="text-gray-400 text-sm mb-8">Track your earnings & withdraw anytime</p>
+
+      {!isKycDone && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col gap-3">
+          <div className="flex items-center gap-3 text-amber-500">
+            <ShieldAlert size={20} />
+            <span className="font-bold text-sm">KYC Required to Withdraw</span>
+          </div>
+          <div className="bg-black/50 rounded-xl p-3">
+            <div className="flex justify-between text-xs mb-2">
+              <span className="text-gray-400">Temp: ₹{tempWalletEarned}/₹500</span>
+              <span className={`font-bold ${isCapReached ? 'text-red-500' : 'text-white'}`}>
+                {isCapReached ? 'CAP REACHED' : `${Math.floor((tempWalletEarned/500)*100)}%`}
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-1000 ${isCapReached ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-amber-500'}`} 
+                style={{ width: `${Math.min((tempWalletEarned / 500) * 100, 100)}%` }} 
+              />
+            </div>
+          </div>
+          <button 
+            onClick={() => setIsKycWizardOpen(true)}
+            className="w-full py-2 bg-amber-500 text-black font-bold uppercase text-xs tracking-widest rounded-xl hover:scale-[1.02] transition-all"
+          >
+            Verify Identity Now
+          </button>
+        </motion.div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+        <WalletCard 
+          title={isKycDone ? "Main Balance" : "Temp Wallet"} 
+          balance={tempWalletEarned} 
+          icon={<Wallet />} 
+          color={isKycDone ? "text-green-500" : "text-amber-500"} 
+          subtitle={isKycDone ? "Available for withdrawal" : "Verify KYC to unlock"} 
+        />
+        <WalletCard title="Pending" balance={wallets.pending} icon={<Clock />} color="text-yellow-500" subtitle="Awaiting confirmation" />
+        <WalletCard title="Bonus" balance={wallets.bonus} icon={<Gift />} color="text-purple-500" subtitle="Signup & streak rewards" />
+        <WalletCard title="Savings" balance={wallets.savings} icon={<Landmark />} color="text-blue-500" subtitle="Auto-saved earnings" />
+      </div>
+
+      <div className="relative group">
+        {!isKycDone && (
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-3 py-1.5 rounded-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
+            Complete KYC to unlock
+          </div>
+        )}
+        <button 
+          onClick={() => {
+            if (!isKycDone) {
+              toast.error('Complete KYC to unlock withdrawals');
+              setIsKycWizardOpen(true);
+              return;
+            }
+            setIsWithdrawOpen(true);
+          }}
+          className={`w-full font-bold py-4 rounded-xl mb-4 flex items-center justify-center gap-2 transition-all ${
+            isKycDone 
+            ? 'bg-[#E8B84B] text-black active:scale-95 shadow-lg shadow-yellow-500/20' 
+            : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+          }`}
+        >
+          Withdraw Money <ArrowRight size={18} />
+        </button>
+      </div>
+
+      <button 
+        onClick={() => toast('Transaction history coming soon!', { icon: '📊' })}
+        className="w-full bg-[#1A1A1A] text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all"
+      >
+        <History size={18} /> Transaction History
+      </button>
+
+      <WithdrawalModal 
+        isOpen={isWithdrawOpen} 
+        onClose={() => setIsWithdrawOpen(false)} 
+        earnedBalance={wallets.earned}
+      />
+      
+      {isKycWizardOpen && (
+        <ProgressiveProfilingWizard 
+          isOpen={isKycWizardOpen} 
+          onClose={() => setIsKycWizardOpen(false)} 
+        />
+      )}
+    </div>
+  );
+}

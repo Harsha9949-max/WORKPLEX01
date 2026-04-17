@@ -1,0 +1,88 @@
+import { db } from './firebase';
+import { collection, query, where, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+
+// a. generateTempPhone
+export async function generateTempPhone(): Promise<string> {
+  const randomStr = Math.floor(1000 + Math.random() * 9000).toString();
+  return `+91-TEMP-${randomStr}`;
+}
+
+// b. onFirstEarningTrigger (Client-side mock of Cloud trigger)
+export async function onFirstEarningTrigger(userId: string, earnedAmount: number) {
+  const userRef = doc(db, 'users', userId);
+  const snap = await getDoc(userRef);
+  if (snap.exists()) {
+    const data = snap.data();
+    if (data.wallets?.temp > 0 && data.firstEarningCompleted === false) {
+      // Simulate the backend unlocking the requirement for KYC
+      await updateDoc(userRef, { firstEarningCompleted: true });
+      return true; // Indicates the modal should trigger on the client
+    }
+  }
+  return false;
+}
+
+// c. calculateProfileCompletion
+export async function calculateProfileCompletion(userId: string, data: any): Promise<number> {
+  let score = 0;
+  if (data.photoURL && data.photoURL !== '') score += 15;
+  if (data.kycCompletedAt) score += 30;
+  if (data.bankAccount && data.bankAccount !== '') score += 25;
+  
+  if (data.role === 'Partner') {
+    if (data.shopSetupDone) score += 20;
+  } else {
+    // If not partner, bypass shop requirements
+    score += 20; 
+  }
+
+  if (data.emailVerified) score += 10;
+  
+  // If > 80, calculate and grant 50 trustPoints
+  let trustPoints = data.trustPoints || 0;
+  if (score >= 80 && trustPoints === 0) {
+    trustPoints += 50;
+  }
+
+  // Auto-sync this computation with Firestore (mocking cloud trigger)
+  const userRef = doc(db, 'users', userId);
+  try {
+    await updateDoc(userRef, { profileCompletion: score, trustPoints });
+  } catch (e) {
+    console.error("Profile sync restricted on client side", e);
+  }
+
+  return score;
+}
+
+// d. amlComplianceCheck
+export async function amlComplianceCheck() {
+  const usersRef = collection(db, 'users');
+  const q = query(usersRef, where('kycCompletedAt', '==', null));
+  const snap = await getDocs(q);
+  
+  const flaggedUsers = [];
+  snap.docs.forEach(doc => {
+    const data = doc.data();
+    if (data.wallets) {
+      const total = (data.wallets.temp || 0) + (data.wallets.earned || 0) + (data.wallets.pending || 0);
+      if (total > 10000) {
+        flaggedUsers.push(doc.id);
+        // We would update the doc here to set amlFlag to true,
+        // simulated: updateDoc(doc.ref, { amlFlag: true })
+      }
+    }
+  });
+  return flaggedUsers;
+}
+
+// e. chatbotQuery
+export async function chatbotQuery(message: string, language: string): Promise<string> {
+  // In a real environment, this connects to DeepSeek AI using the Cloud Function backend.
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(`[${language.toUpperCase()}] I am your DeepSeek-powered AI assistant. You said: "${message}". How else can I assist with your onboarding, tasks, or payouts logic today?`);
+    }, 1500);
+  });
+}
+

@@ -1,0 +1,12 @@
+{
+  "name": "WorkPlex",
+  "description": "Premium workflow platform for HVRS Industries with viral growth engine and multi-user chat.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [],
+  "C7": [],
+  "aq": []
+}

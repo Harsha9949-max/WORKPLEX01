@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model (Phase 12)
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (matches auth.uid)
+    // Fields:
+    //   - email: string (primary identity)
+    //   - tempPhone: string (+91-TEMP-XXXX)
+    //   - otpVerified: boolean
+    //   - preferredLanguage: string (Locked after onboarding)
+    //   - venture: string
+    //   - role: string
+    //   - kycDeferred: boolean (true until payout)
+    //   - kycCompletedAt: timestamp | null (withdrawals blocked if null)
+    //   - profileCompletion: number (0-100)
+    //   - trustPoints: number (starting 100)
+    //   - amlFlag: boolean
+    //   - wallets: map { "temp": number, "main": number }
+    //   - firstEarningCompleted: boolean
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
+        (request.auth.token.email == 'marateyh@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isKycDone() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.kycCompletedAt != null;
+    }
+
+    // Validate email format
+    function isValidEmail(email) {
+      return email is string && email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+    
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Allow create only if auth matches
+      allow create: if isOwner(userId) && 
+                      isValidEmail(request.resource.data.email) &&
+                      request.resource.data.wallets.temp == 0;
+      
+      // Critical Phase 12 Update Logic
+      allow update: if (isOwner(userId) && (
+        // 1. Language Lock: preferredLanguage cannot change if already set
+        (!('preferredLanguage' in request.resource.data.diff(resource.data).affectedKeys()) || 
+         resource.data.preferredLanguage == null) &&
+        
+        // 2. Temp Wallet Cap: wallets.temp cannot exceed 500
+        (!('wallets' in request.resource.data.diff(resource.data).affectedKeys()) ||
+         request.resource.data.wallets.temp <= 500) &&
+         
+        // 3. User cannot self-approve KYC
+        (!('kycCompletedAt' in request.resource.data.diff(resource.data).affectedKeys()))
+      )) || isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    match /withdrawals/{withdrawalId} {
+      allow read: if isOwner(resource.data.uid) || isAdmin();
+      
+      // CRITICAL: Prevent withdrawal if KYC is skiped/deferred
+      allow create: if isOwner(request.resource.data.uid) && 
+                      isKycDone() &&
+                      request.resource.data.amount > 0;
+                      
+      allow update, delete: if isAdmin();
+    }
+
+    match /taskSubmissions/{submissionId} {
+      allow read: if isOwner(resource.data.workerId) || isAdmin();
+      allow create: if isOwner(request.resource.data.workerId);
+      allow update: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Default deny for everything else
+    match /{path=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
