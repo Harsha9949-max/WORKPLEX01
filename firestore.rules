@@ -3,25 +3,31 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ===============================================================
-    // Assumed Data Model (Phase 12)
+    // Assumed Data Model
     // ===============================================================
     //
     // Collection: users
     // Document ID: {userId} (matches auth.uid)
     // Fields:
-    //   - email: string (primary identity)
-    //   - tempPhone: string (+91-TEMP-XXXX)
-    //   - otpVerified: boolean
-    //   - preferredLanguage: string (Locked after onboarding)
+    //   - name: string
+    //   - phone: string
+    //   - email: string | null
+    //   - photoURL: string
+    //   - age: number
     //   - venture: string
     //   - role: string
-    //   - kycDeferred: boolean (true until payout)
-    //   - kycCompletedAt: timestamp | null (withdrawals blocked if null)
-    //   - profileCompletion: number (0-100)
-    //   - trustPoints: number (starting 100)
-    //   - amlFlag: boolean
-    //   - wallets: map { "temp": number, "main": number }
-    //   - firstEarningCompleted: boolean
+    //   - upiId: string
+    //   - bankAccount: string
+    //   - aadhaar: string (encrypted)
+    //   - pan: string (encrypted)
+    //   - deviceFingerprint: string
+    //   - level: string
+    //   - streak: number
+    //   - joinedAt: timestamp
+    //   - contractSigned: boolean
+    //   - kycDone: boolean
+    //   - firstTaskDone: boolean
+    //   - wallets: map (earned, pending, bonus, savings)
     //
     // ===============================================================
 
@@ -38,63 +44,93 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin' ||
-        (request.auth.token.email == 'marateyh@gmail.com' && request.auth.token.email_verified == true)
+        request.auth.token.email == 'marateyh@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
-    function isKycDone() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.kycCompletedAt != null;
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == 'marateyh@gmail.com' || request.auth.token.email == 'hvrsindustriespvtltd@gmail.com') && 
+        request.auth.token.email_verified == true;
     }
 
-    // Validate email format
-    function isValidEmail(email) {
-      return email is string && email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    function hasRequiredUserFields(data) {
+      return data.keys().hasAll(['name', 'phone', 'age', 'venture', 'role', 'upiId', 'bankAccount', 'aadhaar', 'pan', 'deviceFingerprint', 'level', 'streak', 'joinedAt', 'contractSigned', 'kycDone', 'firstTaskDone', 'wallets']);
+    }
+
+    function isValidUser(data) {
+      return hasRequiredUserFields(data) &&
+             data.name is string && data.name.size() > 2 && data.name.size() < 100 &&
+             data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 20 &&
+             data.age is number && data.age >= 18 &&
+             data.venture is string && data.venture in ['BuyRix', 'Vyuma', 'TrendyVerse', 'Growplex'] &&
+             data.role is string && data.role.size() > 0 && data.role.size() < 50 &&
+             data.upiId is string && data.upiId.size() > 0 && data.upiId.size() < 100 &&
+             data.bankAccount is string && data.bankAccount.size() >= 8 && data.bankAccount.size() < 30 &&
+             data.aadhaar is string && data.aadhaar.size() > 0 && data.aadhaar.size() < 200 &&
+             data.pan is string && data.pan.size() > 0 && data.pan.size() < 200 &&
+             data.deviceFingerprint is string && data.deviceFingerprint.size() > 0 && data.deviceFingerprint.size() < 500 &&
+             data.level is string &&
+             data.streak is number && data.streak >= 0 &&
+             data.joinedAt is timestamp &&
+             data.contractSigned is bool && data.contractSigned == true &&
+             data.kycDone is bool &&
+             data.firstTaskDone is bool &&
+             data.wallets is map &&
+             data.wallets.keys().hasAll(['earned', 'pending', 'bonus', 'savings']) &&
+             data.wallets.earned is number && data.wallets.earned >= 0 &&
+             data.wallets.pending is number && data.wallets.pending >= 0 &&
+             data.wallets.bonus is number && data.wallets.bonus >= 0 &&
+             data.wallets.savings is number && data.wallets.savings >= 0;
     }
 
     // ===============================================================
-    // Collection Rules
+    // Rules
     // ===============================================================
     
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      // Only the owner or admin can read the user document
+      allow read: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
       
-      // Allow create only if auth matches
-      allow create: if isOwner(userId) && 
-                      isValidEmail(request.resource.data.email) &&
-                      request.resource.data.wallets.temp == 0;
+      // Allow creation if the user is authenticated
+      allow create: if isAuthenticated();
       
-      // Critical Phase 12 Update Logic
-      allow update: if (isOwner(userId) && (
-        // 1. Language Lock: preferredLanguage cannot change if already set
-        (!('preferredLanguage' in request.resource.data.diff(resource.data).affectedKeys()) || 
-         resource.data.preferredLanguage == null) &&
-        
-        // 2. Temp Wallet Cap: wallets.temp cannot exceed 500
-        (!('wallets' in request.resource.data.diff(resource.data).affectedKeys()) ||
-         request.resource.data.wallets.temp <= 500) &&
-         
-        // 3. User cannot self-approve KYC
-        (!('kycCompletedAt' in request.resource.data.diff(resource.data).affectedKeys()))
-      )) || isAdmin();
-
-      allow delete: if isAdmin();
+      // Allow updates if the user is authenticated, the document ID matches their UID,
+      // and they aren't violating KYC logic for withdrawals
+      allow update: if (isAuthenticated() && request.auth.uid == userId && 
+        (
+         request.resource.data.kycCompletedAt != null ||
+         !('wallets' in request.resource.data.diff().affectedKeys()) ||
+         (!('temp' in request.resource.data.diff().affectedKeys()) || request.resource.data.wallets.temp <= 500)
+        )) || isAdmin();
+                       
+      // Users cannot delete their own accounts directly from the app (requires admin or special flow)
+      allow delete: if isSuperAdmin();
     }
 
-    match /withdrawals/{withdrawalId} {
-      allow read: if isOwner(resource.data.uid) || isAdmin();
-      
-      // CRITICAL: Prevent withdrawal if KYC is skiped/deferred
-      allow create: if isOwner(request.resource.data.uid) && 
-                      isKycDone() &&
-                      request.resource.data.amount > 0;
-                      
-      allow update, delete: if isAdmin();
+    match /admins/{adminId} {
+      allow read: if isAuthenticated() && (isSuperAdmin() || request.auth.uid == adminId);
+      allow write: if isSuperAdmin();
+    }
+
+    match /aiCache/{cacheId} {
+      allow read, write: if false; // System only
+    }
+
+    match /fraudAlerts/{alertId} {
+      allow read: if isAdmin();
+      allow write: if false; // System only
+    }
+
+    match /aiErrors/{errorId} {
+      allow read: if isAdmin();
+      allow write: if false; // System only
     }
 
     match /taskSubmissions/{submissionId} {
-      allow read: if isOwner(resource.data.workerId) || isAdmin();
-      allow create: if isOwner(request.resource.data.workerId);
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.workerId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.workerId;
       allow update: if isAdmin();
     }
 
@@ -103,9 +139,68 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Default deny for everything else
-    match /{path=**} {
-      allow read, write: if isAdmin();
+    match /withdrawals/{withdrawalId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.uid || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.uid &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.kycCompletedAt != null &&
+        request.resource.data.amount <= 50000;
+      allow update: if isAdmin();
+    }
+
+    match /coupons/{userId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOwner(userId);
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Public Profiles
+    match /publicProfiles/{username} {
+      allow read: if true;
+      allow write: if false; // Only Cloud Functions
+    }
+
+    // Team Chat
+    match /teamChats/{leadId}/messages/{msgId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+    }
+
+    // Live Feed
+    match /liveFeed/{feedId} {
+      allow read: if true;
+      allow write: if false; // Only Cloud Functions
+    }
+
+    // Family Transfers
+    match /familyTransfers/{transferId} {
+      allow read: if isOwner(resource.data.senderId);
+      allow create: if isOwner(request.resource.data.senderId);
+    }
+
+    // Partner Stores
+    match /partnerShops/{partnerId} {
+      allow read: if true;
+      allow write: if isOwner(partnerId);
+    }
+
+    match /partnerProducts/{partnerId}/products/{productId} {
+      allow read: if true;
+      allow write: if isOwner(partnerId);
+    }
+
+    match /partnerOrders/{orderId} {
+      allow read: if isOwner(resource.data.customerId) || isAdmin();
+      allow create: if true; // Public checkout
+      allow update: if isAdmin();
+    }
+
+    match /catalogProducts/{productId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }

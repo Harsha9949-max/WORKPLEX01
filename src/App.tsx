@@ -30,9 +30,7 @@ import ShopSetupWizard from './pages/ShopSetupWizard';
 import PublicShopPage from './pages/PublicShopPage';
 import AdminCatalogManager from './pages/AdminCatalogManager';
 import AIChatbotWidget from './components/chat/AIChatbotWidget';
-import { LanguageLockProvider } from './context/LanguageLockContext';
-import PostFirstEarningModal from './components/progressive/PostFirstEarningModal';
-import { PrivacyPolicy, TermsOfService, CookiePolicy, SecurityPolicy, ContactPage } from './pages/LegalPages';
+import { PrivacyPolicy, TermsOfService, CookiePolicy, SecurityPolicy, ContactPage } from './pages/legal/LegalPages';
 
 // Phase 7 Admin Components
 import AdminRouteGuard from './components/admin/AdminRouteGuard';
@@ -134,7 +132,6 @@ function AppContent() {
       </Routes>
       <Footer />
       <AIChatbotWidget />
-      <PostFirstEarningModal />
       <PromotionCelebration 
         isOpen={showPromotion} 
         onClose={() => setShowPromotion(false)} 
@@ -149,22 +146,13 @@ function AppContent() {
   );
 }
 
-interface ErrorBoundaryProps {
-  children: React.ReactNode;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error: any;
-}
-
-class GlobalErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
+class GlobalErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+  constructor(props: {children: React.ReactNode}) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error: any): ErrorBoundaryState {
+  static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
   }
 
@@ -174,13 +162,11 @@ class GlobalErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
 
   render() {
     if (this.state.hasError) {
-      return (
-        <div className="p-10 text-red-500 bg-black min-h-screen">
-          <h1 className="text-2xl font-bold">Something went wrong.</h1>
-          <pre className="mt-4 text-sm whitespace-pre-wrap">{this.state.error?.toString()}</pre>
-          <pre className="mt-2 text-xs text-gray-500">{this.state.error?.stack}</pre>
-        </div>
-      );
+      return <div className="p-10 text-red-500 bg-black min-h-screen">
+        <h1 className="text-2xl font-bold">Something went wrong.</h1>
+        <pre className="mt-4 text-sm whitespace-pre-wrap">{this.state.error?.toString()}</pre>
+        <pre className="mt-2 text-xs text-gray-500">{this.state.error?.stack}</pre>
+      </div>;
     }
     return this.props.children;
   }
@@ -190,9 +176,7 @@ export default function App() {
   return (
     <GlobalErrorBoundary>
       <AuthProvider>
-        <LanguageLockProvider>
-          <AppContent />
-        </LanguageLockProvider>
+        <AppContent />
       </AuthProvider>
     </GlobalErrorBoundary>
   );

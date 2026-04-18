@@ -4,28 +4,23 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 interface UserData {
-  email: string;
-  tempPhone: string;
-  otpVerified: boolean;
-  preferredLanguage: string;
-  kycDeferred: boolean;
-  kycCompletedAt: any | null;
-  profileCompletion: number;
-  trustPoints: number;
-  firstEarningCompleted: boolean;
+  name: string;
+  phone: string;
+  photoURL: string;
+  age: number;
+  venture: string;
+  role: string;
+  upiId: string;
+  bankAccount: string;
+  level: string;
+  streak: number;
   wallets: {
-    temp: number;
     earned: number;
     pending: number;
     bonus: number;
     savings: number;
   };
-  tempWalletCap: number;
-  venture?: string;
-  role?: string;
   joinedAt: any;
-  displayName?: string;
-  photoURL?: string;
 }
 
 interface AuthContextType {

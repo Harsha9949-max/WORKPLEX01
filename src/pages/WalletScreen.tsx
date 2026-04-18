@@ -18,8 +18,6 @@ export default function WalletScreen() {
   if (loading || !userData) return <SkeletonWallet />;
 
   const isKycDone = !!userData.kycCompletedAt;
-  const tempWalletEarned = wallets.earned || 0;
-  const isCapReached = tempWalletEarned >= 500;
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] p-4 pb-24 text-white">
@@ -34,16 +32,11 @@ export default function WalletScreen() {
           </div>
           <div className="bg-black/50 rounded-xl p-3">
             <div className="flex justify-between text-xs mb-2">
-              <span className="text-gray-400">Temp: ₹{tempWalletEarned}/₹500</span>
-              <span className={`font-bold ${isCapReached ? 'text-red-500' : 'text-white'}`}>
-                {isCapReached ? 'CAP REACHED' : `${Math.floor((tempWalletEarned/500)*100)}%`}
-              </span>
+              <span className="text-gray-400">Temp Wallet Usage</span>
+              <span className="font-bold text-white">₹{wallets.earned || 0} / ₹500</span>
             </div>
             <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-1000 ${isCapReached ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-amber-500'}`} 
-                style={{ width: `${Math.min((tempWalletEarned / 500) * 100, 100)}%` }} 
-              />
+              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.min(((wallets.earned || 0) / 500) * 100, 100)}%` }} />
             </div>
           </div>
           <button 
@@ -56,42 +49,29 @@ export default function WalletScreen() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <WalletCard 
-          title={isKycDone ? "Main Balance" : "Temp Wallet"} 
-          balance={tempWalletEarned} 
-          icon={<Wallet />} 
-          color={isKycDone ? "text-green-500" : "text-amber-500"} 
-          subtitle={isKycDone ? "Available for withdrawal" : "Verify KYC to unlock"} 
-        />
+        <WalletCard title={isKycDone ? "Earned" : "Temp Wallet"} balance={wallets.earned} icon={<Wallet />} color="text-green-500" subtitle={isKycDone ? "Available for withdrawal" : "Verify KYC to unlock"} />
         <WalletCard title="Pending" balance={wallets.pending} icon={<Clock />} color="text-yellow-500" subtitle="Awaiting confirmation" />
         <WalletCard title="Bonus" balance={wallets.bonus} icon={<Gift />} color="text-purple-500" subtitle="Signup & streak rewards" />
         <WalletCard title="Savings" balance={wallets.savings} icon={<Landmark />} color="text-blue-500" subtitle="Auto-saved earnings" />
       </div>
 
-      <div className="relative group">
-        {!isKycDone && (
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-3 py-1.5 rounded-lg border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-            Complete KYC to unlock
-          </div>
-        )}
-        <button 
-          onClick={() => {
-            if (!isKycDone) {
-              toast.error('Complete KYC to unlock withdrawals');
-              setIsKycWizardOpen(true);
-              return;
-            }
-            setIsWithdrawOpen(true);
-          }}
-          className={`w-full font-bold py-4 rounded-xl mb-4 flex items-center justify-center gap-2 transition-all ${
-            isKycDone 
-            ? 'bg-[#E8B84B] text-black active:scale-95 shadow-lg shadow-yellow-500/20' 
-            : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
-          }`}
-        >
-          Withdraw Money <ArrowRight size={18} />
-        </button>
-      </div>
+      <button 
+        onClick={() => {
+          if (!isKycDone) {
+            toast.error('Please complete KYC to unlock withdrawals.');
+            setIsKycWizardOpen(true);
+            return;
+          }
+          setIsWithdrawOpen(true);
+        }}
+        className={`w-full font-bold py-4 rounded-xl mb-4 flex items-center justify-center gap-2 transition-all ${
+          isKycDone 
+          ? 'bg-[#E8B84B] text-black active:scale-95' 
+          : 'bg-white/10 text-gray-500 cursor-not-allowed border border-white/5'
+        }`}
+      >
+        Withdraw Money <ArrowRight size={18} />
+      </button>
 
       <button 
         onClick={() => toast('Transaction history coming soon!', { icon: '📊' })}

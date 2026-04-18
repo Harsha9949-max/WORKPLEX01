@@ -1,81 +1,132 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, Shield, ExternalLink } from 'lucide-react';
+import { Mail, Phone, MapPin, ShieldCheck, ChevronRight, Zap, Twitter, Instagram, Linkedin, Facebook } from 'lucide-react';
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
-
-  const legalLinks = [
-    { name: 'Privacy Policy', path: '/privacy' },
-    { name: 'Terms of Service', path: '/terms' },
-    { name: 'Cookie Policy', path: '/cookies' },
-    { name: 'Security', path: '/security' },
-    { name: 'Contact Us', path: '/contact' }
-  ];
-
   return (
-    <footer className="bg-black border-t border-white/5 py-16 px-4 w-full mt-auto">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-          <div className="md:col-span-2">
-            <h2 className="text-2xl font-black text-white mb-4 tracking-tighter">HVRS INNOVATIONS</h2>
-            <p className="text-gray-500 max-w-sm mb-8 leading-relaxed">
-              WorkPlex is India's most advanced digital gig network. 
-              We empower millions to earn daily through simple tasks and verified ventures.
+    <footer className="bg-[#050505] border-t border-white/5 pt-20 pb-10 relative overflow-hidden z-10 w-full mt-auto">
+      {/* Decorative background glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-32 bg-[#E8B84B]/5 blur-[100px] pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+          
+          {/* Column 1: Brand */}
+          <div className="lg:col-span-1 space-y-6">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E8B84B] to-[#d4a63f] flex items-center justify-center p-1">
+                <img src="https://gcdnb.pbrd.co/images/-QD5NsLGLsZD.png" alt="HVRS Innovations Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+              </div>
+              <span className="font-outfit font-black text-xl text-white tracking-tight">HVRS INNOVATIONS</span>
+            </div>
+            <p className="text-gray-400 text-sm leading-relaxed">
+              Empowering India's gig workforce with transparent, compliant, and highly rewarding digital opportunities.
             </p>
             <div className="flex items-center gap-4">
-              <a href="mailto:workplex@gmail.com" className="bg-white/5 p-3 rounded-xl hover:bg-yellow-500/10 hover:text-yellow-500 transition-all">
-                <Mail className="w-5 h-5" />
-              </a>
-              <a href="tel:9949175029" className="bg-white/5 p-3 rounded-xl hover:bg-yellow-500/10 hover:text-yellow-500 transition-all">
-                <Phone className="w-5 h-5" />
-              </a>
-              <div className="bg-white/5 p-3 rounded-xl">
-                <MapPin className="w-5 h-5 text-gray-400" />
-              </div>
+              {[Twitter, Facebook, Instagram, Linkedin].map((Icon, i) => (
+                <a key={i} href="#" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400 hover:bg-[#E8B84B]/10 hover:text-[#E8B84B] transition-all border border-white/5">
+                  <Icon size={18} />
+                </a>
+              ))}
             </div>
           </div>
 
+          {/* Column 2: Legal Links */}
           <div>
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/40 mb-6 font-mono">Legal & Trust</h3>
+            <h4 className="text-white font-bold mb-6 flex items-center gap-2 uppercase tracking-widest text-xs">
+              <ShieldCheck className="text-[#E8B84B]" size={16} /> Legal & Compliance
+            </h4>
             <ul className="space-y-4">
-              {legalLinks.map((link) => (
-                <li key={link.path}>
-                  <Link to={link.path} className="text-gray-500 hover:text-white transition-colors text-sm flex items-center gap-2 group">
+              {[
+                { name: 'Privacy Policy', path: '/privacy' },
+                { name: 'Terms of Service', path: '/terms' },
+                { name: 'Cookie Policy', path: '/cookies' },
+                { name: 'Security Center', path: '/security' }
+              ].map((link, i) => (
+                <li key={i}>
+                  <Link to={link.path} className="group flex items-center gap-2 text-gray-400 hover:text-[#E8B84B] text-sm transition-colors">
+                    <ChevronRight size={14} className="opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all text-[#E8B84B]" />
                     {link.name}
-                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0" />
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
+          {/* Column 3: Contact */}
           <div>
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/40 mb-6 font-mono">Contact Details</h3>
-            <div className="space-y-4 text-sm">
-              <div className="flex items-center gap-3 text-gray-500">
-                <Mail className="w-4 h-4 text-yellow-500/50" />
-                <span>workplex@gmail.com</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-500">
-                <Phone className="w-4 h-4 text-yellow-500/50" />
-                <span>+91 9949175029</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-500">
-                <MapPin className="w-4 h-4 text-yellow-500/50" />
-                <span>Hyderabad, Telangana, India</span>
-              </div>
-            </div>
+            <h4 className="text-white font-bold mb-6 uppercase tracking-widest text-xs">Contact Headquarters</h4>
+            <ul className="space-y-6">
+              <li>
+                <a href="mailto:workplex@gmail.com" className="group flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-[#E8B84B]/20 transition-colors shrink-0 border border-white/5">
+                    <Mail size={16} className="text-gray-400 group-hover:text-[#E8B84B]" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Email Support</p>
+                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">workplex@gmail.com</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <a href="tel:9949175029" className="group flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-[#00C9A7]/20 transition-colors shrink-0 border border-white/5">
+                    <Phone size={16} className="text-gray-400 group-hover:text-[#00C9A7]" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Direct Line</p>
+                    <span className="text-gray-300 text-sm group-hover:text-white transition-colors">9949175029</span>
+                  </div>
+                </a>
+              </li>
+              <li>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0 border border-white/5">
+                    <MapPin size={16} className="text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Location</p>
+                    <span className="text-gray-300 text-sm">Hyderabad, India<br/><span className="text-xs text-gray-500">Global Operations Center</span></span>
+                  </div>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 4: Trust Badges */}
+          <div>
+             <h4 className="text-white font-bold mb-6 uppercase tracking-widest text-xs">Platform Trust</h4>
+             <div className="space-y-4">
+                <div className="glass-card p-4 rounded-2xl border border-white/5 flex items-center gap-4 hover:border-white/10 transition-colors cursor-default">
+                   <div className="bg-[#00C9A7]/10 p-2 rounded-lg">
+                     <ShieldCheck className="text-[#00C9A7]" size={24} />
+                   </div>
+                   <div>
+                      <p className="text-white text-sm font-bold">DPDP Act Ready</p>
+                      <p className="text-gray-500 text-[10px] uppercase tracking-widest mt-0.5">Vetted & Compliant</p>
+                   </div>
+                </div>
+                <div className="glass-card p-4 rounded-2xl border border-white/5 flex items-center gap-4 hover:border-[#E8B84B]/20 transition-colors cursor-default">
+                   <div className="bg-[#E8B84B]/10 p-2 rounded-lg">
+                     <Zap className="text-[#E8B84B]" size={24} />
+                   </div>
+                   <div>
+                      <p className="text-white text-sm font-bold">Lightning Payouts</p>
+                      <p className="text-gray-500 text-[10px] uppercase tracking-widest mt-0.5">Powered by Razorpay</p>
+                   </div>
+                </div>
+             </div>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-gray-600 text-[10px] font-bold uppercase tracking-widest">
-            © {currentYear} HVRS INNOVATIONS PRIVATE LIMITED.
+        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-gray-500 text-xs">
+            © {new Date().getFullYear()} HVRS Innovations. All rights reserved.
           </p>
-          <div className="flex items-center gap-2 text-[10px] text-gray-700 font-black uppercase tracking-widest">
-            <Shield className="w-3 h-3" />
-            <span>DPDP Act Verified • Secure Payment Gateway</span>
+          <div className="flex items-center gap-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">
+            <span className="hover:text-gray-400 transition-colors cursor-pointer">WorkPlex Hub</span>
+            <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
+            <span className="hover:text-gray-400 transition-colors cursor-pointer">Made in India</span>
           </div>
         </div>
       </div>
