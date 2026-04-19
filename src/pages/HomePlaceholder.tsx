@@ -1,6 +1,7 @@
 import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { safeStringify } from '../utils/jsonUtils';
 
 export default function HomePlaceholder() {
   const { userData, logout } = useAuth();
@@ -15,7 +16,7 @@ export default function HomePlaceholder() {
         <h1 className="text-3xl font-bold text-[#E8B84B]">Home Dashboard (Phase 2)</h1>
       </div>
       <pre className="bg-[#111111] p-4 rounded-lg overflow-auto mb-4">
-        {JSON.stringify(userData, null, 2)}
+        {safeStringify(userData, 2)}
       </pre>
       <button 
         onClick={async () => {

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -15,9 +15,15 @@ export default function CompressedOnboarding() {
   const [role, setRole] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { currentUser } = useAuth();
+  const { currentUser, userData, loading } = useAuth();
   const navigate = useNavigate();
   const { i18n } = useTranslation();
+
+  useEffect(() => {
+    if (!loading && userData?.venture && userData?.role) {
+      navigate('/home');
+    }
+  }, [userData, loading, navigate]);
 
   const languages = [
     { code: 'en', name: 'English', flag: '🇬🇧' },
@@ -52,12 +58,14 @@ export default function CompressedOnboarding() {
   };
 
   const handleComplete = async () => {
+    console.log("Onboarding: handleComplete triggered", { venture, role, preferredLanguage });
     if (!venture || !role) {
       toast.error('Please select both a venture and a role to proceed.');
       return;
     }
 
     if (!currentUser) {
+      console.error("Onboarding: No current user found");
       toast.error('Auth error. Please login again.');
       navigate('/login');
       return;
@@ -66,16 +74,24 @@ export default function CompressedOnboarding() {
     setIsSubmitting(true);
     try {
       const userRef = doc(db, 'users', currentUser.uid);
-      await updateDoc(userRef, {
+      console.log("Onboarding: Updating Firestore...");
+      await setDoc(userRef, {
         preferredLanguage,
         venture,
         role,
         kycDeferred: true,
         profileCompletion: 20
-      });
+      }, { merge: true });
+      
+      console.log("Onboarding: Firestore update successful. Navigating to /home...");
       toast.success('Onboarding complete! 🚀');
-      navigate('/home');
+      
+      // Force navigation
+      setTimeout(() => {
+        navigate('/home', { replace: true });
+      }, 100);
     } catch (error: any) {
+      console.error("Onboarding Error:", error);
       toast.error(error.message || 'Failed to update profile');
     } finally {
       setIsSubmitting(false);

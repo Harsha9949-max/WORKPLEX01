@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Outlet, useLocation, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, CheckSquare, Ticket, 

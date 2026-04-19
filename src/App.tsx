@@ -7,6 +7,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import { safeStringify } from './utils/jsonUtils';
 
 import { useState, useEffect } from 'react';
 import LandingPage from './pages/LandingPage';
@@ -146,8 +147,17 @@ function AppContent() {
   );
 }
 
-class GlobalErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
-  constructor(props: {children: React.ReactNode}) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: any;
+}
+
+class GlobalErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -162,11 +172,23 @@ class GlobalErrorBoundary extends React.Component<{children: React.ReactNode}, {
 
   render() {
     if (this.state.hasError) {
-      return <div className="p-10 text-red-500 bg-black min-h-screen">
-        <h1 className="text-2xl font-bold">Something went wrong.</h1>
-        <pre className="mt-4 text-sm whitespace-pre-wrap">{this.state.error?.toString()}</pre>
-        <pre className="mt-2 text-xs text-gray-500">{this.state.error?.stack}</pre>
-      </div>;
+      return (
+        <div className="p-10 text-red-500 bg-black min-h-screen">
+          <h1 className="text-2xl font-bold">Something went wrong.</h1>
+          <pre className="mt-4 text-sm whitespace-pre-wrap">
+            {this.state.error?.toString()}
+          </pre>
+          <pre className="mt-2 text-xs text-gray-500">
+            {this.state.error?.stack}
+          </pre>
+          <div className="mt-6">
+            <p className="text-sm text-gray-400 mb-2">Technical Details:</p>
+            <pre className="p-4 bg-[#111] rounded border border-white/10 text-[10px] overflow-auto max-h-60">
+              {safeStringify(this.state.error, 2)}
+            </pre>
+          </div>
+        </div>
+      );
     }
     return this.props.children;
   }

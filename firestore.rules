@@ -3,36 +3,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
     
     // ===============================================================
-    // Assumed Data Model
+    // 0. Global Safety Net & Catch-All
     // ===============================================================
-    //
-    // Collection: users
-    // Document ID: {userId} (matches auth.uid)
-    // Fields:
-    //   - name: string
-    //   - phone: string
-    //   - email: string | null
-    //   - photoURL: string
-    //   - age: number
-    //   - venture: string
-    //   - role: string
-    //   - upiId: string
-    //   - bankAccount: string
-    //   - aadhaar: string (encrypted)
-    //   - pan: string (encrypted)
-    //   - deviceFingerprint: string
-    //   - level: string
-    //   - streak: number
-    //   - joinedAt: timestamp
-    //   - contractSigned: boolean
-    //   - kycDone: boolean
-    //   - firstTaskDone: boolean
-    //   - wallets: map (earned, pending, bonus, savings)
-    //
-    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
 
     // ===============================================================
-    // Helper Functions
+    // 3. Helper Functions (Primitives)
     // ===============================================================
     function isAuthenticated() {
       return request.auth != null;
@@ -45,67 +23,58 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.email == 'marateyh@gmail.com' ||
+        request.auth.token.email == 'hvrsindustriespvtltd@gmail.com' ||
         exists(/databases/$(database)/documents/admins/$(request.auth.uid))
       );
     }
 
     function isSuperAdmin() {
-      return isAuthenticated() && 
-        (request.auth.token.email == 'marateyh@gmail.com' || request.auth.token.email == 'hvrsindustriespvtltd@gmail.com') && 
-        request.auth.token.email_verified == true;
+      return isAuthenticated() && (
+        request.auth.token.email == 'marateyh@gmail.com' || 
+        request.auth.token.email == 'hvrsindustriespvtltd@gmail.com'
+      ) && request.auth.token.email_verified == true;
     }
 
-    function hasRequiredUserFields(data) {
-      return data.keys().hasAll(['name', 'phone', 'age', 'venture', 'role', 'upiId', 'bankAccount', 'aadhaar', 'pan', 'deviceFingerprint', 'level', 'streak', 'joinedAt', 'contractSigned', 'kycDone', 'firstTaskDone', 'wallets']);
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function isValidUser(data) {
-      return hasRequiredUserFields(data) &&
-             data.name is string && data.name.size() > 2 && data.name.size() < 100 &&
-             data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 20 &&
-             data.age is number && data.age >= 18 &&
-             data.venture is string && data.venture in ['BuyRix', 'Vyuma', 'TrendyVerse', 'Growplex'] &&
-             data.role is string && data.role.size() > 0 && data.role.size() < 50 &&
-             data.upiId is string && data.upiId.size() > 0 && data.upiId.size() < 100 &&
-             data.bankAccount is string && data.bankAccount.size() >= 8 && data.bankAccount.size() < 30 &&
-             data.aadhaar is string && data.aadhaar.size() > 0 && data.aadhaar.size() < 200 &&
-             data.pan is string && data.pan.size() > 0 && data.pan.size() < 200 &&
-             data.deviceFingerprint is string && data.deviceFingerprint.size() > 0 && data.deviceFingerprint.size() < 500 &&
-             data.level is string &&
-             data.streak is number && data.streak >= 0 &&
-             data.joinedAt is timestamp &&
-             data.contractSigned is bool && data.contractSigned == true &&
-             data.kycDone is bool &&
-             data.firstTaskDone is bool &&
-             data.wallets is map &&
-             data.wallets.keys().hasAll(['earned', 'pending', 'bonus', 'savings']) &&
-             data.wallets.earned is number && data.wallets.earned >= 0 &&
-             data.wallets.pending is number && data.wallets.pending >= 0 &&
-             data.wallets.bonus is number && data.wallets.bonus >= 0 &&
-             data.wallets.savings is number && data.wallets.savings >= 0;
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
     }
 
     // ===============================================================
-    // Rules
+    // 4. ENTITY RULES
     // ===============================================================
-    
+
     match /users/{userId} {
-      // Only the owner or admin can read the user document
-      allow read: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+      // Users can read their own profile, Admins can read all. 
+      // Public profile fields are handled by publicProfiles check.
+      allow read: if isOwner(userId) || isAdmin();
       
-      // Allow creation if the user is authenticated
-      allow create: if isAuthenticated();
+      // Allow creation of the user document on registration
+      allow create: if isOwner(userId);
       
-      // Allow updates if the user is authenticated, the document ID matches their UID,
-      // and they aren't violating KYC logic for withdrawals
-      allow update: if (isAuthenticated() && request.auth.uid == userId && 
-        (
-         request.resource.data.kycCompletedAt != null ||
-         !('wallets' in request.resource.data.diff().affectedKeys()) ||
-         (!('temp' in request.resource.data.diff().affectedKeys()) || request.resource.data.wallets.temp <= 500)
-        )) || isAdmin();
-                       
-      // Users cannot delete their own accounts directly from the app (requires admin or special flow)
+      // Allow updates to profile and state
+      allow update: if (isOwner(userId) && (
+        // Action: Profile Update (Onboarding & Profile Screen)
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'phone', 'age', 'venture', 'role', 'upiId', 'bankAccount', 
+          'photoURL', 'preferredLanguage', 'kycDeferred', 'profileCompletion',
+          'lastActiveDate', 'streak', 'username', 'bio'
+        ]) ||
+        // Action: Trust Points (Validated by system, but user might sync)
+        incoming().diff(existing()).affectedKeys().hasOnly(['trustPoints']) ||
+        // Action: Self-Update of Temp Wallet (Small amounts only)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['wallets']) && incoming().wallets.temp <= 1000) ||
+        // Action: Full Update if KYC is done
+        (existing().get('kycCompletedAt', null) != null)
+      )) || isAdmin();
+
       allow delete: if isSuperAdmin();
     }
 
@@ -114,40 +83,34 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
-    match /aiCache/{cacheId} {
-      allow read, write: if false; // System only
-    }
-
-    match /fraudAlerts/{alertId} {
-      allow read: if isAdmin();
-      allow write: if false; // System only
-    }
-
-    match /aiErrors/{errorId} {
-      allow read: if isAdmin();
-      allow write: if false; // System only
-    }
-
-    match /taskSubmissions/{submissionId} {
-      allow read: if isAuthenticated() && (request.auth.uid == resource.data.workerId || isAdmin());
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.workerId;
-      allow update: if isAdmin();
-    }
-
     match /tasks/{taskId} {
+      // Tasks are public for all authenticated users to browse and accept
       allow read: if isAuthenticated();
+      // Only admins can create/edit/delete tasks
       allow write: if isAdmin();
     }
 
+    match /taskSubmissions/{submissionId} {
+      // Workers can see their own submissions; Admins can see all.
+      // List query must include workerId filter for workers.
+      allow read: if isAuthenticated() && (existing().workerId == request.auth.uid || isAdmin());
+      // Workers can create submissions for themselves
+      allow create: if isAuthenticated() && incoming().workerId == request.auth.uid && isValidId(incoming().taskId);
+      // Only admins can approve/reject
+      allow update: if isAdmin();
+    }
+
     match /withdrawals/{withdrawalId} {
-      allow read: if isAuthenticated() && (request.auth.uid == resource.data.uid || isAdmin());
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.uid &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.kycCompletedAt != null &&
-        request.resource.data.amount <= 50000;
+      // Only the requester or admin can see the withdrawal
+      allow read: if isAuthenticated() && (existing().uid == request.auth.uid || isAdmin());
+      // Minimum condition: KYC must be completed to withdraw
+      allow create: if isAuthenticated() && incoming().uid == request.auth.uid && 
+                   get(/databases/$(database)/documents/users/$(request.auth.uid)).data.kycCompletedAt != null;
       allow update: if isAdmin();
     }
 
     match /coupons/{userId} {
+      // Public read for applying coupons (or restricted if needed)
       allow read: if true;
       allow write: if isAdmin() || isOwner(userId);
     }
@@ -157,31 +120,25 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Public Profiles
     match /publicProfiles/{username} {
+      // Everyone can see public profiles
       allow read: if true;
-      allow write: if false; // Only Cloud Functions
+      // Managed by Cloud Functions to ensure sync with User document
+      allow write: if false;
     }
 
-    // Team Chat
     match /teamChats/{leadId}/messages/{msgId} {
+      // Participants in the chat can read (simplified roles for now)
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+      // Only sender can create their message
+      allow create: if isAuthenticated() && incoming().senderId == request.auth.uid;
     }
 
-    // Live Feed
     match /liveFeed/{feedId} {
       allow read: if true;
-      allow write: if false; // Only Cloud Functions
+      allow write: if false; // System only
     }
 
-    // Family Transfers
-    match /familyTransfers/{transferId} {
-      allow read: if isOwner(resource.data.senderId);
-      allow create: if isOwner(request.resource.data.senderId);
-    }
-
-    // Partner Stores
     match /partnerShops/{partnerId} {
       allow read: if true;
       allow write: if isOwner(partnerId);
@@ -193,7 +150,15 @@ service cloud.firestore {
     }
 
     match /partnerOrders/{orderId} {
-      allow read: if isOwner(resource.data.customerId) || isAdmin();
+      // Shop owners (partners) should be able to see their shop's orders
+      // In this app, we need to verify the partner's ownership.
+      allow read: if isAuthenticated() && (
+        existing().customerId == request.auth.uid || 
+        isAdmin() ||
+        // Allow the shop owner to read orders for their shop slug
+        // Note: shopSlug is in existing(), we can verify with PartnerShop
+        exists(/databases/$(database)/documents/partnerShops/$(request.auth.uid))
+      );
       allow create: if true; // Public checkout
       allow update: if isAdmin();
     }
@@ -201,6 +166,25 @@ service cloud.firestore {
     match /catalogProducts/{productId} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();
+    }
+
+    match /aiCache/{cacheId} {
+      allow read, write: if false; // System only
+    }
+
+    match /fraudAlerts/{alertId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /aiErrors/{errorId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    
+    match /familyTransfers/{transferId} {
+      allow read: if isOwner(existing().senderId);
+      allow create: if isOwner(incoming().senderId);
     }
   }
 }

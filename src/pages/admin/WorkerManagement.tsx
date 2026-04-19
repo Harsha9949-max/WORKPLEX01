@@ -45,7 +45,7 @@ export default function WorkerManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVenture, setSelectedVenture] = useState('All');
   const [selectedWorker, setSelectedWorker] = useState<any>(null);
-  const [manualCreditAmount, setManualCreditAmount] = useState('');
+  const [adjustmentAmount, setAdjustmentAmount] = useState('');
   
   const ventures = ['All', 'BuyRix', 'Vyuma', 'TrendyVerse', 'Growplex'];
 
@@ -83,23 +83,31 @@ export default function WorkerManagement() {
     }
   };
 
-  const handleManualCredit = async () => {
-    const amount = parseFloat(manualCreditAmount);
+  const handleManualAdjustment = async (isAdd: boolean) => {
+    const amount = parseFloat(adjustmentAmount);
     if (isNaN(amount) || amount <= 0) {
       toast.error('Invalid amount');
       return;
     }
 
     try {
+      const adjustment = isAdd ? amount : -amount;
+      
+      // Ensure we don't drop wallet balance below zero
+      if (!isAdd && (selectedWorker.wallets?.earned || 0) < amount) {
+        toast.error('Cannot remove more than the current balance');
+        return;
+      }
+
       await updateDoc(doc(db, 'users', selectedWorker.id), {
-        'wallets.earned': increment(amount)
+        'wallets.earned': increment(adjustment)
       });
-      toast.success(`Successfully credited ₹${amount} to ${selectedWorker.name}`);
-      setManualCreditAmount('');
+      toast.success(`Successfully ${isAdd ? 'credited' : 'removed'} ₹${amount} ${isAdd ? 'to' : 'from'} ${selectedWorker.name}`);
+      setAdjustmentAmount('');
       setSelectedWorker(null);
       fetchWorkers();
     } catch (error) {
-      toast.error('Credit failed');
+      toast.error('Adjustment failed');
     }
   };
 
@@ -295,27 +303,33 @@ export default function WorkerManagement() {
                   <Wallet size={40} className="text-[#10B981] opacity-20" />
                 </div>
 
-                {/* Manual Credit Action */}
+                {/* Manual Wallet Adjustment Action */}
                 <div className="space-y-4 pt-4 border-t border-[#2A2A2A]">
                   <h5 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                    <Zap size={14} className="text-[#E8B84B]" /> Manual Wallet Credit
+                    <Zap size={14} className="text-[#E8B84B]" /> Manual Wallet Adjustment
                   </h5>
                   <div className="flex gap-2">
                     <input 
                       type="number"
                       placeholder="Enter amount ₹"
-                      value={manualCreditAmount}
-                      onChange={(e) => setManualCreditAmount(e.target.value)}
+                      value={adjustmentAmount}
+                      onChange={(e) => setAdjustmentAmount(e.target.value)}
                       className="flex-1 bg-black border border-[#2A2A2A] text-white px-4 py-3 rounded-xl text-sm font-black focus:border-[#E8B84B] transition-colors"
                     />
                     <button 
-                      onClick={handleManualCredit}
-                      className="bg-[#E8B84B] text-black px-6 py-3 rounded-xl text-sm font-black uppercase tracking-widest hover:scale-105 transition-transform"
+                      onClick={() => handleManualAdjustment(true)}
+                      className="bg-[#10B981] text-black px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-transform"
                     >
                       Credit
                     </button>
+                    <button 
+                      onClick={() => handleManualAdjustment(false)}
+                      className="bg-[#EF4444] text-white px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-transform"
+                    >
+                      Remove
+                    </button>
                   </div>
-                  <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest">Added amount will reflect in worker's Earned Wallet.</p>
+                  <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest">Adjusted amount will reflect in worker's Earned Wallet.</p>
                 </div>
 
                 {/* Footer Actions */}

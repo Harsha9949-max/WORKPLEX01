@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../lib/firebase';
+import { geminiService } from '../services/geminiService';
 import toast from 'react-hot-toast';
 
 /**
@@ -21,6 +22,19 @@ export function useAI() {
 
     setLoading(true);
     try {
+      // Direct calls to Gemini service for specific functions to avoid backend "internal" errors
+      if (functionName === 'generateAIPredictions') {
+        const result = await geminiService.generateAIPredictions(data);
+        setLastCallTime(Date.now());
+        return result;
+      }
+
+      if (functionName === 'reviewProofContent') {
+        const result = await geminiService.reviewProofContent(data);
+        setLastCallTime(Date.now());
+        return result;
+      }
+
       const aiFunction = httpsCallable(functions, functionName);
       const result = await aiFunction(data);
       setLastCallTime(Date.now());

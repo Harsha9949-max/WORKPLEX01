@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
-interface UserData {
+export interface UserData {
+  uid: string;
   name: string;
   phone: string;
+  email: string | null;
   photoURL: string;
   age: number;
   venture: string;
@@ -14,13 +16,37 @@ interface UserData {
   bankAccount: string;
   level: string;
   streak: number;
+  joinedAt: any;
+  contractSigned: boolean;
+  kycDone: boolean;
+  firstTaskDone: boolean;
   wallets: {
     earned: number;
     pending: number;
     bonus: number;
     savings: number;
+    temp?: number;
   };
-  joinedAt: any;
+  // Missing fields for Phase 7 and beyond
+  profileCompletion?: number;
+  trustPoints?: number;
+  kycCompletedAt?: any;
+  shopSetupDone?: boolean;
+  firstEarningModalShown?: boolean;
+  lastActiveDate?: any;
+  referredBy?: string;
+  weeklyEarnings?: number;
+  totalEarned?: number;
+  teamEarnings?: number;
+  username?: string;
+  monthlyEarned?: number;
+  activeMonths?: number;
+  badges?: string[];
+  teamSize?: number;
+  directReferrals?: number;
+  tasksCompleted?: number;
+  firstEarningCompleted?: boolean;
+  suspended?: boolean;
 }
 
 interface AuthContextType {
@@ -37,41 +63,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const logout = async () => {
-    await signOut(auth);
-  };
-
   useEffect(() => {
+    let unsubscribeDoc: (() => void) | null = null;
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       
       if (user) {
-        // Real-time listener for user data
-        const userDocRef = doc(db, 'users', user.uid);
-        const unsubscribeDoc = onSnapshot(userDocRef, (doc) => {
-          if (doc.exists()) {
-            setUserData(doc.data() as UserData);
+        // Listen to user document
+        unsubscribeDoc = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+          if (docSnap.exists()) {
+            setUserData({ uid: docSnap.id, ...docSnap.data() } as UserData);
           } else {
             setUserData(null);
           }
           setLoading(false);
         }, (error) => {
-          console.error("Firestore user listener error:", error);
+          console.error("Error fetching user data:", error);
           setLoading(false);
         });
-
-        return () => unsubscribeDoc();
       } else {
+        if (unsubscribeDoc) {
+          unsubscribeDoc();
+          unsubscribeDoc = null;
+        }
         setUserData(null);
         setLoading(false);
       }
     });
 
-    return unsubscribeAuth;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc();
+    };
   }, []);
 
+  const logout = async () => {
+    await signOut(auth);
+  };
+
+  const value = {
+    currentUser,
+    userData,
+    loading,
+    logout
+  };
+
   return (
-    <AuthContext.Provider value={{ currentUser, userData, loading, logout }}>
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );

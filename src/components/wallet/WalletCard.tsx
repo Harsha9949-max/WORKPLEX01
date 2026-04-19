@@ -17,7 +17,7 @@ export default function WalletCard({ title, balance, icon, color, subtitle }: Pr
       className="bg-[#111111] border border-white/5 rounded-2xl p-6 shadow-xl"
     >
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${color.replace('text', 'bg')}/10`}>
-        {React.cloneElement(icon as React.ReactElement, { className: `w-6 h-6 ${color}` })}
+        {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { className: `w-6 h-6 ${color}` }) : icon}
       </div>
       <h3 className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-1">{title}</h3>
       <p className={`text-3xl font-black ${color}`}>{formatCurrency(balance)}</p>
