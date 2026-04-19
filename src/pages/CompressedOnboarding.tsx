@@ -119,10 +119,20 @@ export default function CompressedOnboarding() {
             </div>
             <span className="text-sm font-medium uppercase tracking-widest">{step === 1 ? 'Back' : 'Previous'}</span>
           </button>
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${step >= 1 ? 'bg-[#E8B84B]' : 'bg-white/20'}`} />
-            <div className={`w-2 h-2 rounded-full ${step >= 2 ? 'bg-[#E8B84B]' : 'bg-white/20'}`} />
-            <div className={`w-2 h-2 rounded-full ${step >= 3 ? 'bg-[#E8B84B]' : 'bg-white/20'}`} />
+          <div className="flex-1 max-w-[200px] ml-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className={`text-[10px] font-black uppercase tracking-widest ${step >= 1 ? 'text-[#E8B84B]' : 'text-gray-600'}`}>Language</span>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${step >= 2 ? 'text-[#E8B84B]' : 'text-gray-600'}`}>Venture</span>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${step >= 3 ? 'text-[#E8B84B]' : 'text-gray-600'}`}>Role</span>
+            </div>
+            <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${(step / 3) * 100}%` }}
+                className="h-full bg-[#E8B84B] rounded-full"
+                transition={{ duration: 0.3 }}
+              />
+            </div>
           </div>
         </div>
 

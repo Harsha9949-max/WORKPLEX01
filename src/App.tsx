@@ -29,7 +29,7 @@ import TeamChatScreen from './pages/TeamChatScreen';
 import ResellerCatalogPage from './pages/ResellerCatalogPage';
 import ShopSetupWizard from './pages/ShopSetupWizard';
 import PublicShopPage from './pages/PublicShopPage';
-import AdminCatalogManager from './pages/AdminCatalogManager';
+import AdminCatalogManager from './pages/admin/AdminCatalogManager';
 import AIChatbotWidget from './components/chat/AIChatbotWidget';
 import { PrivacyPolicy, TermsOfService, CookiePolicy, SecurityPolicy, ContactPage } from './pages/legal/LegalPages';
 
