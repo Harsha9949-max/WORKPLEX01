@@ -17,19 +17,24 @@ import toast from 'react-hot-toast';
 import { Mail, Lock, Shield, Eye, EyeOff, Phone, KeyRound, ArrowRight } from 'lucide-react';
 import { generateTempPhone } from '../../lib/cloudFunctions';
 
-const schema = z.object({
+const loginSchema = z.object({
+  email: z.string().email({ message: 'Valid email is required' }),
+  password: z.string().min(6, { message: 'Password is required' }),
+  acceptTerms: z.boolean().optional()
+});
+
+const signupSchema = z.object({
   email: z.string().email({ message: 'Valid email is required' }),
   password: z.string()
     .min(8, { message: 'Must be at least 8 characters' })
     .regex(/[A-Z]/, { message: 'Must contain one uppercase letter' })
-    .regex(/[0-9]/, { message: 'Must contain one number' })
-    .regex(/[^A-Za-z0-9]/, { message: 'Must contain one special character' }),
+    .regex(/[0-9]/, { message: 'Must contain one number' }),
   acceptTerms: z.boolean().refine(val => val === true, {
     message: 'You must accept the Terms & Privacy Policy'
   })
 });
 
-type FormData = z.infer<typeof schema>;
+type FormData = z.infer<typeof signupSchema>;
 
 export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLogin?: boolean }) {
   const [isLogin, setIsLogin] = useState(defaultIsLogin);
@@ -52,8 +57,8 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
     }
   }, [defaultIsLogin]);
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<any>({
+    resolver: zodResolver(isLogin ? loginSchema : signupSchema),
     defaultValues: {
       email: '',
       password: '',
@@ -140,7 +145,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
     }
   };
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: any) => {
     setIsLoading(true);
     try {
       if (isLogin) {
@@ -270,7 +275,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
                   className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 rounded-xl focus:border-[#E8B84B] outline-none transition-all"
                 />
               </div>
-              {errors.email && <p className="text-red-500 text-xs mt-1 px-2">{errors.email.message}</p>}
+              {errors.email && <p className="text-red-500 text-xs mt-1 px-2">{errors.email.message?.toString()}</p>}
             </div>
 
             <div>
@@ -290,7 +295,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {errors.password && <p className="text-red-500 text-xs mt-1 px-2">{errors.password.message}</p>}
+              {errors.password && <p className="text-red-500 text-xs mt-1 px-2">{errors.password.message?.toString()}</p>}
               
               {!isLogin && passwordVal && (
                 <div className="mt-2 px-2 flex gap-1 h-1">
@@ -321,7 +326,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
                 </label>
               </div>
             )}
-            {errors.acceptTerms && <p className="text-red-500 text-xs mt-1 px-2">{errors.acceptTerms.message}</p>}
+            {errors.acceptTerms && <p className="text-red-500 text-xs mt-1 px-2">{errors.acceptTerms.message?.toString()}</p>}
 
             {!isLogin && (
               <div className="bg-[#1A1A1D] border border-white/10 p-4 rounded-xl flex items-center justify-between mt-4">
