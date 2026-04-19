@@ -1,7 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Initialize Gemini with API Key from environment
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
+let aiClient: GoogleGenAI | null = null;
+
+export function getAIClient(): GoogleGenAI {
+  if (!aiClient) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error('GEMINI_API_KEY environment variable is missing.');
+    }
+    aiClient = new GoogleGenAI({ apiKey: key });
+  }
+  return aiClient;
+}
 
 export const geminiService = {
   /**
@@ -13,7 +23,7 @@ export const geminiService = {
     completionRate: number;
   }) => {
     try {
-      const response = await ai.models.generateContent({
+      const response = await getAIClient().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Worker stats:
 - Pending Tasks: ${stats.pendingTasksCount}
@@ -54,7 +64,7 @@ Be motivational and realistic.`,
     venture: string;
   }) => {
     try {
-      const response = await ai.models.generateContent({
+      const response = await getAIClient().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Review this ${data.proofType} proof for ${data.venture} marketing task:
 "${data.proofText}"
