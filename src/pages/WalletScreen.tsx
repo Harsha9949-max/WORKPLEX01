@@ -22,7 +22,13 @@ export default function WalletScreen() {
   return (
     <div className="min-h-screen bg-[#0A0A0A] p-4 pb-24 text-white">
       <h1 className="text-2xl font-bold mb-1">My Wallet</h1>
-      <p className="text-gray-400 text-sm mb-8">Track your earnings & withdraw anytime</p>
+      <p className="text-gray-400 text-sm mb-4">Track your earnings & withdraw anytime</p>
+
+      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 mb-6">
+        <p className="text-yellow-500/90 text-xs leading-relaxed font-bold">
+          ⚠️ DISCLOSURE: Pending earnings are projections, not guarantees. Funds move to 'Withdrawable' only after clients verify successful sales/outcomes. This is a commission-based system.
+        </p>
+      </div>
 
       {!isKycDone && (
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex flex-col gap-3">

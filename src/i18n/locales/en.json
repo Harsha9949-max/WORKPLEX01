@@ -1,0 +1,53 @@
+{
+  "landing": {
+    "hero_title": "Work from Anywhere,\nEarn Daily",
+    "hero_subtitle": "Join & Earn upto ₹500 in your first week",
+    "cta_button": "Start Earning Today",
+    "disclaimer": "Earnings based on task completion. Welcome incentive credited on signup."
+  },
+  "onboarding": {
+    "step1_title": "Enter Your Phone",
+    "step1_subtitle": "We'll send you a verification code",
+    "send_otp": "Send OTP",
+    "verify": "Verify & Continue",
+    "existing_account": "Account Already Exists",
+    "existing_account_msg": "A WorkPlex account is already registered with this phone number.",
+    "login_instead": "Login Instead"
+  },
+  "ventures": {
+    "select_title": "Choose Your Venture",
+    "buyrix": "BuyRix",
+    "vyuma": "Vyuma", 
+    "growplex": "Growplex",
+    "zaestify": "Zaestify",
+    "coming_soon": "Coming Soon",
+    "payment_policy": "Payment Policy: You earn ONLY when your task is approved or customer makes a purchase."
+  },
+  "wallet": {
+    "earned": "Earned Wallet",
+    "pending": "Pending Wallet",
+    "bonus": "Bonus Wallet",
+    "savings": "Savings Wallet",
+    "withdraw": "Withdraw",
+    "welcome_incentive": "Welcome Incentive",
+    "incentive_tooltip": "Complete your first task to unlock this incentive"
+  },
+  "tasks": {
+    "title": "Tasks",
+    "this_week": "This Week's Tasks",
+    "no_tasks": "No tasks available",
+    "submit_proof": "Submit Proof",
+    "payment_only_verified": "Payment ONLY after admin approval & verified completion"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try Again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done"
+  }
+}

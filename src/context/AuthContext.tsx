@@ -47,6 +47,8 @@ export interface UserData {
   tasksCompleted?: number;
   firstEarningCompleted?: boolean;
   suspended?: boolean;
+  incentiveAmount?: number;
+  incentiveRevealed?: boolean;
 }
 
 interface AuthContextType {

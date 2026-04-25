@@ -38,7 +38,21 @@ export default function TaskDetail() {
 
       <div className="bg-[#111111] border border-white/5 rounded-2xl p-6 mb-6">
         <h2 className="font-bold mb-2 flex items-center gap-2"><Info size={18} /> Instructions</h2>
-        <p className="text-gray-400 text-sm">{task.description}</p>
+        <p className="text-gray-400 text-sm whitespace-pre-wrap">{task.description}</p>
+      </div>
+
+      <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 mb-6">
+        <h2 className="text-red-500 font-black text-sm uppercase tracking-widest mb-3 flex items-center gap-2">
+          ⚠️ Performance Commitment
+        </h2>
+        <div className="space-y-2 text-xs font-medium text-gray-300">
+          <p>By accepting this task, you understand that:</p>
+          <ul className="list-disc pl-4 space-y-1 mt-2 text-red-200/80">
+            <li>Simply submitting proof DOES NOT guarantee payment.</li>
+            <li>Payment is ONLY released if the client verifies an actual sale or desired outcome.</li>
+            <li>Rejected proofs will not receive compensation.</li>
+          </ul>
+        </div>
       </div>
 
       <button 

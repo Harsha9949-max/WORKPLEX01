@@ -9,12 +9,14 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+const AI_MODEL = 'google/gemma-2-27b-it:free';
 
 /**
- * Helper to call DeepSeek API with caching
+ * Helper to call OpenRouter API with caching
  */
-async function callDeepSeek(prompt, cacheKey, ttlHours = 6) {
+async function callOpenRouter(systemPrompt, userPrompt, cacheKey, ttlHours = 6) {
   const db = admin.firestore();
   
   // 1. Check Cache
@@ -29,22 +31,32 @@ async function callDeepSeek(prompt, cacheKey, ttlHours = 6) {
   }
 
   // 2. Call API
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
-    throw new Error('DEEPSEEK_API_KEY not configured');
+  if (!OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY not configured');
   }
 
   try {
-    const response = await axios.post(DEEPSEEK_API_URL, {
-      model: 'deepseek-chat',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' }
-    }, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+    const response = await axios.post(
+      `${OPENROUTER_BASE_URL}/chat/completions`,
+      {
+        model: AI_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+        response_format: { type: 'json_object' }
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://workplex-01.vercel.app',
+          'X-Title': 'WorkPlex AI'
+        }
       }
-    });
+    );
 
     const result = JSON.parse(response.data.choices[0].message.content);
 
@@ -60,9 +72,9 @@ async function callDeepSeek(prompt, cacheKey, ttlHours = 6) {
 
     return result;
   } catch (error) {
-    console.error('DeepSeek API Error:', error.message);
+    console.error('OpenRouter API Error:', error.message);
     await db.collection('aiErrors').add({
-      function: 'callDeepSeek',
+      function: 'callOpenRouter',
       error: error.message,
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
@@ -77,12 +89,13 @@ exports.generateAIPredictions = functions.https.onCall(async (data, context) => 
   const uid = context.auth.uid;
   const cacheKey = `prediction_${uid}`;
 
-  const prompt = `Worker has ${pendingTasksCount} tasks pending. Avg earn Rs.${avgEarning}. Completion ${completionRate}%. Predict today's potential extra earning. Return JSON: {"predictedEarning": number, "motivationalMessage": "string"}`;
+  const systemPrompt = 'You are a gig worker earnings predictor. Respond only in valid JSON format.';
+  const userPrompt = `Worker has ${pendingTasksCount} tasks pending. Average earning ${avgEarning}. Completion rate ${completionRate}%. Predict today earnings potential. Return JSON: {"predictedEarning": number, "motivationalMessage": "string"}`;
 
   try {
-    return await callDeepSeek(prompt, cacheKey);
+    return await callOpenRouter(systemPrompt, userPrompt, cacheKey);
   } catch (error) {
-    return { predictedEarning: 0, motivationalMessage: "Keep working hard to see your potential!" };
+    return { predictedEarning: 0, motivationalMessage: "Keep working hard!" };
   }
 });
 
@@ -90,16 +103,17 @@ exports.reviewProofContent = functions.https.onCall(async (data, context) => {
   if (!context.auth) throw new functions.https.HttpsError('unauthenticated', 'Login required');
   
   const { proofText, proofType, venture } = data;
-  const prompt = `Rate this ${proofType} proof for ${venture} marketing: "${proofText}". Authenticity 1-10. Relevance 1-10. Return JSON: {"score": number, "reason": "string"}`;
+  const systemPrompt = 'You are a content quality reviewer for a gig platform. Respond only in valid JSON format.';
+  const userPrompt = `Rate this content for ${venture} marketing work. Content: ${proofText}. Return JSON: {"score": number, "reason": "string", "status": "approved"}`;
 
   try {
-    const result = await callDeepSeek(prompt, null); // No cache for unique proofs
-    if (result.score < 5) {
-      return { status: "rejected", reason: result.reason };
+    const result = await callOpenRouter(systemPrompt, userPrompt, null); // No cache
+    if (result.score < 5 || result.status !== "approved") {
+      return { status: "rejected", reason: result.reason || 'AI review failed quality.' };
     }
     return { status: "pending_admin", reason: result.reason };
   } catch (error) {
-    return { status: "pending_admin", reason: "AI review unavailable, manual review required." };
+    return { status: "pending_admin", reason: "AI review unavailable" };
   }
 });
 
@@ -107,20 +121,20 @@ exports.detectFraud = functions.pubsub
   .schedule('every 6 hours')
   .onRun(async (context) => {
     const db = admin.firestore();
-    const users = await db.collection('users').limit(100).get(); // Batching for performance
+    const users = await db.collection('users').limit(100).get(); // Batching
     
     for (const userDoc of users.docs) {
       const user = userDoc.data();
-      // Anonymized behavior only
-      const prompt = `Analyze behavior: logins/day=${user.loginsPerDay || 0}, tasks/day=${user.tasksCompletedPerDay || 0}. Is this bot/fraud? Return JSON: {"fraudScore": number, "indicators": ["string"]}`;
+      const systemPrompt = 'You are a fraud detection system. Respond only in valid JSON format.';
+      const userPrompt = `Analyze behavior: logins per day: ${user.loginsPerDay || 0}, tasks per day: ${user.tasksCompletedPerDay || 0}, submission speed: ${user.avgSubmissionTime || 0}s. Is this suspicious? Return JSON: {"fraudScore": number, "indicators": ["string"], "recommendation": "string"}`;
       
       try {
-        const result = await callDeepSeek(prompt, null);
-        if (result.fraudScore > 70) {
+        const result = await callOpenRouter(systemPrompt, userPrompt, null);
+        if (result.fraudScore && result.fraudScore > 70) {
           await db.collection('fraudAlerts').add({
             workerId: userDoc.id,
             fraudScore: result.fraudScore,
-            indicators: result.indicators,
+            indicators: result.indicators || [],
             status: result.fraudScore > 90 ? "suspended" : "pending",
             createdAt: admin.firestore.FieldValue.serverTimestamp()
           });
@@ -141,17 +155,23 @@ exports.dailyTaskGenerator = functions.pubsub
   .timeZone('Asia/Kolkata')
   .onRun(async (context) => {
     const db = admin.firestore();
-    const roles = ['Marketer', 'Content Creator', 'Reseller'];
-    const ventures = ['BuyRix', 'Vyuma', 'TrendyVerse', 'Growplex'];
+    const roles = ['Promoter', 'Content Creator', 'Marketer'];
+    const ventures = ['BuyRix', 'Vyuma', 'Growplex'];
 
     for (const role of roles) {
       for (const venture of ventures) {
-        const prompt = `Generate 3 unique tasks for a ${role} in ${venture}. Return JSON array: [{"title": "string", "description": "string", "earnAmount": number}]`;
+        const systemPrompt = 'You are a task creator for a gig economy platform. Respond only in valid JSON format.';
+        const userPrompt = `Generate 3 unique marketing tasks for a ${role} worker in ${venture} venture. Return JSON array: [{"title": "string", "description": "string", "earnAmount": number}]`;
         
         try {
-          const tasks = await callDeepSeek(prompt, `daily_tasks_${role}_${venture}`);
+          const tasksResponse = await callOpenRouter(systemPrompt, userPrompt, `daily_tasks_${role}_${venture}`);
+          
+          const tasks = Array.isArray(tasksResponse) ? tasksResponse : tasksResponse.tasks || [];
+          if (!Array.isArray(tasks)) continue;
+
           const batch = db.batch();
           tasks.forEach(task => {
+            if(!task.title) return;
             const taskRef = db.collection('tasks').doc();
             batch.set(taskRef, {
               ...task,
@@ -182,15 +202,11 @@ exports.processWithdrawal = functions.firestore
     }
 
     try {
-      // Razorpay Payout API call (example)
-      // In production, use your actual Razorpay API credentials
       console.log('Processing payout for:', withdrawal.amount);
-
       await admin.firestore().collection('withdrawals').doc(context.params.withdrawalId).update({
         status: 'paid',
         paidAt: admin.firestore.FieldValue.serverTimestamp()
       });
-
       return null;
     } catch (error) {
       console.error('Payout error:', error);
@@ -199,7 +215,7 @@ exports.processWithdrawal = functions.firestore
   });
 
 exports.autoPromoteToLead = functions.pubsub
-  .schedule('0 1 * * *') // Daily at 1 AM
+  .schedule('0 1 * * *')
   .timeZone('Asia/Kolkata')
   .onRun(async (context) => {
     const db = admin.firestore();
@@ -220,7 +236,6 @@ exports.autoPromoteToLead = functions.pubsub
     });
     
     await batch.commit();
-    console.log(`Promoted ${qualifyingUsers.size} users to Lead Marketer`);
     return null;
   });
 
@@ -288,14 +303,12 @@ exports.distributeCommissions = functions.firestore
   });
 
 exports.dailyStreakJob = functions.pubsub
-  .schedule('0 0 * * *') // Midnight IST
+  .schedule('0 0 * * *')
   .timeZone('Asia/Kolkata')
   .onRun(async (context) => {
     const db = admin.firestore();
     const users = await db.collection('users').get();
     const batch = db.batch();
-    const now = admin.firestore.Timestamp.now();
-
     users.forEach(doc => {
       const data = doc.data();
       const lastActive = data.lastActiveDate?.toDate();
@@ -303,12 +316,8 @@ exports.dailyStreakJob = functions.pubsub
       today.setHours(0, 0, 0, 0);
 
       if (lastActive && lastActive >= today) {
-        // Active today
-        batch.update(doc.ref, {
-          streak: admin.firestore.FieldValue.increment(1)
-        });
+        batch.update(doc.ref, { streak: admin.firestore.FieldValue.increment(1) });
       } else {
-        // Inactive
         batch.update(doc.ref, { streak: 0 });
       }
     });
@@ -331,12 +340,10 @@ exports.checkBadgesAndLevels = functions.firestore
     const updates = {};
     const newBadges = [...(userData.badges || [])];
 
-    // Badge: First Sale
     if (userData.tasksCompleted === 1 && !newBadges.includes('first_sale')) {
       newBadges.push('first_sale');
     }
 
-    // Level Check
     const totalEarned = userData.totalEarned || 0;
     let newLevel = userData.level;
     if (totalEarned >= 100000) newLevel = 'Legend';
@@ -352,6 +359,9 @@ exports.checkBadgesAndLevels = functions.firestore
       updates.badges = newBadges;
     }
 
+    if (Object.keys(updates).length > 0) {
+      await userRef.update(updates);
+    }
     return null;
   });
 
@@ -390,13 +400,11 @@ exports.checkPanThreshold = functions.firestore
     }
   });
 
-// 1. Generate Username on User Creation
 exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
   const db = admin.firestore();
   const firstName = user.displayName ? user.displayName.split(' ')[0].toLowerCase() : 'worker';
   let username = `${firstName}${Math.floor(1000 + Math.random() * 9000)}`;
   
-  // Check for duplicates
   let isUnique = false;
   let attempts = 0;
   while (!isUnique && attempts < 5) {
@@ -409,7 +417,6 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
     }
   }
 
-  // Final check and sync
   await db.collection('publicProfiles').doc(username).set({
     uid: user.uid,
     displayName: user.displayName || 'Worker',
@@ -419,7 +426,6 @@ exports.onUserCreate = functions.auth.user().onCreate(async (user) => {
   return null;
 });
 
-// 2. Notify Live Earnings
 exports.notifyLiveEarnings = functions.firestore
   .document('transactions/{id}')
   .onCreate(async (snap, context) => {
@@ -432,13 +438,12 @@ exports.notifyLiveEarnings = functions.firestore
 
     if (!userData) return null;
 
-    // Create live feed entry
     await db.collection('liveFeed').add({
       uid: tx.userId,
       name: userData.name,
       amount: tx.amount,
       source: tx.source || 'Task',
-      venture: userData.venture,
+      venture: userData.venture || '',
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
 
@@ -453,17 +458,6 @@ exports.notifyLiveEarnings = functions.firestore
     return admin.messaging().send(payload).catch(() => null);
   });
 
-// 3. Team Chat FCM
-exports.onTeamMessage = functions.firestore
-  .document('teamChats/{leadId}/messages/{msgId}')
-  .onCreate(async (snap, context) => {
-    const msg = snap.data();
-    const leadId = context.params.leadId;
-    
-    return admin.messaging().send(payload).catch(() => null);
-  });
-
-// 5. Broadcast Announcement FCM
 exports.onAnnouncement = functions.firestore
   .document('announcements/{announcementId}')
   .onCreate(async (snap, context) => {
@@ -487,9 +481,8 @@ exports.onAnnouncement = functions.firestore
     return admin.messaging().send(payload).catch(() => null);
   });
 
-// 6. Release Partner Margins (7-day hold)
 exports.releasePartnerMargins = functions.pubsub
-  .schedule('0 2 * * *') // 2 AM Daily
+  .schedule('0 2 * * *')
   .timeZone('Asia/Kolkata')
   .onRun(async (context) => {
     const db = admin.firestore();
@@ -507,10 +500,8 @@ exports.releasePartnerMargins = functions.pubsub
     for (const orderDoc of pendingOrders.docs) {
       const order = orderDoc.data();
       
-      // Update Order Status
       batch.update(orderDoc.ref, { marginStatus: 'released' });
 
-      // Find Partner UID
       const shopDoc = await db.collection('partnerShops').where('shopSlug', '==', order.shopSlug).limit(1).get();
       if (!shopDoc.empty) {
         const partnerData = shopDoc.docs[0].data();
@@ -521,7 +512,6 @@ exports.releasePartnerMargins = functions.pubsub
           'wallets.pending': admin.firestore.FieldValue.increment(order.totalPartnerMargin)
         });
 
-        // Log Transaction
         const txRef = db.collection('transactions').doc();
         batch.set(txRef, {
           userId: partnerUID,
@@ -532,7 +522,6 @@ exports.releasePartnerMargins = functions.pubsub
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // Also update total sales in shop
         batch.update(shopDoc.docs[0].ref, {
           totalSales: admin.firestore.FieldValue.increment(order.totalAmount)
         });
@@ -540,6 +529,5 @@ exports.releasePartnerMargins = functions.pubsub
     }
 
     await batch.commit();
-    console.log(`Released margins for ${pendingOrders.size} orders`);
     return null;
   });

@@ -16,6 +16,7 @@ export default function WithdrawalModal({ isOpen, onClose, earnedBalance }: Prop
   const { currentUser, userData } = useAuth();
   const [step, setStep] = useState(1);
   const [amount, setAmount] = useState('');
+  const [agreed, setAgreed] = useState(false);
 
   const handleConfirm = async () => {
     if (!currentUser || !userData) return;
@@ -70,7 +71,29 @@ export default function WithdrawalModal({ isOpen, onClose, earnedBalance }: Prop
               <>
                 <h2 className="text-xl font-bold text-white mb-4">Confirm UPI</h2>
                 <p className="text-gray-400 text-sm mb-4">UPI: {userData?.upiId}</p>
-                <button onClick={handleConfirm} className="w-full bg-[#E8B84B] text-black font-bold py-4 rounded-xl">Confirm</button>
+
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-6">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={agreed}
+                      onChange={(e) => setAgreed(e.target.checked)}
+                      className="mt-1 w-4 h-4 rounded border-gray-600 bg-black/50 text-[#E8B84B] focus:ring-[#E8B84B]"
+                    />
+                    <span className="text-xs text-red-100/90 leading-relaxed font-medium">
+                      I acknowledge that all withdrawn funds represent payment for actual marketing results/sales, not merely for time spent on tasks.
+                    </span>
+                  </label>
+                </div>
+
+                <div className="flex gap-3">
+                  <button onClick={() => setStep(1)} className="flex-1 bg-white/10 text-white font-bold py-4 rounded-xl">Back</button>
+                  <button 
+                    onClick={handleConfirm} 
+                    disabled={!agreed}
+                    className="flex-1 bg-[#E8B84B] text-black font-bold py-4 rounded-xl disabled:opacity-50"
+                  >Confirm</button>
+                </div>
               </>
             )}
             {step === 4 && (

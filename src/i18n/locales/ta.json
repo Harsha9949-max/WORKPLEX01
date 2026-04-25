@@ -1,0 +1,5 @@
+{
+  "landing": {"hero_title": "எங்கிருந்தும் வேலை செய்யுங்கள், தினமும் சம்பாதிக்கவும்", "hero_subtitle": "முதல் வாரத்தில் ₹500 வரை பெறுங்கள்", "cta_button": "இப்போதே தொடங்குங்கள்", "disclaimer": "பணிகள் அடிப்படையில் மட்டுமே சம்பாத்தியம்."},
+  "common": {"loading": "...", "error": "Error", "retry": "Retry", "save": "Save", "cancel": "Cancel", "confirm": "Confirm", "back": "Back", "next": "Next", "done": "Done"},
+  "onboarding": {"step1_title": "நுழை", "step1_subtitle": "...", "send_otp": "OTP", "verify": "Verify", "existing_account": "Account Exists", "existing_account_msg": "...", "login_instead": "Login"}
+}

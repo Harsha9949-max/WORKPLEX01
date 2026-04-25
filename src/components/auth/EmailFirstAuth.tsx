@@ -11,11 +11,12 @@ import {
   sendEmailVerification
 } from 'firebase/auth';
 import { auth, db } from '../../lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Mail, Lock, Shield, Eye, EyeOff, Phone, KeyRound, ArrowRight } from 'lucide-react';
 import { generateTempPhone } from '../../lib/cloudFunctions';
+import { useTranslation } from 'react-i18next';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Valid email is required' }),
@@ -41,9 +42,9 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
-  // Simulated OTP Auth State
-  const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1); // 1: Phone, 2: OTP, 3: Email Details
+  const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [simulatedOtp, setSimulatedOtp] = useState('');
@@ -51,31 +52,42 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
   useEffect(() => {
     setIsLogin(defaultIsLogin);
     if (defaultIsLogin) {
-      setSignupStep(3); // Login doesn't need phone step
+      setSignupStep(3);
     } else {
-      setSignupStep(1); // Reset to phone step for new signups
+      setSignupStep(1);
     }
   }, [defaultIsLogin]);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<any>({
     resolver: zodResolver(isLogin ? loginSchema : signupSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      acceptTerms: false
-    }
+    defaultValues: { email: '', password: '', acceptTerms: false }
   });
 
   const passwordVal = watch('password');
-
-  // Device fingerprint simulation
   const getDeviceFingerprint = () => navigator.userAgent + window.screen.width;
 
-  const handleSendOTP = () => {
+  const handleSendOTP = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
       toast.error('Please enter a valid phone number');
       return;
     }
+    
+    // Check if phone already registered
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('phone', '==', phoneNumber));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        toast.error('Account Already Exists! A WorkPlex account is already registered with this phone number. Login instead.');
+        setIsLogin(true);
+        setSignupStep(3);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking phone uniqueness:', error);
+    }
+
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setSimulatedOtp(code);
     toast.success(`Verification Code sent! (Use code: ${code})`, { duration: 6000 });
@@ -83,11 +95,13 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
   };
 
   const handleVerifyOTP = () => {
-    if (otpCode !== simulatedOtp && otpCode !== '0000') { // 0000 backdoor for testing
+    if (otpCode !== simulatedOtp && otpCode !== '0000') {
       toast.error('Invalid verification code');
+      if (navigator.vibrate) navigator.vibrate([100, 30, 100]);
       return;
     }
     toast.success('Phone verified successfully!');
+    if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
     setSignupStep(3);
   };
 
@@ -96,8 +110,8 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
     const snap = await getDoc(userRef);
 
     if (!snap.exists()) {
-      // New user signup
       let finalPhone = method === 'email' && phoneNumber ? phoneNumber : await generateTempPhone();
+      const incentiveAmount = Math.floor(Math.random() * 3) + 19; // 19, 20, or 21
 
       await setDoc(userRef, {
         name: user.displayName || 'New User',
@@ -108,7 +122,6 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         role: '',
         upiId: '',
         bankAccount: '',
-        aadhaar: '',
         pan: '',
         deviceFingerprint: getDeviceFingerprint(),
         level: 'Starter',
@@ -117,11 +130,13 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         contractSigned: true,
         kycDone: false,
         firstTaskDone: false,
-        wallets: { earned: 0, pending: 0, bonus: 0, savings: 0, temp: 0 },
+        wallets: { earned: 0, pending: incentiveAmount, bonus: 0, savings: 0, temp: 0 },
+        incentiveAmount: incentiveAmount,
+        incentiveRevealed: false,
         authMethod: method,
         emailVerified: user.emailVerified,
         tempPhone: method === 'email' ? null : finalPhone,
-        phoneVerified: method === 'email', // Phone is verified via OTP step
+        phoneVerified: method === 'email',
         kycDeferred: true,
         kycCompletedAt: null,
         tempWalletCap: 500,
@@ -131,8 +146,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       });
       navigate('/onboarding');
     } else {
-      // Existing user
-      if (user.email === 'marateyh@gmail.com') {
+      if (user.email === 'marateyh@gmail.com' || user.email === 'hvrsindustriespvtltd@gmail.com') {
         navigate('/admin');
       } else {
         const userData = snap.data();
@@ -160,10 +174,15 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
         await sendEmailVerification(cred.user);
         toast.success('Account created! Please verify your email.');
+        if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
         await handleAuthSuccess(cred.user, 'email');
       }
     } catch (error: any) {
-      toast.error(error.message);
+      if (navigator.vibrate) navigator.vibrate([100, 30, 100]);
+      let errMsg = error.message;
+      if (errMsg.includes('auth/too-many-requests')) errMsg = "Too many attempts. Try again in 1 hour.";
+      if (errMsg.includes('auth/invalid-credential')) errMsg = "Invalid email or password.";
+      toast.error(errMsg);
     } finally {
       setIsLoading(false);
     }
@@ -218,13 +237,13 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
                   placeholder="Enter 10-digit phone number"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
-                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 rounded-xl focus:border-[#E8B84B] outline-none transition-all"
+                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all"
                 />
               </div>
             </div>
             <button 
               onClick={handleSendOTP}
-              className="w-full bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
+              className="w-full min-h-[48px] bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
             >
               Send OTP <ArrowRight size={18} />
             </button>
@@ -246,18 +265,18 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
                   placeholder="4-digit code"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value)}
-                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 rounded-xl focus:border-[#E8B84B] outline-none transition-all tracking-[0.5em] text-center font-mono text-xl"
+                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all tracking-[0.5em] text-center font-mono text-xl"
                   maxLength={4}
                 />
               </div>
             </div>
             <button 
               onClick={handleVerifyOTP}
-              className="w-full bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
+              className="w-full min-h-[48px] bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
             >
               Verify OTP
             </button>
-            <p className="text-center text-xs text-gray-500 mt-2 hover:text-white cursor-pointer transition-colors" onClick={() => setSignupStep(1)}>
+            <p className="text-center text-xs text-gray-500 mt-2 hover:text-white cursor-pointer min-h-[44px] flex items-center justify-center transition-colors" onClick={() => setSignupStep(1)}>
               Change Phone Number
             </p>
           </motion.div>
@@ -272,7 +291,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
                   {...register('email')}
                   type="email"
                   placeholder="Email Address"
-                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 rounded-xl focus:border-[#E8B84B] outline-none transition-all"
+                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all"
                 />
               </div>
               {errors.email && <p className="text-red-500 text-xs mt-1 px-2">{errors.email.message?.toString()}</p>}
@@ -285,68 +304,42 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Password"
-                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-12 py-4 rounded-xl focus:border-[#E8B84B] outline-none transition-all"
+                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-12 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all"
                 />
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 px-2 min-h-[44px] text-gray-400"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               {errors.password && <p className="text-red-500 text-xs mt-1 px-2">{errors.password.message?.toString()}</p>}
-              
-              {!isLogin && passwordVal && (
-                <div className="mt-2 px-2 flex gap-1 h-1">
-                  {['min(8)', 'uppercase', 'number', 'special'].map((req, i) => {
-                    let satisfied = false;
-                    if (i === 0) satisfied = passwordVal.length >= 8;
-                    if (i === 1) satisfied = /[A-Z]/.test(passwordVal);
-                    if (i === 2) satisfied = /[0-9]/.test(passwordVal);
-                    if (i === 3) satisfied = /[^A-Za-z0-9]/.test(passwordVal);
-                    return (
-                      <div key={req} className={`flex-1 rounded-full ${satisfied ? 'bg-green-500' : 'bg-white/10'}`} />
-                    );
-                  })}
-                </div>
-              )}
             </div>
 
             {!isLogin && (
-              <div className="flex items-center gap-2 mt-4 px-2">
+              <div className="flex items-center gap-2 mt-4 px-2 min-h-[44px]">
                 <input 
                   {...register('acceptTerms')}
                   type="checkbox" 
                   id="terms"
-                  className="rounded border-white/10 bg-transparent text-[#E8B84B] focus:ring-[#E8B84B]"
+                  className="rounded border-white/10 bg-transparent text-[#E8B84B] focus:ring-[#E8B84B] w-5 h-5 cursor-pointer"
                 />
-                <label htmlFor="terms" className="text-xs text-gray-400">
+                <label htmlFor="terms" className="text-xs text-gray-400 cursor-pointer">
                   I accept the Terms & Privacy Policy (DPDP Act 2023)
                 </label>
               </div>
             )}
             {errors.acceptTerms && <p className="text-red-500 text-xs mt-1 px-2">{errors.acceptTerms.message?.toString()}</p>}
 
-            {!isLogin && (
-              <div className="bg-[#1A1A1D] border border-white/10 p-4 rounded-xl flex items-center justify-between mt-4">
-                <div className="flex items-center gap-3">
-                  <input type="checkbox" required className="w-5 h-5 rounded border-gray-600 bg-transparent text-green-500 cursor-pointer" />
-                  <span className="text-sm font-medium text-gray-300">I'm not a robot</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" alt="reCAPTCHA" className="w-6 h-6 opacity-70" />
-                  <span className="text-[8px] text-gray-500 uppercase mt-1">Privacy - Terms</span>
-                </div>
-              </div>
-            )}
-
             <button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all mt-4 flex justify-center items-center gap-2"
+              className="w-full bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 min-h-[48px] rounded-xl hover:scale-[1.02] active:scale-95 transition-all mt-4 flex justify-center items-center gap-2"
             >
-              {isLoading ? 'Processing...' : (isLogin ? 'Login' : 'Sign Up')}
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+              ) : (isLogin ? 'Login' : 'Sign Up')}
             </button>
           </motion.form>
         )}
@@ -364,7 +357,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
 
             <button 
               onClick={signInWithGoogle}
-              className="relative z-10 w-full bg-white text-black font-bold py-4 rounded-xl flex justify-center items-center gap-3 hover:bg-gray-100 transition-all active:scale-95"
+              className="relative z-10 w-full min-h-[48px] bg-white text-black font-bold py-4 rounded-xl flex justify-center items-center gap-3 hover:bg-gray-100 transition-all active:scale-95"
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
               Google
@@ -374,7 +367,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
 
         <div className="mt-8 text-center relative z-10">
           <p className="text-sm text-gray-400">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            {isLogin ? "New to WorkPlex? " : "Already have account? "}
             <button 
               onClick={() => {
                 setIsLogin(!isLogin);
@@ -384,9 +377,9 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
                   setSignupStep(3);
                 }
               }}
-              className="text-[#E8B84B] font-bold hover:underline"
+              className="text-[#E8B84B] font-bold hover:underline min-h-[44px] px-2"
             >
-              {isLogin ? 'Sign up' : 'Log in'}
+              {isLogin ? 'Sign Up' : 'Login Instead'}
             </button>
           </p>
         </div>

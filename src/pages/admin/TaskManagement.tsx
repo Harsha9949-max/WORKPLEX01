@@ -29,8 +29,11 @@ import {
   Calendar,
   IndianRupee,
   Zap,
-  Info
+  Info,
+  Bot
 } from 'lucide-react';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../lib/firebase';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '../../utils/format';
 import { format } from 'date-fns';
@@ -144,6 +147,34 @@ export default function TaskManagement() {
       setRejectionReason('');
     } catch (error) {
       toast.error('Rejection failed');
+    }
+  };
+
+  const [aiReviewingId, setAiReviewingId] = useState<string | null>(null);
+
+  const handleAIReview = async (submission: any) => {
+    setAiReviewingId(submission.id);
+    const reviewProofContent = httpsCallable(functions, 'reviewProofContent');
+    try {
+      const result: any = await reviewProofContent({
+        proofText: submission.proofData,
+        proofType: submission.proofType,
+        venture: submission.venture || 'General' // Provide fallback if missing
+      });
+
+      const data = result.data;
+      if (data.status === 'rejected') {
+        setSelectedSubmission(submission);
+        setRejectionReason(`AI Auto-Reject: ${data.reason}`);
+        toast('AI rejected the proof. Please review reason.', { icon: '🤖' });
+      } else {
+        toast.success(`AI Note: ${data.reason}`, { icon: '🤖' });
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('AI Review failed to process');
+    } finally {
+      setAiReviewingId(null);
     }
   };
 
@@ -354,6 +385,14 @@ export default function TaskManagement() {
                   </div>
 
                   <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => handleAIReview(sub)}
+                      disabled={aiReviewingId === sub.id}
+                      className="px-4 py-2.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500/20 disabled:opacity-50 transition-all flex items-center gap-2"
+                    >
+                      {aiReviewingId === sub.id ? <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> : <Bot size={14} />}
+                      AI Review
+                    </button>
                     <button 
                       onClick={() => {
                         if(sub.proofType === 'Link' || sub.proofType === 'Image') {
