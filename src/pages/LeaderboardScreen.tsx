@@ -42,7 +42,7 @@ export default function LeaderboardScreen() {
 
       {/* Venture Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar mb-6">
-        {['BuyRix', 'Vyuma', 'TrendyVerse', 'Growplex'].map((v) => (
+        {['BuyRix', 'Vyuma', 'Zaestify', 'Growplex'].map((v) => (
           <button
             key={v}
             onClick={() => setVenture(v)}

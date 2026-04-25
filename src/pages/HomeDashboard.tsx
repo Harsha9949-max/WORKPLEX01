@@ -13,7 +13,6 @@ import TaskCard from '../components/dashboard/TaskCard';
 import LeadMarketerProgress from '../components/dashboard/LeadMarketerProgress';
 import MysteryBonusModal from '../components/dashboard/MysteryBonusModal';
 import AnnouncementBanner from '../components/dashboard/AnnouncementBanner';
-import BottomNav from '../components/dashboard/BottomNav';
 import SkeletonLoader from '../components/dashboard/SkeletonLoader';
 import StreakDisplay from '../components/gamification/StreakDisplay';
 import ProfileCompletionBar from '../components/profile/ProfileCompletionBar';
@@ -46,7 +45,8 @@ export default function HomeDashboard() {
   // 1. Listen to Coupon Data
   useEffect(() => {
     if (!currentUser || !userData) return;
-    if (userData.role !== 'Marketer' && userData.role !== 'Content Creator') return;
+    const allowedRoles = ['Marketer', 'Content Creator', 'Reseller', 'Promoter'];
+    if (!allowedRoles.includes(userData.role)) return;
 
     const couponRef = doc(db, 'coupons', currentUser.uid);
     const unsubscribe = onSnapshot(couponRef, (doc) => {
@@ -156,7 +156,6 @@ export default function HomeDashboard() {
         <div className="max-w-7xl mx-auto px-4 pt-6">
           <PartnerDashboard />
         </div>
-        <BottomNav />
       </div>
     );
   }
@@ -262,7 +261,7 @@ export default function HomeDashboard() {
         </motion.section>
 
         {/* Coupon Section (Conditional) */}
-        {(userData.role === 'Marketer' || userData.role === 'Content Creator') && coupon && (
+        {['Marketer', 'Content Creator', 'Reseller', 'Promoter'].includes(userData.role) && coupon && (
           <motion.section variants={itemVariants}>
             <CouponCard coupon={coupon} venture={userData.venture} />
           </motion.section>
@@ -326,7 +325,6 @@ export default function HomeDashboard() {
       </motion.main>
 
       <AnnouncementBanner announcements={announcements} />
-      <BottomNav />
 
       <MysteryBonusModal 
         isOpen={isMysteryModalOpen} 

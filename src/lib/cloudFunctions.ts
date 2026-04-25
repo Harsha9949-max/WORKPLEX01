@@ -78,10 +78,10 @@ export async function amlComplianceCheck() {
 
 // e. chatbotQuery
 export async function chatbotQuery(message: string, language: string): Promise<string> {
-  // In a real environment, this connects to DeepSeek AI using the Cloud Function backend.
+  // In a real environment, this connects to OpenRouter (Gemma) using the Cloud Function backend.
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve(`[${language.toUpperCase()}] I am your DeepSeek-powered AI assistant. You said: "${message}". How else can I assist with your onboarding, tasks, or payouts logic today?`);
+      resolve(`[${language.toUpperCase()}] I am your OpenRouter-powered AI assistant. You said: "${message}". How else can I assist with your onboarding, tasks, or payouts logic today?`);
     }, 1500);
   });
 }

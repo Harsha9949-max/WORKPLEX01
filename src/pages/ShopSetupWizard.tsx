@@ -36,9 +36,38 @@ export default function ShopSetupWizard() {
   const [catalog, setCatalog] = useState<any[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<any[]>([]);
 
+  // Personalization State (Step 4 now)
+  const [themeParams, setThemeParams] = useState({
+    primaryColor: '#14b8a6', // teal-500
+    secondaryColor: '#111111',
+    backgroundColor: '#0A0A0A',
+    fontStyle: 'modern',
+    buttonStyle: 'rounded',
+    layout: 'grid'
+  });
+  
+  const [brandingParams, setBrandingParams] = useState({
+    tagline: '',
+    whatsappNumber: '',
+    instagramHandle: '',
+    bannerImage: '',
+    bannerText: ''
+  });
+
+  const [seoParams, setSeoParams] = useState({
+    metaTitle: '',
+    metaDescription: '',
+    keywords: ''
+  });
+
   useEffect(() => {
     const fetchCatalog = async () => {
-      const q = query(collection(db, 'catalogProducts'), where('isActive', '==', true));
+      const venture = userData?.venture || 'BuyRix';
+      const q = query(
+         collection(db, 'catalogProducts'), 
+         where('isActive', '==', true),
+         where('venture', '==', venture)
+      );
       const snap = await getDocs(q);
       const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setCatalog(items);
@@ -46,14 +75,14 @@ export default function ShopSetupWizard() {
       // Fallback for demo
       if (items.length === 0) {
         setCatalog([
-          { id: 'c1', name: 'WorkPlex Pro Setup', hvrsBasePrice: 3500, suggestedRetailPrice: 4999, category: 'Electronics', images: ['https://picsum.photos/seed/tech/400/400'] },
-          { id: 'c2', name: 'HVRS Smart Watch', hvrsBasePrice: 1600, suggestedRetailPrice: 2499, category: 'Electronics', images: ['https://picsum.photos/seed/watch/400/400'] },
-          { id: 'c3', name: 'TrendyVerse Apparel', hvrsBasePrice: 900, suggestedRetailPrice: 1499, category: 'Fashion', images: ['https://picsum.photos/seed/hoodie/400/400'] }
+          { id: 'c1', name: 'WorkPlex Pro Setup', hvrsBasePrice: 3500, suggestedRetailPrice: 4999, category: 'Electronics', images: ['https://picsum.photos/seed/tech/400/400'], venture }
         ]);
       }
     };
-    fetchCatalog();
-  }, []);
+    if (userData?.venture) {
+       fetchCatalog();
+    }
+  }, [userData]);
 
   const handleNext = () => setStep(s => s + 1);
   const handleBack = () => {
@@ -100,9 +129,13 @@ export default function ShopSetupWizard() {
         shopSlug: shopSlug.toLowerCase().replace(/\s+/g, '-'),
         logo: logoUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${shopName}`,
         ownerUID: currentUser.uid,
+        venture: userData?.venture || 'BuyRix',
         isActive: true,
         totalSales: 0,
         categories: selectedCategories,
+        theme: themeParams,
+        branding: brandingParams,
+        seo: seoParams,
         createdAt: serverTimestamp()
       });
 
@@ -162,7 +195,7 @@ export default function ShopSetupWizard() {
 
         {/* Progress Bar */}
         <div className="flex gap-2 mb-12">
-          {[1, 2, 3, 4, 5].map(i => (
+          {[1, 2, 3, 4, 5, 6].map(i => (
             <div 
               key={i} 
               className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${i <= step ? 'bg-teal-500' : 'bg-white/10'}`} 
@@ -312,6 +345,106 @@ export default function ShopSetupWizard() {
               className="space-y-8"
             >
               <div className="space-y-4">
+                <h1 className="text-3xl font-black uppercase tracking-tighter">Personalise Shop</h1>
+                <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Setup branding, colors, and styling.</p>
+              </div>
+
+              <div className="space-y-8 max-h-[50vh] overflow-y-auto no-scrollbar pr-2 pb-10">
+                {/* Branding */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black uppercase">Branding & Links</h3>
+                  <div className="space-y-4">
+                    <input type="text" placeholder="Shop Tagline (e.g. Best deals on electronics)" value={brandingParams.tagline} onChange={e => setBrandingParams({...brandingParams, tagline: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-teal-500" />
+                    <input type="text" placeholder="WhatsApp Number" value={brandingParams.whatsappNumber} onChange={e => setBrandingParams({...brandingParams, whatsappNumber: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-teal-500" />
+                    <input type="text" placeholder="Instagram Handle (@username)" value={brandingParams.instagramHandle} onChange={e => setBrandingParams({...brandingParams, instagramHandle: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-teal-500" />
+                    <input type="text" placeholder="Promotion Banner Text" value={brandingParams.bannerText} onChange={e => setBrandingParams({...brandingParams, bannerText: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-teal-500" />
+                    <input type="text" placeholder="Banner Image URL" value={brandingParams.bannerImage} onChange={e => setBrandingParams({...brandingParams, bannerImage: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-teal-500" />
+                  </div>
+                </div>
+
+                {/* Theme */}
+                <div className="space-y-4">
+                   <h3 className="text-sm font-black uppercase">Theme & Colors</h3>
+                   <div className="grid grid-cols-3 gap-4">
+                     <div>
+                       <label className="text-[10px] text-gray-500 font-bold block mb-2">Primary Color</label>
+                       <input type="color" value={themeParams.primaryColor} onChange={e => setThemeParams({...themeParams, primaryColor: e.target.value})} className="w-full h-12 rounded-xl cursor-pointer" />
+                     </div>
+                     <div>
+                       <label className="text-[10px] text-gray-500 font-bold block mb-2">Secondary Color</label>
+                       <input type="color" value={themeParams.secondaryColor} onChange={e => setThemeParams({...themeParams, secondaryColor: e.target.value})} className="w-full h-12 rounded-xl cursor-pointer" />
+                     </div>
+                     <div>
+                       <label className="text-[10px] text-gray-500 font-bold block mb-2">Background</label>
+                       <input type="color" value={themeParams.backgroundColor} onChange={e => setThemeParams({...themeParams, backgroundColor: e.target.value})} className="w-full h-12 rounded-xl cursor-pointer" />
+                     </div>
+                   </div>
+                </div>
+
+                {/* Typography & Layout */}
+                <div className="space-y-4">
+                   <h3 className="text-sm font-black uppercase">Styling & Layout</h3>
+                   
+                   <div>
+                     <label className="text-[10px] text-gray-500 font-bold block mb-2">Font Style</label>
+                     <select value={themeParams.fontStyle} onChange={e => setThemeParams({...themeParams, fontStyle: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none">
+                       <option value="modern">Modern (Inter)</option>
+                       <option value="classic">Classic (Serif)</option>
+                       <option value="bold">Bold (Impact)</option>
+                       <option value="minimal">Minimal (Mono)</option>
+                     </select>
+                   </div>
+                   <div>
+                     <label className="text-[10px] text-gray-500 font-bold block mb-2">Button Style</label>
+                     <select value={themeParams.buttonStyle} onChange={e => setThemeParams({...themeParams, buttonStyle: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none">
+                       <option value="rounded">Rounded</option>
+                       <option value="sharp">Sharp (Square)</option>
+                       <option value="pill">Pill (Fully rounded)</option>
+                     </select>
+                   </div>
+                   <div>
+                     <label className="text-[10px] text-gray-500 font-bold block mb-2">Product Grid Layout</label>
+                     <select value={themeParams.layout} onChange={e => setThemeParams({...themeParams, layout: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none">
+                       <option value="grid">Standard Grid</option>
+                       <option value="list">List View</option>
+                       <option value="masonry">Masonry</option>
+                     </select>
+                   </div>
+                </div>
+
+                {/* SEO */}
+                <div className="space-y-4">
+                   <h3 className="text-sm font-black uppercase">SEO Metadata</h3>
+                   <div className="space-y-4">
+                     <input type="text" placeholder="Meta Title" value={seoParams.metaTitle} onChange={e => setSeoParams({...seoParams, metaTitle: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none" />
+                     <textarea rows={3} placeholder="Meta Description" value={seoParams.metaDescription} onChange={e => setSeoParams({...seoParams, metaDescription: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none resize-none" />
+                     <input type="text" placeholder="Keywords (comma separated)" value={seoParams.keywords} onChange={e => setSeoParams({...seoParams, keywords: e.target.value})} className="w-full bg-[#111111] border border-white/10 rounded-xl p-4 text-sm outline-none" />
+                   </div>
+                </div>
+
+              </div>
+
+              <div className="flex gap-4">
+                <button onClick={handleBack} className="flex-1 py-5 rounded-[32px] border border-white/10 font-black uppercase text-xs tracking-widest">Back</button>
+                <button 
+                  onClick={handleNext} 
+                  className="flex-1 bg-teal-500 text-black py-5 rounded-[32px] font-black uppercase text-xs tracking-widest"
+                >
+                  Continue
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 5 && (
+            <motion.div
+              key="step4"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              className="space-y-8"
+            >
+              <div className="space-y-4">
                 <h1 className="text-3xl font-black uppercase tracking-tighter">Stock Your Store</h1>
                 <p className="text-gray-500 font-bold uppercase tracking-widest text-xs">Choose products and set your profit margins.</p>
               </div>
@@ -362,7 +495,7 @@ export default function ShopSetupWizard() {
             </motion.div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <motion.div
               key="step5"
               initial={{ opacity: 0, scale: 0.9 }}

@@ -51,13 +51,18 @@ service cloud.firestore {
     // 4. ENTITY RULES
     // ===============================================================
 
+    match /suspiciousActivity/{activityId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
     match /users/{userId} {
       // Users can read their own profile, Admins can read all. 
       // Public profile fields are handled by publicProfiles check.
       allow read: if isOwner(userId) || isAdmin();
       
-      // Allow creation of the user document on registration
-      allow create: if isOwner(userId);
+      // Allow creation of the user document on registration only once
+      allow create: if isOwner(userId) && !exists(/databases/$(database)/documents/users/$(userId));
       
       // Allow updates to profile and state
       allow update: if (isOwner(userId) && (

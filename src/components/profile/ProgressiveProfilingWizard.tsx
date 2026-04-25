@@ -18,7 +18,6 @@ export default function ProgressiveProfilingWizard({ isOpen, onClose }: { isOpen
 
   // Form states
   const [photo, setPhoto] = useState<File | null>(null);
-  const [aadhaar, setAadhaar] = useState('');
   const [pan, setPan] = useState('');
   const [upi, setUpi] = useState('');
   const [bank, setBank] = useState('');
@@ -53,8 +52,7 @@ export default function ProgressiveProfilingWizard({ isOpen, onClose }: { isOpen
       }
 
       // Step 2: KYC
-      if (aadhaar && pan) {
-        updates.aadhaar = encryptData(aadhaar);
+      if (pan) {
         updates.pan = encryptData(pan);
         updates.kycCompletedAt = serverTimestamp();
         updates.kycDeferred = false;
@@ -134,16 +132,6 @@ export default function ProgressiveProfilingWizard({ isOpen, onClose }: { isOpen
                 </div>
                 
                 <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Aadhaar Number</label>
-                    <input 
-                      type="text" 
-                      value={aadhaar} 
-                      onChange={e=>setAadhaar(e.target.value)} 
-                      placeholder="Enter 12-digit Aadhaar"
-                      className="w-full bg-[#1A1A1D] border border-white/10 text-white px-4 py-3 rounded-xl focus:border-[#10B981] outline-none transition-all"
-                    />
-                  </div>
                   <div>
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">PAN Number</label>
                     <input 

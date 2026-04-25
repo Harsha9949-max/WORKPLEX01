@@ -4,6 +4,22 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-outfit: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --text-xs: 14px;
+  --text-xs--line-height: 1.6;
+}
+
+@layer base {
+  body {
+    line-height: 1.6;
+  }
+  button, [role="button"] {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Make exceptions for specific buttons that shouldn't be 48px tall, like small icon buttons, but instructions say "All buttons minimum 48px height" */
 }
 
 @layer utilities {

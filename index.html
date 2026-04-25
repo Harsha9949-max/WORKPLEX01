@@ -29,6 +29,15 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Global haptic feedback
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (btn && navigator.vibrate) {
+          navigator.vibrate(10);
+        }
+      });
+    </script>
   </body>
 </html>
 

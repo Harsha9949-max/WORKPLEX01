@@ -3,7 +3,19 @@
     "hero_title": "Work from Anywhere,\nEarn Daily",
     "hero_subtitle": "Join & Earn upto ₹500 in your first week",
     "cta_button": "Start Earning Today",
-    "disclaimer": "Earnings based on task completion. Welcome incentive credited on signup."
+    "disclaimer": "⚠️ Earnings based on actual task completion. No guaranteed income. Your effort = Your earnings.",
+    "faq": {
+      "q1_title": "How do I get paid?",
+      "q1_answer": "All payments are processed securely via Razorpay. Once your task proof is approved by our admins, the commission is added to your wallet. You can withdraw your earnings directly to your UPI ID once you reach the minimum threshold.",
+      "q2_title": "Is there any joining fee?",
+      "q2_answer": "No, WorkPlex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+      "q3_title": "What kind of tasks will I do?",
+      "q3_answer": "Tasks vary by venture. You might share product catalogs on social media, create short video reviews, acquire new clients for B2B services, or provide customer support. You choose what suits you best.",
+      "q4_title": "How long does task approval take?",
+      "q4_answer": "Our team typically reviews and approves task submissions within 12-24 hours. During peak times, it might take up to 48 hours.",
+      "q5_title": "Can I work for multiple ventures?",
+      "q5_answer": "Yes! While you pick a primary venture during onboarding, you can explore and complete tasks from any of the four ventures (BuyRix, Vyuma, Zaestify, Growplex) once you're inside the platform."
+    }
   },
   "onboarding": {
     "step1_title": "Enter Your Phone",

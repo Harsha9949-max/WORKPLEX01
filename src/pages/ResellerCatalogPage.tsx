@@ -20,44 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import WhatsAppShareModal from '../components/viral/WhatsAppShareModal';
 import toast from 'react-hot-toast';
 
-const PRODUCTS = [
-  {
-    id: 'p1',
-    name: 'WorkPlex Pro Setup',
-    price: 4999,
-    commission: 1500,
-    category: 'Equipment',
-    image: 'https://picsum.photos/seed/tech/400/400',
-    description: 'Complete high-performance workspace setup for professional marketers.'
-  },
-  {
-    id: 'p2',
-    name: 'HVRS Smart Watch',
-    price: 2499,
-    commission: 800,
-    category: 'Electronics',
-    image: 'https://picsum.photos/seed/watch/400/400',
-    description: 'Sync your tasks and track your earnings directly on your wrist.'
-  },
-  {
-    id: 'p3',
-    name: 'Venture Starter Kit',
-    price: 999,
-    commission: 300,
-    category: 'Kits',
-    image: 'https://picsum.photos/seed/box/400/400',
-    description: 'Essential marketing materials and physical badges for offline growth.'
-  },
-  {
-    id: 'p4',
-    name: 'TrendyVerse Apparel',
-    price: 1499,
-    commission: 500,
-    category: 'Fashion',
-    image: 'https://picsum.photos/seed/hoodie/400/400',
-    description: 'Premium HVRS branded workwear for the elite content creator.'
-  }
-];
+import { useCatalogProducts } from '../hooks/admin/useCatalogProducts';
 
 export default function ResellerCatalogPage() {
   const { userData } = useAuth();
@@ -67,7 +30,10 @@ export default function ResellerCatalogPage() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
-  const categories = ['All', 'Electronics', 'Kits', 'Fashion', 'Equipment'];
+  const currentVenture = userData?.venture || 'BuyRix';
+  const { products: PRODUCTS, loading } = useCatalogProducts('partner_view', currentVenture);
+
+  const categories = ['All', ...Array.from(new Set(PRODUCTS.map(p => p.category)))];
 
   const filteredProducts = PRODUCTS.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -81,8 +47,18 @@ export default function ResellerCatalogPage() {
   };
 
   const shareText = selectedProduct 
-    ? `Check out ${selectedProduct.name} on WorkPlex! Only Rs.${selectedProduct.price}. Use my referral code for a special bonus: ${userData?.uid}`
+    ? `Check out ${selectedProduct.name} on WorkPlex! Only Rs.${selectedProduct.suggestedRetailPrice}. Use my referral code: ${userData?.uid}`
     : `Browse the WorkPlex Reseller Catalog and start earning today!`;
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+      <motion.div 
+        animate={{ rotate: 360 }} 
+        transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+        className="w-10 h-10 border-4 border-[#E8B84B] border-t-transparent rounded-full" 
+      />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] pb-32">
@@ -169,7 +145,7 @@ export default function ResellerCatalogPage() {
               >
                 <div className="relative aspect-square">
                   <img 
-                    src={product.image} 
+                    src={product.images?.[0] || 'https://via.placeholder.com/400'} 
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
@@ -183,11 +159,11 @@ export default function ResellerCatalogPage() {
                   <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
                     <div>
                       <p className="text-[10px] text-gray-400 font-bold uppercase">Price</p>
-                      <p className="text-lg font-black text-white leading-none">Rs.{product.price}</p>
+                      <p className="text-lg font-black text-white leading-none">Rs.{product.suggestedRetailPrice}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-green-500 font-black uppercase tracking-tighter">Commission</p>
-                      <p className="text-sm font-black text-green-500">Rs.{product.commission}</p>
+                      <p className="text-[10px] text-green-500 font-black uppercase tracking-tighter">Est. Margin</p>
+                      <p className="text-sm font-black text-green-500">Rs.{product.suggestedRetailPrice - product.hvrsBasePrice}</p>
                     </div>
                   </div>
                 </div>
@@ -243,7 +219,7 @@ export default function ResellerCatalogPage() {
               <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mb-4" />
               <div className="flex-1 overflow-y-auto no-scrollbar p-8 pt-4">
                 <div className="aspect-square rounded-[40px] overflow-hidden mb-8 border border-white/5 shadow-2xl">
-                  <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
+                  <img src={selectedProduct.images?.[0] || 'https://via.placeholder.com/400'} alt={selectedProduct.name} className="w-full h-full object-cover" />
                 </div>
                 
                 <div className="space-y-6 pb-12">
@@ -256,8 +232,8 @@ export default function ResellerCatalogPage() {
                       <p className="text-gray-500 text-sm font-medium">{selectedProduct.description}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-black text-white">Rs.{selectedProduct.price}</p>
-                      <p className="text-[10px] text-green-500 font-black uppercase tracking-tighter">Earn Rs.{selectedProduct.commission}</p>
+                      <p className="text-2xl font-black text-white">Rs.{selectedProduct.suggestedRetailPrice}</p>
+                      <p className="text-[10px] text-green-500 font-black uppercase tracking-tighter">Earn Rs.{selectedProduct.suggestedRetailPrice - selectedProduct.hvrsBasePrice}</p>
                     </div>
                   </div>
 

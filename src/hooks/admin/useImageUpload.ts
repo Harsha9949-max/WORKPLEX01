@@ -14,7 +14,7 @@ export function useImageUpload() {
   const [uploads, setUploads] = useState<UploadStatus[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  const startUpload = async (files: File[]) => {
+  const startUpload = async (files: File[], venture: string = 'buyrix') => {
     const initialUploads = files.map(file => ({
       file,
       progress: 0,
@@ -28,7 +28,7 @@ export function useImageUpload() {
     const uploadPromises = files.map((file, index) => {
       return new Promise<void>((resolve) => {
         const timestamp = Date.now();
-        const storageRef = ref(storage, `catalog/products/${timestamp}_${file.name}`);
+        const storageRef = ref(storage, `catalog/${venture.toLowerCase()}/${timestamp}_${file.name}`);
         const uploadTask = uploadBytesResumable(storageRef, file);
 
         uploadTask.on('state_changed', 

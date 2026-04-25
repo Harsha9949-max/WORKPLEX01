@@ -6,8 +6,9 @@ import {
   where, 
   getDocs, 
   onSnapshot, 
+  getDoc,
   doc, 
-  setDoc, 
+  setDoc,  
   updateDoc, 
   serverTimestamp,
   addDoc,
@@ -51,18 +52,67 @@ export default function TaskManagement() {
 
   // Form State
   const [taskForm, setTaskForm] = useState({
-    title: '',
-    description: '',
     venture: 'BuyRix',
     targetRoles: [] as string[],
-    earningAmount: '',
-    deadline: '',
-    proofType: 'Image',
-    assignedTo: 'All'
+    weekDateStr: format(new Date(), 'yyyy-MM-dd'),
+    tasks: [] as any[]
   });
 
-  const ventures = ['BuyRix', 'Vyuma', 'TrendyVerse', 'Growplex'];
-  const roles = ['Marketer', 'Content Creator', 'Reseller', 'Partner'];
+  const getRolesByVenture = (venture: string) => {
+    switch (venture) {
+      case 'BuyRix': return ['Marketer', 'Content Creator', 'Reseller'];
+      case 'Vyuma': return ['Marketer', 'Content Creator', 'Reseller'];
+      case 'Growplex': return ['Promoter', 'Content Creator'];
+      case 'Zaestify': return [];
+      default: return [];
+    }
+  };
+
+  const getNextMonday = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + (1 - d.getDay() + 7) % 7 || 7);
+    return format(d, 'yyyy-MM-dd');
+  };
+
+  const [weekSelectorObj, setWeekSelectorObj] = useState(() => {
+    const monday = new Date();
+    monday.setDate(monday.getDate() - monday.getDay() + 1);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    return {
+      monday,
+      sunday,
+      weekNumber: getWeekNumber(monday),
+      assignedWeek: `${monday.getFullYear()}-W${getWeekNumber(monday)}`,
+      label: `Week of ${format(monday, 'dd MMM')} to ${format(sunday, 'dd MMM')}`
+    };
+  });
+
+  function getWeekNumber(d: Date) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    var weekNo = Math.ceil(( ( (d.getTime() - yearStart.getTime()) / 86400000) + 1)/7);
+    return weekNo;
+  }
+
+  const handleWeekChange = (offset: number) => {
+    setWeekSelectorObj(prev => {
+      const newMonday = new Date(prev.monday);
+      newMonday.setDate(newMonday.getDate() + offset * 7);
+      const newSunday = new Date(newMonday);
+      newSunday.setDate(newMonday.getDate() + 6);
+      return {
+        monday: newMonday,
+        sunday: newSunday,
+        weekNumber: getWeekNumber(newMonday),
+        assignedWeek: `${newMonday.getFullYear()}-W${getWeekNumber(newMonday)}`,
+        label: `Week of ${format(newMonday, 'dd MMM')} to ${format(newSunday, 'dd MMM')}`
+      };
+    });
+  };
+
+  const ventures = ['BuyRix', 'Vyuma', 'Growplex'];
 
   useEffect(() => {
     const q = query(collection(db, 'taskSubmissions'), where('status', '==', 'pending'));
@@ -78,53 +128,131 @@ export default function TaskManagement() {
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskForm.title || !taskForm.earningAmount || !taskForm.deadline) {
-      toast.error('Please fill required fields');
+    if (taskForm.tasks.length === 0) {
+      toast.error('Please add at least one task');
       return;
+    }
+    if (taskForm.targetRoles.length === 0) {
+       toast.error('Please select at least one role');
+       return;
     }
 
     try {
-      await addDoc(collection(db, 'tasks'), {
-        ...taskForm,
-        earningAmount: parseFloat(taskForm.earningAmount),
-        deadline: Timestamp.fromDate(new Date(taskForm.deadline)),
-        status: 'active',
-        createdAt: serverTimestamp()
+      const batchRequests = taskForm.tasks.map((taskItem: any) => {
+        return addDoc(collection(db, 'tasks'), {
+          ...taskItem,
+          venture: taskForm.venture,
+          targetRoles: taskForm.targetRoles,
+          status: 'active',
+          weekNumber: weekSelectorObj.weekNumber,
+          weekStartDate: Timestamp.fromDate(weekSelectorObj.monday),
+          weekEndDate: Timestamp.fromDate(weekSelectorObj.sunday),
+          assignedWeek: weekSelectorObj.assignedWeek,
+          isWeeklyBatch: true,
+          createdAt: serverTimestamp()
+        });
       });
-      toast.success('Task broadcasted to workers! 🚀');
+      await Promise.all(batchRequests);
+
+      // Create an announcement
+      await addDoc(collection(db, 'announcements'), {
+          title: `New tasks available!`,
+          content: `New tasks are available for ${taskForm.venture} this week!`,
+          targetAudience: 'By Venture',
+          targetVenture: taskForm.venture,
+          type: 'info',
+          createdAt: serverTimestamp(),
+          authorId: 'system',
+          authorName: 'System'
+      });
+
+      toast.success('Weekly Task Batch broadcasted! 🚀');
       setTaskForm({
-        title: '',
-        description: '',
         venture: 'BuyRix',
         targetRoles: [],
-        earningAmount: '',
-        deadline: '',
-        proofType: 'Image',
-        assignedTo: 'All'
+        weekDateStr: format(new Date(), 'yyyy-MM-dd'),
+        tasks: []
       });
       setActiveTab('review');
     } catch (error) {
-      toast.error('Failed to create task');
+      toast.error('Failed to create tasks');
     }
+  };
+
+  const addTaskToBatch = () => {
+    if (taskForm.tasks.length >= 7) {
+      toast.error('Maximum 7 tasks per week');
+      return;
+    }
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    setTaskForm({
+      ...taskForm,
+      tasks: [...taskForm.tasks, {
+        title: '',
+        description: '',
+        earningAmount: '',
+        dayAssigned: days[taskForm.tasks.length % 7],
+        proofType: 'Image'
+      }]
+    });
+  };
+
+  const updateTaskInBatch = (index: number, field: string, value: any) => {
+     const newTasks = [...taskForm.tasks];
+     newTasks[index] = { ...newTasks[index], [field]: value };
+     setTaskForm({ ...taskForm, tasks: newTasks });
+  };
+  
+  const removeTaskFromBatch = (index: number) => {
+     setTaskForm({ ...taskForm, tasks: taskForm.tasks.filter((_, i) => i !== index) });
   };
 
   const handleApprove = async (submission: any) => {
     try {
+      const userRef = doc(db, 'users', submission.workerId);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.exists() ? userSnap.data() : null;
+
+      let extraUpdate = {};
+      
+      if (userData && !userData.firstTaskDone) {
+        // Unlock welcome incentive
+        extraUpdate = {
+          firstTaskDone: true,
+          'wallets.earned': increment((submission.earningAmount || 0) + (userData.incentiveAmount || 0)),
+          'wallets.pending': increment(-(userData.incentiveAmount || 0)),
+          incentiveRevealed: true
+        };
+      } else {
+        extraUpdate = {
+          'wallets.earned': increment(submission.earningAmount || 0)
+        };
+      }
+
       // 1. Update submission status
       await updateDoc(doc(db, 'taskSubmissions', submission.id), {
         status: 'approved',
         reviewedAt: serverTimestamp()
       });
 
-      // 2. Credit worker's earned wallet
-      await updateDoc(doc(db, 'users', submission.workerId), {
-        'wallets.earned': increment(submission.earningAmount || 0)
-      });
-
-      // 3. Mark task as done for this user in their profile if needed
-      // (This logic would be more complex in production, checking multiple submissions)
+      // 2. Credit worker's earned wallet & trigger first task logic
+      await updateDoc(userRef, extraUpdate);
 
       toast.success(`Approval successful! ₹${submission.earningAmount} credited to ${submission.workerName}`);
+      if (userData && !userData.firstTaskDone) {
+        // Create an announcement/notification for the worker
+        await addDoc(collection(db, 'announcements'), {
+          title: 'Welcome Incentive Unlocked!',
+          content: 'Your Welcome Incentive has been unlocked and added to your earned wallet. Keep up the great work!',
+          targetAudience: 'By Worker',
+          targetWorkerId: submission.workerId,
+          type: 'success',
+          createdAt: serverTimestamp(),
+          authorId: 'system',
+          authorName: 'System'
+        });
+        toast(`Unlocked Welcome Incentive for ${submission.workerName}!`, { icon: '🎁' });
+      }
     } catch (error) {
       toast.error('Approval failed');
     }
@@ -210,118 +338,104 @@ export default function TaskManagement() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#111111] border border-[#2A2A2A] rounded-[40px] p-10 max-w-4xl"
+          className="bg-[#111111] border border-[#2A2A2A] rounded-[40px] p-6 md:p-10 max-w-4xl"
         >
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-[#2A2A2A] pb-6">
+            <div>
+              <h2 className="text-xl font-black text-white uppercase tracking-tighter">Create Weekly Task Batch</h2>
+              <p className="text-gray-500 text-xs mt-1">Assign tasks for specific days of the week</p>
+            </div>
+            <div className="flex items-center gap-4 bg-[#1A1A1A] p-2 rounded-2xl border border-[#2A2A2A]">
+               <button onClick={() => handleWeekChange(-1)} className="p-2 hover:bg-[#2A2A2A] rounded-xl"><Plus className="rotate-45" size={16} /></button>
+               <span className="text-xs font-bold text-white">{weekSelectorObj.label}</span>
+               <button onClick={() => handleWeekChange(1)} className="p-2 hover:bg-[#2A2A2A] rounded-xl"><Plus size={16} /></button>
+            </div>
+          </div>
+
           <form onSubmit={handleCreateTask} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Task Title</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Subscribe & Review TrendyVerse App"
-                    value={taskForm.title}
-                    onChange={e => setTaskForm({...taskForm, title: e.target.value})}
-                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white px-5 py-3 rounded-2xl focus:border-[#E8B84B] outline-none"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Venture</label>
-                  <select 
-                    value={taskForm.venture}
-                    onChange={e => setTaskForm({...taskForm, venture: e.target.value})}
-                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white px-5 py-3 rounded-2xl focus:border-[#E8B84B] outline-none appearance-none"
-                  >
-                    {ventures.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Target Roles</label>
-                  <div className="flex flex-wrap gap-2">
-                    {roles.map(role => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => {
-                          const updated = taskForm.targetRoles.includes(role) 
-                            ? taskForm.targetRoles.filter(r => r !== role)
-                            : [...taskForm.targetRoles, role];
-                          setTaskForm({...taskForm, targetRoles: updated});
-                        }}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                          taskForm.targetRoles.includes(role) 
-                            ? 'bg-[#E8B84B] border-[#E8B84B] text-black shadow-lg shadow-[#E8B84B]/20' 
-                            : 'bg-[#1A1A1A] border-[#2A2A2A] text-gray-500 hover:border-gray-600'
-                        }`}
-                      >
-                        {role}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Venture</label>
+                <select 
+                  value={taskForm.venture}
+                  onChange={e => {
+                    const newVenture = e.target.value;
+                    setTaskForm({...taskForm, venture: newVenture, targetRoles: []});
+                  }}
+                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white px-5 py-3 rounded-2xl focus:border-[#E8B84B] outline-none appearance-none"
+                >
+                  {ventures.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
 
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Payout Amount (₹)</label>
-                  <div className="relative">
-                    <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
-                    <input 
-                      type="number" 
-                      placeholder="0.00"
-                      value={taskForm.earningAmount}
-                      onChange={e => setTaskForm({...taskForm, earningAmount: e.target.value})}
-                      className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white pl-10 pr-5 py-3 rounded-2xl focus:border-[#E8B84B] outline-none"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Deadline Date</label>
-                  <input 
-                    type="datetime-local" 
-                    value={taskForm.deadline}
-                    onChange={e => setTaskForm({...taskForm, deadline: e.target.value})}
-                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white px-5 py-3 rounded-2xl focus:border-[#E8B84B] outline-none"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Proof Requirement</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['Image', 'Link', 'Text'].map(type => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setTaskForm({...taskForm, proofType: type})}
-                        className={`py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${
-                          taskForm.proofType === type 
-                            ? 'bg-[#1A1A1A] border-[#E8B84B] text-[#E8B84B] shadow-xl' 
-                            : 'bg-[#111111] border-[#2A2A2A] text-gray-600 hover:border-gray-500'
-                        }`}
-                      >
-                        {type === 'Image' && <ImageIcon size={18} />}
-                        {type === 'Link' && <LinkIcon size={18} />}
-                        {type === 'Text' && <FileText size={18} />}
-                        <span className="text-[8px] font-black uppercase tracking-widest">{type}</span>
-                      </button>
-                    ))}
-                  </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Target Roles</label>
+                <div className="flex flex-wrap gap-2">
+                  {getRolesByVenture(taskForm.venture).map((role: string) => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => {
+                        const updated = taskForm.targetRoles.includes(role) 
+                          ? taskForm.targetRoles.filter(r => r !== role)
+                          : [...taskForm.targetRoles, role];
+                        setTaskForm({...taskForm, targetRoles: updated});
+                      }}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                        taskForm.targetRoles.includes(role) 
+                          ? 'bg-[#E8B84B] border-[#E8B84B] text-black shadow-lg shadow-[#E8B84B]/20' 
+                          : 'bg-[#1A1A1A] border-[#2A2A2A] text-gray-500 hover:border-gray-600'
+                      }`}
+                    >
+                      {role}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Task Instructions</label>
-              <textarea 
-                rows={4}
-                placeholder="Detailed steps for the worker to complete the task successfully..."
-                value={taskForm.description}
-                onChange={e => setTaskForm({...taskForm, description: e.target.value})}
-                className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white px-5 py-4 rounded-[24px] focus:border-[#E8B84B] outline-none resize-none"
-                required
-              />
+            <div className="space-y-4">
+               <div className="flex justify-between items-center">
+                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Weekly Tasks ({taskForm.tasks.length}/7)</label>
+                 <button type="button" onClick={addTaskToBatch} className="text-xs font-bold text-[#E8B84B] flex items-center gap-1"><Plus size={14} /> Add Task</button>
+               </div>
+               
+               {taskForm.tasks.map((taskItem, idx) => (
+                  <div key={idx} className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-4 space-y-4 relative">
+                     <button type="button" onClick={() => removeTaskFromBatch(idx)} className="absolute top-4 right-4 text-gray-500 hover:text-red-500"><X size={16} /></button>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">Task Title</label>
+                          <input type="text" value={taskItem.title} onChange={e => updateTaskInBatch(idx, 'title', e.target.value)} required className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">Day Assigned</label>
+                          <select value={taskItem.dayAssigned} onChange={e => updateTaskInBatch(idx, 'dayAssigned', e.target.value)} className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none">
+                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">Payout (₹)</label>
+                          <input type="number" value={taskItem.earningAmount} onChange={e => updateTaskInBatch(idx, 'earningAmount', parseFloat(e.target.value))} required className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">Proof Type</label>
+                          <select value={taskItem.proofType} onChange={e => updateTaskInBatch(idx, 'proofType', e.target.value)} className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none">
+                            {['Image', 'Link', 'Text'].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">Instructions</label>
+                        <textarea rows={2} value={taskItem.description} onChange={e => updateTaskInBatch(idx, 'description', e.target.value)} required className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none resize-none" />
+                     </div>
+                  </div>
+               ))}
+               {taskForm.tasks.length === 0 && (
+                 <div className="text-center py-10 border border-dashed border-[#2A2A2A] rounded-2xl text-gray-500 text-sm">
+                    No tasks added. Click "Add Task" to start building this week's batch.
+                 </div>
+               )}
             </div>
 
             <div className="pt-6 border-t border-[#2A2A2A] flex justify-end gap-4">
@@ -336,7 +450,7 @@ export default function TaskManagement() {
                 type="submit"
                 className="bg-[#E8B84B] text-black px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-2xl shadow-[#E8B84B]/20"
               >
-                Broadcast Task
+                Publish Week's Tasks
               </button>
             </div>
           </form>

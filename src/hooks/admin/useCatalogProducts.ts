@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, writeBatch, doc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot, writeBatch, doc, deleteDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { CatalogRow } from './useExcelParser';
 import toast from 'react-hot-toast';
@@ -15,17 +15,23 @@ export interface CatalogProduct {
   images: string[];
   tags: string[];
   isActive: boolean;
+  venture?: string;
   createdAt: any;
   updatedAt: any;
   uploadedBy: string;
 }
 
-export function useCatalogProducts(adminUserId: string) {
+export function useCatalogProducts(adminUserId: string, venture: string = 'BuyRix') {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'catalogProducts'), orderBy('createdAt', 'desc'));
+    setLoading(true);
+    const q = query(
+      collection(db, 'catalogProducts'), 
+      where('venture', '==', venture),
+      orderBy('createdAt', 'desc')
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as CatalogProduct));
       setProducts(data);
@@ -35,7 +41,7 @@ export function useCatalogProducts(adminUserId: string) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [venture]);
 
   const batchUpload = async (validRows: CatalogRow[]) => {
     if (!validRows.length) return;
@@ -66,6 +72,7 @@ export function useCatalogProducts(adminUserId: string) {
             images,
             tags,
             isActive,
+            venture,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             uploadedBy: adminUserId
@@ -74,7 +81,7 @@ export function useCatalogProducts(adminUserId: string) {
 
         await batch.commit();
       }
-      toast.success('Successfully uploaded products to catalog!');
+      toast.success(`Successfully uploaded products for ${venture}!`);
     } catch (error: any) {
       toast.error(`Upload failed: ${error.message}`);
       throw error; // Rethrow to handle in UI

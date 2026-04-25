@@ -10,6 +10,15 @@ import { Toaster } from 'react-hot-toast';
 import { safeStringify } from './utils/jsonUtils';
 
 import { useState, useEffect } from 'react';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 import LandingPage from './pages/LandingPage';
 import CompressedOnboarding from './pages/CompressedOnboarding';
 import LoginPage from './pages/LoginPage';
@@ -31,6 +40,7 @@ import ShopSetupWizard from './pages/ShopSetupWizard';
 import PublicShopPage from './pages/PublicShopPage';
 import AdminCatalogManager from './pages/admin/AdminCatalogManager';
 import AIChatbotWidget from './components/chat/AIChatbotWidget';
+import AppLayout from './components/layout/AppLayout';
 import { PrivacyPolicy, TermsOfService, CookiePolicy, SecurityPolicy, ContactPage } from './pages/legal/LegalPages';
 
 // Phase 7 Admin Components
@@ -80,6 +90,7 @@ function AppContent() {
 
   return (
     <Router>
+      <ScrollToTop />
       <Toaster position="top-center" toastOptions={{
         style: {
           background: '#1A1A1A',
@@ -92,15 +103,22 @@ function AppContent() {
         <Route path="/join" element={<LoginPage initialIsLogin={false} />} />
         <Route path="/login" element={<LoginPage initialIsLogin={true} />} />
         <Route path="/onboarding" element={<PrivateRoute><CompressedOnboarding /></PrivateRoute>} />
-        <Route path="/home" element={<PrivateRoute><HomeDashboard /></PrivateRoute>} />
-        <Route path="/tasks" element={<PrivateRoute><TasksScreen /></PrivateRoute>} />
-        <Route path="/tasks/:taskId" element={<PrivateRoute><TaskDetail /></PrivateRoute>} />
-        <Route path="/tasks/:taskId/submit" element={<PrivateRoute><ProofSubmissionModal /></PrivateRoute>} />
-        <Route path="/wallet" element={<PrivateRoute><WalletScreen /></PrivateRoute>} />
-        <Route path="/coupon" element={<PrivateRoute><CouponDashboard /></PrivateRoute>} />
-        <Route path="/profile" element={<PrivateRoute><ProfileScreen /></PrivateRoute>} />
-        <Route path="/team" element={<PrivateRoute><TeamManagement /></PrivateRoute>} />
-        <Route path="/leaderboard" element={<PrivateRoute><LeaderboardScreen /></PrivateRoute>} />
+
+        {/* Protected routes with persistent nav */}
+        <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+          <Route path="/home" element={<HomeDashboard />} />
+          <Route path="/tasks" element={<TasksScreen />} />
+          <Route path="/tasks/:taskId" element={<TaskDetail />} />
+          <Route path="/tasks/:taskId/submit" element={<ProofSubmissionModal />} />
+          <Route path="/wallet" element={<WalletScreen />} />
+          <Route path="/coupon" element={<CouponDashboard />} />
+          <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/team" element={<TeamManagement />} />
+          <Route path="/leaderboard" element={<LeaderboardScreen />} />
+          <Route path="/chat/:leadId" element={<TeamChatScreen />} />
+          <Route path="/catalog" element={<ResellerCatalogPage />} />
+          <Route path="/shop-setup" element={<ShopSetupWizard />} />
+        </Route>
         
         {/* Phase 7 Admin Panel */}
         <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
@@ -117,11 +135,8 @@ function AppContent() {
         
         {/* Viral Layer Routes */}
         <Route path="/u/:username" element={<PublicProfilePage />} />
-        <Route path="/chat/:leadId" element={<PrivateRoute><TeamChatScreen /></PrivateRoute>} />
-        <Route path="/catalog" element={<PrivateRoute><ResellerCatalogPage /></PrivateRoute>} />
         
         {/* Partner Store Routes */}
-        <Route path="/shop-setup" element={<PrivateRoute><ShopSetupWizard /></PrivateRoute>} />
         <Route path="/shop/:slug" element={<PublicShopPage />} />
         
         {/* Legal Routes */}

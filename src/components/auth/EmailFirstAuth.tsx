@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { mapFirebaseError } from '../../utils/errorMapper';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,7 +12,7 @@ import {
   sendEmailVerification
 } from 'firebase/auth';
 import { auth, db } from '../../lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Mail, Lock, Shield, Eye, EyeOff, Phone, KeyRound, ArrowRight } from 'lucide-react';
@@ -80,8 +81,15 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       
       if (!querySnapshot.empty) {
         toast.error('Account Already Exists! A WorkPlex account is already registered with this phone number. Login instead.');
-        setIsLogin(true);
-        setSignupStep(3);
+        
+        await addDoc(collection(db, 'suspiciousActivity'), {
+          type: 'duplicate_registration_attempt',
+          phone: phoneNumber,
+          attemptedAt: serverTimestamp(),
+          deviceFingerprint: getDeviceFingerprint()
+        });
+
+        navigate('/login');
         return;
       }
     } catch (error) {
@@ -179,10 +187,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       }
     } catch (error: any) {
       if (navigator.vibrate) navigator.vibrate([100, 30, 100]);
-      let errMsg = error.message;
-      if (errMsg.includes('auth/too-many-requests')) errMsg = "Too many attempts. Try again in 1 hour.";
-      if (errMsg.includes('auth/invalid-credential')) errMsg = "Invalid email or password.";
-      toast.error(errMsg);
+      toast.error(mapFirebaseError(error));
     } finally {
       setIsLoading(false);
     }
@@ -194,7 +199,8 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       const cred = await signInWithPopup(auth, provider);
       await handleAuthSuccess(cred.user, 'google');
     } catch (error: any) {
-      toast.error(error.message);
+      if (navigator.vibrate) navigator.vibrate([100, 30, 100]);
+      toast.error(mapFirebaseError(error));
     }
   };
 
@@ -370,11 +376,10 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
             {isLogin ? "New to WorkPlex? " : "Already have account? "}
             <button 
               onClick={() => {
-                setIsLogin(!isLogin);
                 if (isLogin) {
-                  setSignupStep(1);
+                  navigate('/join');
                 } else {
-                  setSignupStep(3);
+                  navigate('/login');
                 }
               }}
               className="text-[#E8B84B] font-bold hover:underline min-h-[44px] px-2"

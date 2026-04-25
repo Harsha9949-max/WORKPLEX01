@@ -23,7 +23,7 @@ export const PrivacyPolicy = () => (
   <PageLayout title="Privacy Policy">
     <p>Last updated: {new Date().toLocaleDateString()}</p>
     <h3>1. Information We Collect</h3>
-    <p>We collect information to provide better services to all our users. Information you give us includes your name, phone number, and KYC details (Aadhaar, PAN) which are stored securely using AES encryption.</p>
+    <p>We collect information to provide better services to all our users. Information you give us includes your name, phone number, and KYC details (PAN) which are stored securely using AES encryption.</p>
     
     <h3>2. How We Use Information</h3>
     <p>We use the information we collect from all our services to provide, maintain, protect and improve them, to develop new ones, and to protect HVRS Innovations and our users.</p>

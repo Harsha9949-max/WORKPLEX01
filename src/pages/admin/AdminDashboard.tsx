@@ -217,7 +217,7 @@ export default function AdminDashboard() {
               <Briefcase size={80} className="text-[#E8B84B]" />
             </div>
             <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-2">GrowPlex Distribution</h3>
-            <p className="text-gray-500 text-sm max-w-sm mb-6">Your network is expanding across 14 cities in India. Currently,TrendyVerse leads in worker retention.</p>
+            <p className="text-gray-500 text-sm max-w-sm mb-6">Your network is expanding across 14 cities in India. Currently, Zaestify leads in worker retention.</p>
             <div className="flex items-center gap-4">
               <button className="bg-white text-black px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform">View Distribution</button>
               <button className="text-gray-400 hover:text-white text-[10px] font-black uppercase tracking-widest underline decoration-[#E8B84B]">Heatmap Info</button>

@@ -56,7 +56,13 @@ export default function WalletScreen() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         <WalletCard title={isKycDone ? "Earned" : "Temp Wallet"} balance={wallets.earned} icon={<Wallet />} color="text-green-500" subtitle={isKycDone ? "Available for withdrawal" : "Verify KYC to unlock"} />
-        <WalletCard title="Pending" balance={wallets.pending} icon={<Clock />} color="text-yellow-500" subtitle="Awaiting confirmation" />
+        <WalletCard 
+          title={!userData?.firstTaskDone ? "Welcome Incentive (Pending)" : "Pending"} 
+          balance={wallets.pending} 
+          icon={<Clock />} 
+          color="text-yellow-500" 
+          subtitle={!userData?.firstTaskDone ? "Complete task to unlock" : "Awaiting confirmation"} 
+        />
         <WalletCard title="Bonus" balance={wallets.bonus} icon={<Gift />} color="text-purple-500" subtitle="Signup & streak rewards" />
         <WalletCard title="Savings" balance={wallets.savings} icon={<Landmark />} color="text-blue-500" subtitle="Auto-saved earnings" />
       </div>

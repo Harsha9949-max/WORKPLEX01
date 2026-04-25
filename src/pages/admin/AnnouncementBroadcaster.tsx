@@ -18,7 +18,7 @@ export default function AnnouncementBroadcaster() {
   });
   const [isSending, setIsSending] = useState(false);
 
-  const ventures = ['BuyRix', 'Vyuma', 'TrendyVerse', 'Growplex'];
+  const ventures = ['BuyRix', 'Vyuma', 'Zaestify', 'Growplex'];
   const roles = ['Marketer', 'Content Creator', 'Reseller', 'Partner'];
   const audiences = ['All Workers', 'By Venture', 'By Role'];
 

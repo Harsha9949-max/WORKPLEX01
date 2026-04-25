@@ -23,7 +23,7 @@ export const getVentureColor = (venture: string): string => {
   switch (venture) {
     case 'BuyRix': return 'bg-blue-500/10 text-blue-400';
     case 'Vyuma': return 'bg-purple-500/10 text-purple-400';
-    case 'TrendyVerse': return 'bg-pink-500/10 text-pink-400';
+    case 'Zaestify': return 'bg-pink-500/10 text-pink-400';
     case 'Growplex': return 'bg-green-500/10 text-green-400';
     default: return 'bg-gray-500/10 text-gray-400';
   }

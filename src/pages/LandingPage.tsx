@@ -7,6 +7,7 @@ import {
   Instagram, Linkedin, Mail, Phone, MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 // 3D Tilt Card Component
 const TiltCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => {
@@ -86,6 +87,7 @@ const FAQItem = ({ question, answer }: FAQProps) => {
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white overflow-hidden relative selection:bg-[#E8B84B] selection:text-black">
@@ -147,32 +149,47 @@ export default function LandingPage() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="font-outfit font-black text-6xl md:text-8xl lg:text-9xl uppercase tracking-tighter leading-[0.9] mb-8"
           >
-            Work From Home<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E8B84B] via-[#fff] to-[#E8B84B] text-glow-gold">
-              Earn Daily
-            </span>
+            {t('landing.hero_title').split('\n').map((line, i, arr) => (
+               <React.Fragment key={i}>
+                 {i === arr.length - 1 ? (
+                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E8B84B] via-[#fff] to-[#E8B84B] text-glow-gold">
+                     {line}
+                   </span>
+                 ) : (
+                   <>{line}<br/></>
+                 )}
+               </React.Fragment>
+            ))}
           </motion.h1>
 
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg md:text-xl text-gray-400 max-w-2xl mb-12"
+            className="text-lg md:text-xl text-[#E8B84B] font-bold max-w-2xl mb-4"
           >
-            India's most advanced commission-based gig network. Complete simple tasks, share premium products, and withdraw your earnings instantly.
+            {t('landing.hero_subtitle')}
+          </motion.p>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="text-xs text-gray-500 max-w-2xl mb-12"
+          >
+            {t('landing.disclaimer')}
           </motion.p>
 
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
             className="flex flex-col sm:flex-row items-center gap-4"
           >
             <button 
               onClick={() => navigate('/join')}
               className="group flex items-center gap-2 bg-gradient-to-r from-[#E8B84B] to-[#d4a63f] text-black font-bold px-8 py-4 rounded-full text-lg hover:scale-105 transition-all shadow-[0_0_30px_rgba(232,184,75,0.3)]"
             >
-              Start Your Journey
+              {t('landing.cta_button')}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <a href="#ventures" className="px-8 py-4 rounded-full text-lg font-medium text-white glass-card hover:bg-white/5 transition-colors">
@@ -211,12 +228,13 @@ export default function LandingPage() {
                 potential: 'Up to ₹3,500/day'
               },
               { 
-                id: 'TRENDYVERSE', 
+                id: 'ZAESTIFY', 
                 icon: TrendingUp, 
                 color: 'text-pink-400', 
                 bg: 'bg-pink-400/10',
                 desc: 'Fashion & lifestyle hub. Influence trends and earn through curated style recommendations.',
-                potential: 'Up to ₹2,500/day'
+                potential: 'Coming Soon',
+                comingSoon: true
               },
               { 
                 id: 'GROWPLEX', 
@@ -233,9 +251,16 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="glass-card p-8 rounded-3xl flex flex-col group hover:border-[#E8B84B]/30 transition-all"
+                className={`glass-card p-8 rounded-3xl flex flex-col transition-all relative overflow-hidden ${venture.comingSoon ? 'opacity-70 grayscale' : 'group hover:border-[#E8B84B]/30'}`}
               >
-                <div className={`w-14 h-14 rounded-2xl ${venture.bg} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                {venture.comingSoon && (
+                  <div className="absolute inset-0 bg-[#0A0A0A]/60 z-10 flex items-center justify-center backdrop-blur-[2px]">
+                    <span className="bg-white text-black font-black uppercase tracking-widest text-xs px-4 py-2 rounded-full transform -rotate-12 outline shadow-2xl">
+                      Coming Soon
+                    </span>
+                  </div>
+                )}
+                <div className={`w-14 h-14 rounded-2xl ${venture.bg} flex items-center justify-center mb-6 ${venture.comingSoon ? '' : 'group-hover:scale-110'} transition-transform`}>
                   <venture.icon className={`w-7 h-7 ${venture.color}`} />
                 </div>
                 <h3 className="font-outfit font-black text-2xl mb-3 tracking-wider">{venture.id}</h3>
@@ -266,7 +291,7 @@ export default function LandingPage() {
               <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-y-1/2 z-0" />
               
               {[
-                { step: '01', title: 'Join', desc: 'Create your free account in 60 seconds and get your ₹27 joining bonus.', icon: Users },
+                { step: '01', title: 'Join', desc: 'Create your free account in 60 seconds.', icon: Users },
                 { step: '02', title: 'Pick', desc: 'Select a task from any of our 4 ventures that matches your interest.', icon: Target },
                 { step: '03', title: 'Submit', desc: 'Complete the task and upload your proof (screenshot or link).', icon: CheckCircle2 },
                 { step: '04', title: 'Earn', desc: 'Get your commission approved and withdraw directly to your UPI.', icon: Wallet }
@@ -315,7 +340,7 @@ export default function LandingPage() {
                 {[
                   'Choose Your Role (Creator, Promoter, Reseller)',
                   'Submit Proof (Screenshots or Links)',
-                  'Instant Joining Bonus (₹27 Guaranteed)',
+                  'Join & Earn upto ₹500 in your first week',
                   'Razorpay Secure Payouts'
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-gray-300">
@@ -363,8 +388,8 @@ export default function LandingPage() {
                   <span className="text-xl">💰</span>
                 </div>
                 <div>
-                  <p className="font-bold text-white">Joining Bonus</p>
-                  <p className="text-xs text-gray-400">Up to ₹500</p>
+                  <p className="font-bold text-white">Welcome Incentive</p>
+                  <p className="text-xs text-gray-400">Join & Earn upto ₹500</p>
                 </div>
               </motion.div>
             </motion.div>
@@ -383,24 +408,24 @@ export default function LandingPage() {
           <div className="glass-card rounded-[2rem] p-8 md:p-12 border border-white/5">
             {[
               { 
-                question: "How do I get paid?", 
-                answer: "All payments are processed securely via Razorpay. Once your task proof is approved by our admins, the commission is added to your wallet. You can withdraw your earnings directly to your UPI ID once you reach the minimum threshold." 
+                question: t('landing.faq.q1_title'), 
+                answer: t('landing.faq.q1_answer') 
               },
               { 
-                question: "Is there any joining fee?", 
-                answer: "No, WorkPlex is completely free to join. In fact, we give you a ₹27 joining bonus just for creating your account and completing your profile." 
+                question: t('landing.faq.q2_title'), 
+                answer: t('landing.faq.q2_answer') 
               },
               { 
-                question: "What kind of tasks will I do?", 
-                answer: "Tasks vary by venture. You might share product catalogs on social media, create short video reviews, acquire new clients for B2B services, or provide customer support. You choose what suits you best." 
+                question: t('landing.faq.q3_title'), 
+                answer: t('landing.faq.q3_answer') 
               },
               { 
-                question: "How long does task approval take?", 
-                answer: "Our team typically reviews and approves task submissions within 12-24 hours. During peak times, it might take up to 48 hours." 
+                question: t('landing.faq.q4_title'), 
+                answer: t('landing.faq.q4_answer') 
               },
               { 
-                question: "Can I work for multiple ventures?", 
-                answer: "Yes! While you pick a primary venture during onboarding, you can explore and complete tasks from any of the four ventures (BuyRix, Vyuma, TrendyVerse, Growplex) once you're inside the platform." 
+                question: t('landing.faq.q5_title'), 
+                answer: t('landing.faq.q5_answer') 
               }
             ].map((faq, i) => (
               <FAQItem key={i} question={faq.question} answer={faq.answer} />
@@ -483,7 +508,7 @@ export default function LandingPage() {
               </h2>
               
               <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
-                No boss. No commute. Just your phone and unlimited earning potential. Create your account today and unlock your guaranteed ₹27 joining bonus.
+                No boss. No commute. Just your phone and unlimited earning potential. Create your account today and unlock your welcome incentive.
               </p>
               
               <button 

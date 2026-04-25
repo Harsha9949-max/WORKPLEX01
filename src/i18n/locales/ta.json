@@ -1,5 +1,65 @@
 {
-  "landing": {"hero_title": "எங்கிருந்தும் வேலை செய்யுங்கள், தினமும் சம்பாதிக்கவும்", "hero_subtitle": "முதல் வாரத்தில் ₹500 வரை பெறுங்கள்", "cta_button": "இப்போதே தொடங்குங்கள்", "disclaimer": "பணிகள் அடிப்படையில் மட்டுமே சம்பாத்தியம்."},
-  "common": {"loading": "...", "error": "Error", "retry": "Retry", "save": "Save", "cancel": "Cancel", "confirm": "Confirm", "back": "Back", "next": "Next", "done": "Done"},
-  "onboarding": {"step1_title": "நுழை", "step1_subtitle": "...", "send_otp": "OTP", "verify": "Verify", "existing_account": "Account Exists", "existing_account_msg": "...", "login_instead": "Login"}
+  "landing": {
+    "hero_title": "[ta] Work from Anywhere,\nEarn Daily",
+    "hero_subtitle": "[ta] Join & Earn upto ₹500 in your first week",
+    "cta_button": "[ta] Start Earning Today",
+    "disclaimer": "[ta] ⚠️ Earnings based on actual task completion. No guaranteed income. Your effort = Your earnings.",
+    "faq": {
+      "q1_title": "[ta] How do I get paid?",
+      "q1_answer": "[ta] All payments are processed securely via Razorpay. Once your task proof is approved by our admins, the commission is added to your wallet. You can withdraw your earnings directly to your UPI ID once you reach the minimum threshold.",
+      "q2_title": "[ta] Is there any joining fee?",
+      "q2_answer": "[ta] No, WorkPlex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+      "q3_title": "[ta] What kind of tasks will I do?",
+      "q3_answer": "[ta] Tasks vary by venture. You might share product catalogs on social media, create short video reviews, acquire new clients for B2B services, or provide customer support. You choose what suits you best.",
+      "q4_title": "[ta] How long does task approval take?",
+      "q4_answer": "[ta] Our team typically reviews and approves task submissions within 12-24 hours. During peak times, it might take up to 48 hours.",
+      "q5_title": "[ta] Can I work for multiple ventures?",
+      "q5_answer": "[ta] Yes! While you pick a primary venture during onboarding, you can explore and complete tasks from any of the four ventures (BuyRix, Vyuma, Zaestify, Growplex) once you're inside the platform."
+    }
+  },
+  "onboarding": {
+    "step1_title": "[ta] Enter Your Phone",
+    "step1_subtitle": "[ta] We'll send you a verification code",
+    "send_otp": "[ta] Send OTP",
+    "verify": "[ta] Verify & Continue",
+    "existing_account": "[ta] Account Already Exists",
+    "existing_account_msg": "[ta] A WorkPlex account is already registered with this phone number.",
+    "login_instead": "[ta] Login Instead"
+  },
+  "ventures": {
+    "select_title": "[ta] Choose Your Venture",
+    "buyrix": "[ta] BuyRix",
+    "vyuma": "[ta] Vyuma",
+    "growplex": "[ta] Growplex",
+    "zaestify": "[ta] Zaestify",
+    "coming_soon": "[ta] Coming Soon",
+    "payment_policy": "[ta] Payment Policy: You earn ONLY when your task is approved or customer makes a purchase."
+  },
+  "wallet": {
+    "earned": "[ta] Earned Wallet",
+    "pending": "[ta] Pending Wallet",
+    "bonus": "[ta] Bonus Wallet",
+    "savings": "[ta] Savings Wallet",
+    "withdraw": "[ta] Withdraw",
+    "welcome_incentive": "[ta] Welcome Incentive",
+    "incentive_tooltip": "[ta] Complete your first task to unlock this incentive"
+  },
+  "tasks": {
+    "title": "[ta] Tasks",
+    "this_week": "[ta] This Week's Tasks",
+    "no_tasks": "[ta] No tasks available",
+    "submit_proof": "[ta] Submit Proof",
+    "payment_only_verified": "[ta] Payment ONLY after admin approval & verified completion"
+  },
+  "common": {
+    "loading": "[ta] Loading...",
+    "error": "[ta] Something went wrong",
+    "retry": "[ta] Try Again",
+    "save": "[ta] Save",
+    "cancel": "[ta] Cancel",
+    "confirm": "[ta] Confirm",
+    "back": "[ta] Back",
+    "next": "[ta] Next",
+    "done": "[ta] Done"
+  }
 }

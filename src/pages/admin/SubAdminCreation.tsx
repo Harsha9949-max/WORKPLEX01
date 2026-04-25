@@ -30,7 +30,7 @@ export default function SubAdminCreation() {
     assignedVentures: [] as string[]
   });
 
-  const ventures = ['BuyRix', 'Vyuma', 'TrendyVerse', 'Growplex'];
+  const ventures = ['BuyRix', 'Vyuma', 'Zaestify', 'Growplex'];
 
   useEffect(() => {
     fetchAdmins();

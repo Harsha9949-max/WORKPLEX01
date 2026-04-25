@@ -34,7 +34,7 @@ export default function Step7Agreement({ onComplete, prevStep, isSubmitting }: P
           <strong>1. Services:</strong> Contractor agrees to perform marketing, content creation, or reselling services as selected during onboarding.
         </p>
         <p>
-          <strong>2. Compensation:</strong> Contractor will be paid based on completed tasks and commissions. A signup bonus of Rs.27 is credited to the pending wallet upon signup and unlocks after the first task.
+          <strong>2. Compensation:</strong> Contractor will be paid based on completed tasks and commissions. A welcome incentive is credited to the pending wallet upon signup and unlocks after the first verified task.
         </p>
         <p>
           <strong>3. Independent Status:</strong> Contractor is an independent contractor, not an employee. Contractor is responsible for their own taxes and equipment.

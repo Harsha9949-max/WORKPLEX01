@@ -47,7 +47,7 @@ export default function WorkerManagement() {
   const [selectedWorker, setSelectedWorker] = useState<any>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
   
-  const ventures = ['All', 'BuyRix', 'Vyuma', 'TrendyVerse', 'Growplex'];
+  const ventures = ['All', 'BuyRix', 'Vyuma', 'Zaestify', 'Growplex'];
 
   useEffect(() => {
     fetchWorkers();
