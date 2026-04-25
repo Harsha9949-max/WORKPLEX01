@@ -16,12 +16,13 @@ export default function LeaderboardScreen() {
     const q = query(
       collection(db, 'leaderboard'),
       where('venture', '==', venture),
-      orderBy('earnings', 'desc'),
-      limit(20)
+      limit(100)
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
-      setEntries(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      let data: any[] = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      data.sort((a, b) => (b.earnings || 0) - (a.earnings || 0));
+      setEntries(data.slice(0, 20));
       setLoading(false);
     });
 
