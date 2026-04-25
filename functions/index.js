@@ -1,7 +1,13 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const axios = require('axios');
+const Razorpay = require('razorpay');
 admin.initializeApp();
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
@@ -347,6 +353,41 @@ exports.checkBadgesAndLevels = functions.firestore
     }
 
     return null;
+  });
+
+exports.incomeRatioTracker = functions.firestore
+  .document('transactions/{uid}/{txId}')
+  .onCreate(async (snap, context) => {
+    const tx = snap.data();
+    const uid = context.params.uid;
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(uid);
+
+    if (tx.category === 'task_approved') {
+      await userRef.update({ taskIncome: admin.firestore.FieldValue.increment(tx.amount) });
+    } else if (tx.category === 'team_commission') {
+      await userRef.update({ referralIncome: admin.firestore.FieldValue.increment(tx.amount) });
+    }
+
+    const userDoc = await userRef.get();
+    const data = userDoc.data();
+    const total = (data.taskIncome || 0) + (data.referralIncome || 0);
+    if (total > 0) {
+      const ratio = (data.referralIncome || 0) * 100 / total;
+      await userRef.update({ incomeRatio: ratio });
+      if (ratio > 50) {
+        await db.collection('fraudAlerts').add({ type: 'mlm_ratio_alert', uid, timestamp: admin.firestore.FieldValue.serverTimestamp() });
+      }
+    }
+  });
+
+exports.checkPanThreshold = functions.firestore
+  .document('users/{uid}')
+  .onUpdate(async (change, context) => {
+    const newData = change.after.data();
+    if ((newData.wallets?.earned || 0) >= 2500 && !newData.pan) {
+      await change.after.ref.update({ panRequired: true });
+    }
   });
 
 // 1. Generate Username on User Creation
