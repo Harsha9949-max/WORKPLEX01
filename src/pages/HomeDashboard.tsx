@@ -1,69 +1,46 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { collection, query, where, onSnapshot, limit, orderBy, doc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, limit, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
+import { Bell, Settings as SettingsIcon, BrainCircuit, TrendingUp, Calendar, Clock, ClipboardCheck, Gift, ChevronRight, Share2, Award, ArrowRight } from 'lucide-react';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-// Components
-import TopBar from '../components/dashboard/TopBar';
-import CouponCard from '../components/dashboard/CouponCard';
-import AIEarningsPredictor from '../components/dashboard/AIEarningsPredictor';
-import TaskCard from '../components/dashboard/TaskCard';
-import LeadMarketerProgress from '../components/dashboard/LeadMarketerProgress';
-import MysteryBonusModal from '../components/dashboard/MysteryBonusModal';
-import AnnouncementBanner from '../components/dashboard/AnnouncementBanner';
-import SkeletonLoader from '../components/dashboard/SkeletonLoader';
-import StreakDisplay from '../components/gamification/StreakDisplay';
-import ProfileCompletionBar from '../components/profile/ProfileCompletionBar';
-import PostFirstEarningModal from '../components/profile/PostFirstEarningModal';
-import AIPredictorBanner from '../components/ai/AIPredictorBanner';
-import AIProductPicker from '../components/ai/AIProductPicker';
-import LiveEarningsFeed from '../components/viral/LiveEarningsFeed';
-import WhatsAppShareModal from '../components/viral/WhatsAppShareModal';
-import ReferralQRModal from '../components/viral/ReferralQRModal';
-import FamilyTransferModal from '../components/viral/FamilyTransferModal';
-import { Share2, QrCode, Heart, TrendingUp, MessageCircle } from 'lucide-react';
-import { Link, useNavigate, Navigate } from 'react-router-dom';
+// Format Helpers
+const formatInr = (amount: number) => `Rs.${amount?.toLocaleString('en-IN') || 0}`;
 
 export default function HomeDashboard() {
   const navigate = useNavigate();
   const { currentUser, userData, loading: authLoading } = useAuth();
-  const [coupon, setCoupon] = useState<any>(null);
+  
   const [tasks, setTasks] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [isMysteryModalOpen, setIsMysteryModalOpen] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [showFirstEarnModal, setShowFirstEarnModal] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [showMysteryFab, setShowMysteryFab] = useState(false);
+  const [loadingTasks, setLoadingTasks] = useState(true);
 
-  // 1. Listen to Coupon Data
-  useEffect(() => {
-    if (!currentUser || !userData) return;
-    const allowedRoles = ['Marketer', 'Content Creator', 'Reseller', 'Promoter'];
-    if (!allowedRoles.includes(userData.role)) return;
+  // Venture config
+  const ventureColors: Record<string, string> = {
+    buyrix: '#3B82F6',
+    vyuma: '#8B5CF6',
+    growplex: '#00C9A7',
+    zaestify: '#EC4899'
+  };
 
-    const couponRef = doc(db, 'coupons', currentUser.uid);
-    const unsubscribe = onSnapshot(couponRef, (doc) => {
-      if (doc.exists()) {
-        setCoupon({ id: doc.id, ...doc.data() });
-      } else {
-        // Fallback for demo if no coupon exists yet
-        setCoupon({
-          code: `${userData.venture.substring(0, 2).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-          usageCount: 0,
-          isActive: true,
-          expiresAt: Timestamp.fromMillis(Date.now() + 24 * 3600 * 1000)
-        });
-      }
-    });
+  const getVentureColor = () => {
+    if (!userData?.venture) return '#E8B84B';
+    return ventureColors[userData.venture.toLowerCase()] || '#E8B84B';
+  };
 
-    return () => unsubscribe();
-  }, [currentUser, userData]);
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
 
-  // 2. Listen to Tasks
+  // Listen to Tasks
   useEffect(() => {
     if (!currentUser || !userData) return;
 
@@ -78,285 +55,393 @@ export default function HomeDashboard() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const taskList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setTasks(taskList);
-      
-      // Demo tasks if empty
-      if (taskList.length === 0) {
-        setTasks([
-          { id: '1', title: 'Share WhatsApp Status', venture: userData.venture, reward: 150, expiresAt: Timestamp.fromMillis(Date.now() + 3600 * 1000) },
-          { id: '2', title: 'Product Review Video', venture: userData.venture, reward: 500, expiresAt: Timestamp.fromMillis(Date.now() + 7200 * 1000) },
-          { id: '3', title: 'Acquire New Client', venture: userData.venture, reward: 1200, expiresAt: Timestamp.fromMillis(Date.now() + 14400 * 1000) }
-        ]);
-      }
-      setLoading(false);
+      setLoadingTasks(false);
     });
 
     return () => unsubscribe();
   }, [currentUser, userData]);
 
-  // 3. Listen to Announcements
+  // Listen to Announcements
   useEffect(() => {
     const annRef = collection(db, 'announcements');
     const q = query(annRef, orderBy('priority', 'desc'), limit(5));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const annList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setAnnouncements(annList);
-      
-      // Demo announcements if empty
-      if (annList.length === 0) {
-        setAnnouncements([
-          { id: '1', text: '🚀 New high-paying tasks added to Vyuma!', priority: 1 },
-          { id: '2', text: '💰 Weekend Bonus: Earn 2x on all BuyRix tasks.', priority: 2 }
-        ]);
-      }
+      setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
     return () => unsubscribe();
   }, []);
 
-  // 4. Mystery Task Trigger
+  // Mystery Task Trigger
   useEffect(() => {
-    if (!loading && Math.random() < 0.15) {
-      const timer = setTimeout(() => setIsMysteryModalOpen(true), 2000);
+    if (!authLoading && Math.random() < 0.15) {
+      const timer = setTimeout(() => setShowMysteryFab(true), 3000);
       return () => clearTimeout(timer);
     }
-  }, [loading]);
+  }, [authLoading]);
 
-  const handleAcceptTask = (id: string) => {
-    navigate(`/tasks/${id}`);
-  };
-
-  const handleSkipTask = (id: string) => {
-    toast('Task hidden from preview. You can find more in the Task Center.', { icon: '⏭️' });
-  };
-
-  const handleAcceptMystery = () => {
-    setIsMysteryModalOpen(false);
-    toast.success('Mystery Bonus Task Activated! 🎁');
-  };
-
-  useEffect(() => {
-    if (userData && userData.wallets && userData.wallets.earned > 0 && !userData.kycCompletedAt && !userData.firstEarningModalShown) {
-      // Show first earn modal when they have something in earned and no kyc
-      setShowFirstEarnModal(true);
-    }
-  }, [userData]);
-
-  if (authLoading || loading) return <SkeletonLoader />;
+  if (authLoading) return <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center">Loading...</div>;
   if (!userData) return <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-white">User data not found</div>;
 
   if (userData.workerType === 'partner' || userData.role === 'Partner' || userData.role === 'Reseller') {
     return <Navigate to="/reseller/dashboard" replace />;
   }
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
+  const streak = userData.streak || 0;
+  let streakMessage = "Start your streak today!";
+  if (streak > 0 && streak < 7) streakMessage = "Keep the fire burning! 🔥";
+  else if (streak === 7) streakMessage = "7-day warrior! Bonus incoming! 💰";
+  else if (streak > 7) streakMessage = `Unstoppable! ${streak} days strong!`;
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
+  const ventureColor = getVentureColor();
+  
+  // Dummy wallet stats for now (replace with actual from userData.wallets if present)
+  const earningsToday = 125;
+  const earningsWeek = 650;
+  const pendingWeek = 300;
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] pb-32">
-      <TopBar userData={userData} />
-      <ProfileCompletionBar />
+    <div className="min-h-screen bg-[#0A0A0A] pb-24 font-sans relative overflow-hidden">
       
-      <LiveEarningsFeed />
+      {/* SECTION 1 — STICKY TOP BAR */}
+      <header className="sticky top-0 z-40 bg-[#111111] border-b border-[#2A2A2A] h-16 px-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full border-2 border-[#E8B84B] overflow-hidden bg-[#1A1A1A] shrink-0">
+             {userData.photoURL ? (
+                <img src={userData.photoURL} alt="Profile" className="w-full h-full object-cover" />
+             ) : (
+                <div className="w-full h-full flex justify-center items-center font-bold text-[#E8B84B]">{userData.name?.charAt(0) || 'U'}</div>
+             )}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] text-gray-400 font-medium">{getGreeting()}</span>
+            <span className="text-sm font-bold text-white leading-tight truncate max-w-[120px]">{userData.name || 'User'}</span>
+          </div>
+        </div>
 
-      <motion.main 
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="max-w-7xl mx-auto px-4 pt-6 space-y-8"
-      >
-        <motion.section variants={itemVariants}>
-          <StreakDisplay streak={userData.streak || 0} lastActiveDate={userData.lastActiveDate} />
-        </motion.section>
+        <div 
+          className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shrink-0 mx-2 truncate max-w-[120px] text-center"
+          style={{ backgroundColor: `${ventureColor}20`, color: ventureColor, border: `1px solid ${ventureColor}40` }}
+        >
+          {userData.venture || 'WorkPlex'} {userData.role === 'Promoter' ? 'Promoter' : 'Marketer'}
+        </div>
 
-        {/* Viral Action Grid */}
-        <motion.section variants={itemVariants} className="grid grid-cols-2 gap-4">
-          <button 
-            onClick={() => setIsShareModalOpen(true)}
-            className="bg-[#111111] border border-white/5 rounded-[32px] p-6 flex flex-col items-center justify-center gap-3 group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 bg-green-500 rounded-2xl flex items-center justify-center text-black shadow-lg shadow-green-500/20">
-              <Share2 size={24} />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">Share App</span>
-          </button>
+        <div className="flex items-center gap-3 shrink-0">
+           <button className="relative text-gray-400 hover:text-white transition">
+             <Bell size={20} />
+             <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+           </button>
+           <button onClick={() => navigate('/settings')} className="text-gray-400 hover:text-white transition">
+             <SettingsIcon size={20} />
+           </button>
+        </div>
+      </header>
 
-          <button 
-            onClick={() => setIsQRModalOpen(true)}
-            className="bg-[#111111] border border-white/5 rounded-[32px] p-6 flex flex-col items-center justify-center gap-3 group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 bg-teal-500 rounded-2xl flex items-center justify-center text-black shadow-lg shadow-teal-500/20">
-              <QrCode size={24} />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">My QR</span>
-          </button>
+      {/* SECTION 8 — ADMIN ANNOUNCEMENTS TICKER */}
+      {announcements.length > 0 && (
+        <div className="bg-gradient-to-r from-[#E8B84B]/20 to-[#00C9A7]/20 border-b border-[#E8B84B]/30 overflow-hidden py-2" >
+           <div className="whitespace-nowrap animate-marquee flex gap-8">
+              {announcements.map((ann, i) => (
+                 <span key={i} className="text-white text-[13px] font-medium flex items-center gap-2">
+                    📢 {ann.text}
+                 </span>
+              ))}
+              {/* Duplicate for seamless looping */}
+              {announcements.map((ann, i) => (
+                 <span key={`dup-${i}`} className="text-white text-[13px] font-medium flex items-center gap-2">
+                    📢 {ann.text}
+                 </span>
+              ))}
+           </div>
+        </div>
+      )}
 
-          <button 
-            onClick={() => setIsTransferModalOpen(true)}
-            className="bg-[#111111] border border-white/5 rounded-[32px] p-6 flex flex-col items-center justify-center gap-3 group relative overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-black shadow-lg shadow-amber-500/20">
-              <Heart size={24} />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">Family UPI</span>
-          </button>
+      <main className="p-4 max-w-5xl mx-auto space-y-6">
 
-          {userData.referredBy ? (
-            <Link 
-              to={`/chat/${userData.referredBy}`}
-              className="bg-[#111111] border border-white/5 rounded-[32px] p-6 flex flex-col items-center justify-center gap-3 group relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center text-black shadow-lg shadow-blue-500/20">
-                <MessageCircle size={24} />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-white">Team Chat</span>
-            </Link>
-          ) : (
-            <Link 
-              to="/catalog"
-              className="bg-[#111111] border border-white/5 rounded-[32px] p-6 flex flex-col items-center justify-center gap-3 group relative overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-[#E8B84B]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="w-12 h-12 bg-[#E8B84B] rounded-2xl flex items-center justify-center text-black shadow-lg shadow-[#E8B84B]/20">
-                <TrendingUp size={24} />
-              </div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-white">Catalog</span>
-            </Link>
-          )}
-        </motion.section>
-
-        <motion.section variants={itemVariants}>
-          <AIPredictorBanner 
-            pendingTasksCount={tasks.length} 
-            avgEarning={150} 
-            completionRate={85} 
-          />
-        </motion.section>
-
-        {/* Coupon Section (Conditional) */}
-        {['Marketer', 'Content Creator', 'Reseller', 'Promoter'].includes(userData.role) && coupon && (
-          <motion.section variants={itemVariants}>
-            <CouponCard coupon={coupon} venture={userData.venture} />
-          </motion.section>
-        )}
-
-        {/* Reseller Shortcut (Conditional) */}
-        {userData.role === 'Reseller' && (
-          <motion.section variants={itemVariants} className="space-y-6">
-            <div className="bg-[#111111] border border-white/5 rounded-2xl p-6 flex items-center justify-between">
+        {/* SECTION 2 — HERO STREAK CARD */}
+        <section className="bg-gradient-to-br from-[#1A1A1A] to-[#0A0A0A] border border-[#2A2A2A] rounded-2xl p-5 relative overflow-hidden">
+           {/* Fire particles CSS in global or style tag */}
+           <div className="flex justify-between items-start mb-6">
               <div>
-                <h3 className="text-white font-bold text-lg">Product Catalog</h3>
-                <p className="text-gray-400 text-sm">Browse and share products to earn commissions.</p>
+                 <div className="flex items-end gap-3 mb-1">
+                    <motion.div 
+                       animate={{ y: [0, -8, 0] }} 
+                       transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                       className="text-5xl drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]"
+                    >
+                       🔥
+                    </motion.div>
+                    <div className="flex flex-col">
+                       <span className="text-5xl font-black text-[#E8B84B] leading-none mb-1">{streak}</span>
+                       <span className="text-[12px] font-bold text-gray-400 uppercase tracking-widest">Day Streak</span>
+                    </div>
+                 </div>
+                 <p className="text-sm text-white font-medium mt-3">{streakMessage}</p>
               </div>
+              
+              <div className="flex gap-1.5 bg-[#111111] p-2 rounded-xl border border-[#2A2A2A]">
+                 {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
+                    const isCompleted = idx < Math.min(streak, 7);
+                    const isToday = idx === Math.min(streak, 6); // Approximation
+                    return (
+                       <div key={idx} className="flex flex-col items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-gray-500">{day}</span>
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all
+                             ${isCompleted && !isToday ? 'bg-[#E8B84B] text-black scale-100' : ''}
+                             ${isToday && !isCompleted ? 'border-2 border-[#E8B84B] text-[#E8B84B] animate-pulse' : ''}
+                             ${!isCompleted && !isToday ? 'bg-[#2A2A2A] text-gray-600' : ''}
+                          `}>
+                             {isCompleted && !isToday && <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>}
+                          </div>
+                       </div>
+                    );
+                 })}
+              </div>
+           </div>
+
+           <div className="w-full bg-[#2A2A2A] h-2 rounded-full overflow-hidden mb-2">
+              <div className="bg-[#E8B84B] h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min((streak / 7) * 100, 100)}%` }}></div>
+           </div>
+           <p className="text-[11px] font-bold text-gray-400 text-center uppercase tracking-widest">
+              {streak > 0 ? 'Today\'s task done! ✅' : 'Complete a task today to keep your streak!'}
+           </p>
+        </section>
+
+        {/* SECTION 3 — EARNINGS SNAPSHOT */}
+        <section className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide snap-x">
+           <div className="min-w-[200px] bg-[#111111] border border-[#2A2A2A] p-4 rounded-xl snap-start relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-[#00C9A7]"></div>
+              <div className="flex items-center gap-2 mb-2">
+                 <TrendingUp size={16} className="text-[#00C9A7]" />
+                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Today's Earnings</span>
+              </div>
+              <p className="text-2xl font-black text-white">{formatInr(earningsToday)}</p>
+              <p className="text-[10px] text-[#00C9A7] font-bold mt-1 bg-[#00C9A7]/10 inline-block px-1.5 py-0.5 rounded">+Rs.45 from yesterday</p>
+           </div>
+
+           <div className="min-w-[200px] bg-[#111111] border border-[#2A2A2A] p-4 rounded-xl snap-start relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-[#E8B84B]"></div>
+              <div className="flex items-center gap-2 mb-2">
+                 <Calendar size={16} className="text-[#E8B84B]" />
+                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">This Week</span>
+              </div>
+              <p className="text-2xl font-black text-white">{formatInr(earningsWeek)}</p>
+              <p className="text-[10px] text-gray-400 font-bold mt-1">12 tasks completed</p>
+           </div>
+
+           <div className="min-w-[200px] bg-[#111111] border border-[#2A2A2A] p-4 rounded-xl snap-start relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-[#F59E0B]"></div>
+              <div className="flex items-center gap-2 mb-2">
+                 <Clock size={16} className="text-[#F59E0B]" />
+                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Pending</span>
+              </div>
+              <p className="text-2xl font-black text-[#F59E0B]">{formatInr(pendingWeek)}</p>
+              <p className="text-[10px] text-gray-400 font-bold mt-1">Releases in 24-48hrs</p>
+           </div>
+        </section>
+
+        {/* SECTION 4 — AI MOTIVATION BANNER */}
+        <section className="relative overflow-hidden rounded-2xl border border-[#E8B84B]/30 p-4" style={{ background: 'linear-gradient(135deg, rgba(232,184,75,0.15), rgba(0,201,167,0.15))' }}>
+           <div className="flex justify-between items-center relative z-10">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 rounded-full bg-[#E8B84B]/20 flex justify-center items-center flex-shrink-0">
+                    <BrainCircuit size={24} className="text-[#E8B84B]" />
+                 </div>
+                 <div>
+                    <h4 className="text-[#E8B84B] font-black text-[13px] uppercase tracking-widest mb-1">AI Earnings Predictor</h4>
+                    <p className="text-sm text-white font-medium leading-snug">Complete 3 more tasks → earn Rs.85 extra today</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Based on your performance</p>
+                 </div>
+              </div>
+              <button onClick={() => navigate('/tasks')} className="flex-shrink-0 w-10 h-10 bg-[#00C9A7] rounded-full flex justify-center items-center text-black shadow-[0_0_15px_rgba(0,201,167,0.4)] hover:bg-[#00C9A7]/90 transition">
+                 <ArrowRight size={18} />
+              </button>
+           </div>
+        </section>
+
+        {/* SECTION 5 — TODAY'S TASK PREVIEW */}
+        <section className="space-y-4">
+           <div className="flex justify-between items-center">
+              <h2 className="text-white font-black text-lg">TODAY'S TASKS</h2>
+              <button onClick={() => navigate('/tasks')} className="text-[#E8B84B] text-xs font-bold uppercase tracking-widest hover:underline transition">View All →</button>
+           </div>
+
+           {loadingTasks ? (
+              <div className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-8 flex justify-center">
+                 <div className="w-6 h-6 border-2 border-[#E8B84B] border-t-transparent rounded-full animate-spin" />
+              </div>
+           ) : tasks.length === 0 ? (
+              <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-8 flex flex-col items-center justify-center text-center">
+                 <ClipboardCheck size={40} className="text-[#E8B84B]/50 mb-3" />
+                 <p className="text-white font-bold">No tasks today &mdash; check back soon!</p>
+                 <p className="text-xs text-gray-500 mt-1">New tasks drop every Monday</p>
+              </div>
+           ) : (
+              <div className="space-y-3">
+                 {tasks.map(task => (
+                    <div key={task.id} className="bg-[#111111] border border-[#2A2A2A] rounded-xl p-4 transition-all hover:border-gray-700">
+                       <div className="flex justify-between items-center mb-3">
+                          <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm" style={{ backgroundColor: `${ventureColor}20`, color: ventureColor }}>{task.venture || userData.venture}</span>
+                          <span className="text-[10px] font-mono text-[#00C9A7] font-bold flex items-center gap-1">
+                             ⏱ 04:12:00
+                          </span>
+                       </div>
+                       <h3 className="text-white font-bold text-base mb-1 truncate">{task.title}</h3>
+                       <p className="text-gray-400 text-xs line-clamp-2 mb-4 leading-relaxed">{task.description}</p>
+                       
+                       <div className="flex justify-between items-center pt-3 border-t border-[#2A2A2A]">
+                          <span className="text-[#E8B84B] font-black">{formatInr(task.reward || 25)} <span className="text-gray-500 text-[10px] font-normal uppercase">Earned</span></span>
+                          <div className="flex gap-2">
+                             <button className="text-[10px] font-bold text-gray-500 uppercase px-3 py-2 hover:text-white transition">Skip</button>
+                             <button onClick={() => navigate(`/tasks/${task.id}`)} className="bg-[#E8B84B] text-black text-xs font-black uppercase tracking-widest px-4 py-2 rounded-lg hover:bg-[#E8B84B]/90 transition">Start →</button>
+                          </div>
+                       </div>
+                    </div>
+                 ))}
+              </div>
+           )}
+        </section>
+
+        {/* SECTION 6 — LEADERBOARD PREVIEW */}
+        <section className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-5 relative overflow-hidden">
+           {/* Decor */}
+           <Award size={120} className="absolute -right-6 -bottom-6 text-[#1A1A1A] z-0 drop-shadow-xl" />
+           <div className="relative z-10 flex flex-col items-center text-center">
+              <h3 className="text-white font-black text-lg mb-1">YOUR RANK THIS WEEK</h3>
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm mb-4" style={{ backgroundColor: `${ventureColor}20`, color: ventureColor }}>{userData.venture || 'Global'} Team</span>
+              
+              <div className="flex flex-col items-center mb-4">
+                 <span className="text-5xl font-black text-[#E8B84B] drop-shadow-[0_2px_10px_rgba(232,184,75,0.3)]">#42</span>
+                 <span className="text-xs text-gray-400 font-medium">out of 1,284 workers</span>
+              </div>
+
+              <div className="w-full bg-[#1A1A1A] rounded-xl p-3 flex justify-around items-end mb-4 border border-[#2A2A2A]">
+                 <div className="flex flex-col items-center relative">
+                    <span className="text-[10px] font-bold text-gray-400 absolute -top-4">#2</span>
+                    <div className="w-8 h-12 bg-gray-600 rounded-t-lg"></div>
+                    <span className="text-[9px] font-bold text-white mt-1 truncate w-12 text-center">Rahul</span>
+                 </div>
+                 <div className="flex flex-col items-center relative">
+                    <span className="text-[10px] font-black text-[#E8B84B] absolute -top-5">#1</span>
+                    <div className="w-10 h-16 bg-[#E8B84B] rounded-t-lg shadow-[0_0_15px_rgba(232,184,75,0.4)]"></div>
+                    <span className="text-[9px] font-bold text-white mt-1 truncate w-12 text-center">Priya</span>
+                 </div>
+                 <div className="flex flex-col items-center relative">
+                    <span className="text-[10px] font-bold text-amber-700 absolute -top-4">#3</span>
+                    <div className="w-8 h-10 bg-amber-700 rounded-t-lg"></div>
+                    <span className="text-[9px] font-bold text-white mt-1 truncate w-12 text-center">Amit</span>
+                 </div>
+              </div>
+
+              <button onClick={() => navigate('/leaderboard')} className="text-[#00C9A7] text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:underline">
+                 View Full Leaderboard <ChevronRight size={14} />
+              </button>
+           </div>
+        </section>
+
+      </main>
+
+      {/* SECTION 7 — MYSTERY BONUS (CONDITIONAL FAB) */}
+      <AnimatePresence>
+        {showMysteryFab && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0, y: 50 }}
+            className="fixed bottom-20 right-4 z-50"
+          >
+            <div className="relative">
+              <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-black z-10 shadow-lg">!</span>
               <button 
-                onClick={() => navigate('/catalog')}
-                className="bg-[#E8B84B] text-black font-bold px-6 py-2 rounded-xl"
+                onClick={() => {
+                  setShowMysteryFab(false);
+                  setIsMysteryModalOpen(true);
+                }}
+                 className="w-16 h-16 bg-[#8B5CF6] text-white rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.5)] hover:scale-105 transition-transform relative group"
               >
-                Browse
+                <div className="absolute inset-0 rounded-full border-4 border-[#8B5CF6] animate-ping opacity-30"></div>
+                <Gift size={32} className="group-hover:animate-bounce" />
               </button>
             </div>
-            <AIProductPicker />
-          </motion.section>
+          </motion.div>
         )}
+      </AnimatePresence>
 
-        {/* AI Predictor */}
-        <motion.section variants={itemVariants}>
-          <AIEarningsPredictor />
-        </motion.section>
+      {/* MYSTERY MODAL */}
+      <AnimatePresence>
+        {isMysteryModalOpen && (
+           <motion.div 
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+             className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex justify-center items-center p-4"
+           >
+             <motion.div
+               initial={{ scale: 0.9, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               exit={{ scale: 0.9, y: 20 }}
+               className="bg-[#111111] border border-[#8B5CF6]/40 rounded-2xl p-8 w-full max-w-sm flex flex-col items-center text-center shadow-[0_0_50px_rgba(139,92,246,0.2)]"
+             >
+                <div className="w-20 h-20 bg-[#8B5CF6]/20 rounded-full flex justify-center items-center mb-6">
+                   <Gift size={40} className="text-[#8B5CF6] animate-bounce" />
+                </div>
+                <h2 className="text-2xl font-black text-[#E8B84B] uppercase tracking-tighter mb-2">Mystery Task!</h2>
+                <p className="text-sm text-gray-300 font-medium mb-6">A limited time opportunity just appeared.</p>
+                
+                <div className="bg-[#1A1A1A] border border-[#2A2A2A] w-full rounded-xl p-4 mb-6">
+                   <p className="text-[#E8B84B] font-black text-3xl mb-1 pulsing-text">Rs.75</p>
+                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Instant Bonus</p>
+                </div>
 
-        {/* Tasks Preview */}
-        <motion.section variants={itemVariants} className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-white font-black text-xl uppercase tracking-tight">Today's Tasks</h2>
-            <button 
-              onClick={() => navigate('/tasks')}
-              className="text-[#E8B84B] text-xs font-bold uppercase tracking-widest"
-            >
-              View All
-            </button>
-          </div>
-          
-          <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto pb-4 md:pb-0 no-scrollbar">
-            {tasks.map(task => (
-              <TaskCard 
-                key={task.id} 
-                task={task} 
-                onAccept={handleAcceptTask} 
-                onSkip={handleSkipTask} 
-              />
-            ))}
-          </div>
-        </motion.section>
+                <div className="text-red-500 font-mono text-sm font-bold mb-8">
+                   Expires in <span className="animate-pulse">01:59:59</span>
+                </div>
 
-        {/* Progress Section */}
-        <motion.section variants={itemVariants}>
-          <LeadMarketerProgress 
-            monthlyEarned={userData.wallets.earned} 
-            daysActive={7} // Demo value
-          />
-        </motion.section>
-      </motion.main>
-
-      <AnnouncementBanner announcements={announcements} />
-
-      <MysteryBonusModal 
-        isOpen={isMysteryModalOpen} 
-        onClose={() => setIsMysteryModalOpen(false)}
-        onAccept={handleAcceptMystery}
-      />
-
-      <WhatsAppShareModal 
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        title="Share WorkPlex"
-        shareText={`Start earning from home with WorkPlex! I've already earned Rs.${userData?.wallets?.earned?.toLocaleString()} this month. Join my team here: ${window.location.origin}/join?ref=${currentUser.uid}`}
-      />
-
-      <ReferralQRModal 
-        isOpen={isQRModalOpen}
-        onClose={() => setIsQRModalOpen(false)}
-        uid={currentUser.uid}
-      />
-
-      <FamilyTransferModal 
-        isOpen={isTransferModalOpen}
-        onClose={() => setIsTransferModalOpen(false)}
-        availableBalance={userData?.wallets?.earned || 0}
-      />
-
-      <PostFirstEarningModal 
-        isOpen={showFirstEarnModal} 
-        onClose={() => setShowFirstEarnModal(false)} 
-      />
+                <div className="flex flex-col w-full gap-3">
+                   <button 
+                     onClick={() => {
+                        setIsMysteryModalOpen(false);
+                        toast.success('Task Added! Go to Tasks to complete it.');
+                     }}
+                     className="w-full bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl shadow-[0_0_20px_rgba(232,184,75,0.4)] hover:bg-[#E8B84B]/90 transition animate-pulse"
+                   >
+                     Accept Challenge
+                   </button>
+                   <button 
+                     onClick={() => setIsMysteryModalOpen(false)}
+                     className="w-full text-xs font-bold text-gray-500 uppercase py-2 hover:text-white transition"
+                   >
+                     Decline
+                   </button>
+                </div>
+             </motion.div>
+           </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .animate-marquee {
+           animation: marquee 20s linear infinite;
         }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+        @keyframes marquee {
+           0% { transform: translateX(0); }
+           100% { transform: translateX(-50%); }
         }
-        @keyframes shimmer {
-          100% { transform: translateX(100%); }
+        
+        .pulsing-text {
+           animation: colorPulse 2s infinite;
+        }
+        @keyframes colorPulse {
+           0%, 100% { color: #E8B84B; text-shadow: 0 0 10px rgba(232,184,75,0.5); }
+           50% { color: #FFF; text-shadow: 0 0 20px rgba(255,255,255,0.8); }
         }
       `}</style>
+
     </div>
   );
 }
+

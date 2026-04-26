@@ -32,9 +32,8 @@ import LandingPage from './pages/LandingPage';
 import CompressedOnboarding from './pages/CompressedOnboarding';
 import LoginPage from './pages/LoginPage';
 import HomeDashboard from './pages/HomeDashboard';
-import TasksScreen from './components/tasks/TasksScreen';
-import TaskDetail from './components/tasks/TaskDetail';
-import ProofSubmissionModal from './components/tasks/ProofSubmissionModal';
+import TasksScreen from './pages/TasksScreen';
+import TaskDetail from './pages/TaskDetail';
 import WalletScreen from './pages/WalletScreen';
 import CouponDashboard from './pages/CouponDashboard';
 import ProfileScreen from './pages/ProfileScreen';
@@ -121,7 +120,6 @@ function AppContent() {
           <Route path="/home" element={<HomeDashboard />} />
           <Route path="/tasks" element={<TasksScreen />} />
           <Route path="/tasks/:taskId" element={<TaskDetail />} />
-          <Route path="/tasks/:taskId/submit" element={<ProofSubmissionModal />} />
           <Route path="/wallet" element={<WalletScreen />} />
           <Route path="/coupon" element={<CouponDashboard />} />
           <Route path="/profile" element={<ProfileScreen />} />

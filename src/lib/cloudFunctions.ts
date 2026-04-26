@@ -86,3 +86,67 @@ export async function chatbotQuery(message: string, language: string): Promise<s
   });
 }
 
+// Added Cloud Functions:
+
+export async function checkDailyStreak(uid: string) {
+  // Simulated Cloud Function logic for daily streak check.
+  const userRef = doc(db, 'users', uid);
+  const userSnap = await getDoc(userRef);
+  
+  if (!userSnap.exists()) return;
+  const userData = userSnap.data();
+  
+  const lastActiveDate = userData?.lastActiveDate?.toDate() || new Date();
+  const today = new Date();
+  const diffDays = Math.floor((today.getTime() - lastActiveDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  let newStreak = userData.streak || 0;
+  if (diffDays === 1) {
+    newStreak += 1;
+  } else if (diffDays > 1) {
+    newStreak = 0;
+  }
+  
+  if (newStreak !== userData.streak) {
+     await updateDoc(userRef, { 
+        streak: newStreak, 
+        lastActiveDate: new Date() 
+     });
+     
+     if (newStreak % 7 === 0 && newStreak > 0) {
+        // Add Rs. 50 bonus
+        const newBonus = (userData.wallets?.bonus || 0) + 50;
+        await updateDoc(userRef, { 'wallets.bonus': newBonus });
+     }
+  }
+}
+
+export async function fetchAIPrediction(uid: string, pendingTasks: number, avgEarning: number, completionRate: number) {
+   const cacheRef = doc(db, 'aiCache', `${uid}_prediction`);
+   const cacheSnap = await getDoc(cacheRef);
+   
+   if (cacheSnap.exists()) {
+      const data = cacheSnap.data();
+      const ageHours = (new Date().getTime() - data.timestamp.toMillis()) / (1000 * 60 * 60);
+      if (ageHours < 6) return data.prediction;
+   }
+   
+   const prediction = `Complete ${pendingTasks} more tasks -> earn Rs.${(pendingTasks * avgEarning * completionRate).toFixed(0)} extra today!`;
+   return prediction;
+}
+
+export async function generateMysteryTask(uid: string, role: string, venture: string) {
+   // Simulated callable function for Mystery task
+   const newTask = {
+      title: 'Mystery Challenge: Flash Promo!',
+      description: `Create 1 mystery marketing task for ${role} in ${venture}. High urgency. Post a flash promo link on your stories immediately.`,
+      reward: 75,
+      type: 'mystery',
+      venture: venture,
+      assignedTo: [uid],
+      status: 'active',
+      createdAt: new Date()
+   };
+   return newTask;
+}
+

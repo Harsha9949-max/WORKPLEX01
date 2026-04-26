@@ -1,66 +1,286 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../../lib/firebase';
+import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, getVentureColor } from '../../utils/taskUtils';
 import CountdownTimer from './CountdownTimer';
-import { ArrowLeft, Info, Camera, Link as LinkIcon, FileText } from 'lucide-react';
+import { ArrowLeft, Clock, Info, UploadCloud, Link as LinkIcon, FileText, CheckCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Timestamp } from 'firebase/firestore';
 
 export default function TaskDetail() {
   const { taskId } = useParams();
   const navigate = useNavigate();
+  const { currentUser, userData } = useAuth();
+  
   const [task, setTask] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Submission state
+  const [proofText, setProofText] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     if (!taskId) return;
-    getDoc(doc(db, 'tasks', taskId)).then(doc => {
-      if (doc.exists()) setTask({ id: doc.id, ...doc.data() });
+    getDoc(doc(db, 'tasks', taskId)).then(docSnap => {
+      if (docSnap.exists()) {
+         setTask({ id: docSnap.id, ...docSnap.data() });
+      }
+      setLoading(false);
     });
   }, [taskId]);
 
-  if (!task) return <div className="p-4 text-white">Loading...</div>;
+  const handleSubmit = async () => {
+    if (!taskId || !currentUser || !userData || !task) return;
+    
+    // Validation based on type
+    const proofType = task.proofType || 'text';
+    if (proofType === 'image' && !file) {
+      toast.error('Please upload an image proof');
+      return;
+    }
+    if (proofType === 'link' && !proofText.includes('http')) {
+      toast.error('Please provide a valid URL');
+      return;
+    }
+    if (proofType === 'text' && proofText.trim().length < 10) {
+      toast.error('Please provide more details in your text proof');
+      return;
+    }
+
+    setUploading(true);
+    
+    try {
+      let proofUrl = '';
+      if (file) {
+        // Compress logic would go here in prod
+        const storageRef = ref(storage, `proofs/${currentUser.uid}/${taskId}/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        proofUrl = await getDownloadURL(storageRef);
+      }
+
+      await addDoc(collection(db, 'taskSubmissions'), {
+        taskId,
+        workerId: currentUser.uid,
+        workerName: userData.name,
+        proofUrl,
+        proofText,
+        proofType,
+        status: 'submitted',
+        aiReview: { status: 'pending_admin', reason: 'Manual review pending' },
+        submittedAt: serverTimestamp(),
+        resubmissionCount: 0
+      });
+
+      setShowConfetti(true);
+      toast.success('Proof submitted successfully!');
+      
+      setTimeout(() => {
+         navigate('/tasks');
+      }, 2000);
+      
+    } catch (error) {
+       console.error("Submission error", error);
+       toast.error('Submission failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (loading) return <div className="p-4 text-white min-h-screen bg-[#0A0A0A] flex justify-center items-center">Loading task...</div>;
+  if (!task) return <div className="p-4 text-white min-h-screen bg-[#0A0A0A] flex justify-center items-center">Task not found</div>;
+
+  const deadline = task.expiresAt instanceof Timestamp ? task.expiresAt.toDate() : (task.deadline || new Date(Date.now() + 86400000));
+  const timeDiff = deadline.getTime() - Date.now();
+  const isWarning = timeDiff < 2 * 3600 * 1000 && timeDiff > 0; // Less than 2 hours
+  const isExpired = timeDiff <= 0;
+
+  const proofType = task.proofType || 'text';
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white p-4 pb-24">
-      <button onClick={() => navigate(-1)} className="mb-6"><ArrowLeft /></button>
-      
-      <div className="text-center mb-8">
-        <span className={`text-xs font-bold px-3 py-1 rounded-full uppercase ${getVentureColor(task.venture)}`}>
-          {task.venture}
-        </span>
-        <h1 className="text-2xl font-bold mt-2">{task.title}</h1>
-      </div>
+    <div className="min-h-screen bg-[#0A0A0A] text-white p-4 pb-32 font-sans relative overflow-x-hidden w-full max-w-2xl mx-auto">
+      {/* Confetti Overlay */}
+      {showConfetti && (
+         <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-black/80">
+            <div className="text-center animate-bounce">
+               <div className="text-6xl mb-4">🎉</div>
+               <h2 className="text-[#E8B84B] font-black text-2xl uppercase tracking-widest">Task Submitted!</h2>
+            </div>
+         </div>
+      )}
 
-      <div className="bg-[#111111] border border-white/5 rounded-2xl p-6 text-center mb-6">
-        <p className="text-gray-400 text-sm mb-2">Earn on approval</p>
-        <p className="text-[#E8B84B] font-black text-5xl">{formatCurrency(task.earnAmount)}</p>
-      </div>
-
-      <div className="bg-[#111111] border border-white/5 rounded-2xl p-6 mb-6">
-        <h2 className="font-bold mb-2 flex items-center gap-2"><Info size={18} /> Instructions</h2>
-        <p className="text-gray-400 text-sm whitespace-pre-wrap">{task.description}</p>
-      </div>
-
-      <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 mb-6">
-        <h2 className="text-red-500 font-black text-sm uppercase tracking-widest mb-3 flex items-center gap-2">
-          ⚠️ Performance Commitment
-        </h2>
-        <div className="space-y-2 text-xs font-medium text-gray-300">
-          <p>By accepting this task, you understand that:</p>
-          <ul className="list-disc pl-4 space-y-1 mt-2 text-red-200/80">
-            <li>Simply submitting proof DOES NOT guarantee payment.</li>
-            <li>Payment is ONLY released if the client verifies an actual sale or desired outcome.</li>
-            <li>Rejected proofs will not receive compensation.</li>
-          </ul>
-        </div>
-      </div>
-
-      <button 
-        className="w-full bg-[#E8B84B] text-black font-bold py-4 rounded-xl"
-        onClick={() => navigate(`/tasks/${taskId}/submit`)}
-      >
-        Submit Proof
+      {/* Header */}
+      <button onClick={() => navigate('/tasks')} className="w-10 h-10 bg-[#111111] border border-[#2A2A2A] rounded-full flex items-center justify-center text-gray-400 hover:text-white transition mb-6">
+         <ArrowLeft size={20} />
       </button>
+
+      {/* Hero section */}
+      <div className="flex flex-col items-center text-center mb-8">
+         <span className={`text-[10px] font-black px-3 py-1 rounded-sm uppercase tracking-widest mb-4 bg-opacity-20 border `} style={{ borderColor: getVentureColor(task.venture), color: getVentureColor(task.venture), backgroundColor: `${getVentureColor(task.venture)}20` }}>
+           {task.venture || 'WorkPlex'} Task
+         </span>
+         
+         <div className="relative mb-2">
+            <div className="absolute inset-0 bg-[#E8B84B] blur-[30px] opacity-20 rounded-full"></div>
+            <h1 className="text-[#E8B84B] font-black text-5xl relative z-10">{formatCurrency(task.reward || task.earnAmount)}</h1>
+         </div>
+         <p className="text-gray-500 font-bold text-xs uppercase tracking-widest flex items-center gap-1">
+            <div className="w-4 h-4 rounded-full bg-[#E8B84B] flex justify-center items-center text-black text-[10px]">₹</div>
+            Earned on approval
+         </p>
+         
+         <h2 className="text-2xl font-bold mt-4 leading-tight">{task.title}</h2>
+      </div>
+
+      {/* Deadline section */}
+      <div className={`bg-[#111111] border rounded-2xl p-5 mb-6 relative overflow-hidden ${isWarning ? 'border-red-500/50' : 'border-[#2A2A2A]'}`}>
+         <div className="flex justify-between items-end mb-3 relative z-10">
+            <div>
+               <p className="text-white font-bold text-sm mb-1">Time Remaining</p>
+               {isExpired ? (
+                  <p className="text-red-500 font-mono text-2xl font-black">EXPIRED</p>
+               ) : (
+                  <div className={`font-mono text-3xl font-black tracking-wider ${isWarning ? 'text-red-500 animate-pulse' : 'text-[#E8B84B]'}`}>
+                     <CountdownTimer deadline={deadline} />
+                  </div>
+               )}
+            </div>
+            <Clock className={isWarning ? 'text-red-500' : 'text-gray-600'} size={32} />
+         </div>
+         
+         {!isExpired && (
+            <div className="w-full bg-[#1A1A1A] h-2 rounded-full overflow-hidden relative z-10">
+               <div className={`h-full rounded-full transition-all duration-1000 ${isWarning ? 'bg-red-500' : 'bg-[#E8B84B]'}`} style={{ width: isWarning ? '25%' : '75%' }}></div>
+            </div>
+         )}
+         {isWarning && !isExpired && <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest mt-3 relative z-10 text-center">Warning: Less than 2 hours left!</p>}
+      </div>
+
+      {/* Instructions section */}
+      <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-5 mb-6">
+         <h3 className="font-bold text-white mb-3 flex items-center gap-2">
+            <Info size={18} className="text-[#00C9A7]" /> 
+            Instructions
+         </h3>
+         <div className="text-gray-400 text-sm leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+            {task.description}
+         </div>
+      </div>
+
+      {/* Proof Submission Section */}
+      {!isExpired && (
+         <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-5 mb-8">
+            <h3 className="font-black text-white text-lg mb-4 flex items-center gap-2">
+               {proofType === 'image' && <UploadCloud className="text-[#E8B84B]" />}
+               {proofType === 'link' && <LinkIcon className="text-[#E8B84B]" />}
+               {proofType === 'text' && <FileText className="text-[#E8B84B]" />}
+               Submit Proof ({proofType})
+            </h3>
+
+            {proofType === 'image' && (
+               <div className="space-y-4">
+                  <div className="border-2 border-dashed border-[#2A2A2A] rounded-xl p-8 hover:border-[#E8B84B] transition bg-[#111111] text-center relative group">
+                     <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={(e) => setFile(e.target.files?.[0] || null)} 
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                        disabled={uploading}
+                     />
+                     {file ? (
+                        <div className="flex flex-col items-center">
+                           <CheckCircle className="text-[#00C9A7] mb-2" size={32} />
+                           <p className="text-white font-bold">{file.name}</p>
+                           <p className="text-xs text-gray-500 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                     ) : (
+                        <div className="flex flex-col items-center opacity-70 group-hover:opacity-100 transition">
+                           <Camera className="text-gray-500 mb-3" size={40} />
+                           <p className="text-gray-300 font-bold mb-1">Upload Screenshot</p>
+                           <p className="text-gray-500 text-xs">Max 2MB (Auto-compressed)</p>
+                        </div>
+                     )}
+                  </div>
+               </div>
+            )}
+
+            {proofType === 'link' && (
+               <div className="space-y-3">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">URL Link</label>
+                  <input 
+                     type="url"
+                     placeholder="https://..."
+                     className="w-full bg-[#111111] border border-[#2A2A2A] rounded-xl px-4 py-3 text-white focus:border-[#E8B84B] focus:ring-1 focus:ring-[#E8B84B] outline-none"
+                     value={proofText}
+                     onChange={(e) => setProofText(e.target.value)}
+                     disabled={uploading}
+                  />
+                  {proofText.includes('http') && (
+                     <a href={proofText} target="_blank" rel="noreferrer" className="text-xs text-[#00C9A7] font-bold hover:underline inline-block mt-1">
+                        Preview Link →
+                     </a>
+                  )}
+               </div>
+            )}
+
+            {proofType === 'text' && (
+               <div className="space-y-3">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest flex justify-between">
+                     <span>Details</span>
+                     <span className={`${proofText.length > 500 ? 'text-red-500' : 'text-gray-600'}`}>{proofText.length} / 500</span>
+                  </label>
+                  <textarea 
+                     rows={5}
+                     placeholder="Describe completion..."
+                     className="w-full bg-[#111111] border border-[#2A2A2A] rounded-xl px-4 py-3 text-white focus:border-[#E8B84B] focus:ring-1 focus:ring-[#E8B84B] outline-none resize-none"
+                     value={proofText}
+                     onChange={(e) => setProofText(e.target.value)}
+                     disabled={uploading}
+                  />
+               </div>
+            )}
+         </div>
+      )}
+
+      {/* Fixed bottom bar */}
+      <div className="fixed bottom-0 left-0 w-full bg-[#111111] border-t border-[#2A2A2A] p-4 flex gap-3 z-40 max-w-2xl mx-auto right-0">
+         <button 
+           className="flex-1 bg-[#1A1A1A] border border-[#2A2A2A] text-white font-bold rounded-xl py-4 flex justify-center items-center text-sm uppercase tracking-widest hover:bg-[#2A2A2A] transition"
+           onClick={() => navigate('/tasks')}
+           disabled={uploading}
+         >
+           Cancel
+         </button>
+         <button 
+           className={`flex-[2] bg-[#E8B84B] text-black font-black uppercase tracking-widest rounded-xl py-4 flex justify-center items-center shadow-[0_0_20px_rgba(232,184,75,0.3)] transition ${uploading || isExpired ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-[#E8B84B]/90'}`}
+           onClick={handleSubmit}
+           disabled={uploading || isExpired}
+         >
+           {uploading ? (
+              <span className="flex items-center gap-2">
+                 <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                 Submitting...
+              </span>
+           ) : isExpired ? 'Expired' : 'Submit Proof'}
+         </button>
+      </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #111111; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #2A2A2A; 
+          border-radius: 4px;
+        }
+      `}</style>
     </div>
   );
 }

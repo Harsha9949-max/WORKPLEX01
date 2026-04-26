@@ -11,10 +11,11 @@ import {
   Copy, 
   Share2, 
   QrCode,
-  ChevronRight,
   Flame,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTeamData } from '../hooks/useTeamData';
@@ -26,14 +27,14 @@ import toast from 'react-hot-toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export default function ProfileScreen() {
-  const { userData, currentUser } = useAuth();
-  const { teamMembers, commissionLogs } = useTeamData();
+  const { userData, currentUser, logout } = useAuth();
+  const { teamMembers } = useTeamData();
   const [showQR, setShowQR] = useState(false);
   const navigate = useNavigate();
 
   if (!userData) return null;
 
-  const referralLink = `workplex.hvrs.in/join?ref=${currentUser?.uid}`;
+  const referralLink = `workplex.in/join?ref=${currentUser?.uid}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
@@ -42,63 +43,89 @@ export default function ProfileScreen() {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'Lead Marketer': return <Crown className="text-[#E8B84B]" />;
-      case 'Manager': return <Briefcase className="text-blue-500" />;
-      case 'Sub-Admin': return <ShieldCheck className="text-purple-500" />;
-      default: return <Clipboard className="text-teal-500" />;
+      case 'Lead Marketer': return <Crown className="text-[#E8B84B]" size={28} />;
+      case 'Manager': return <Briefcase className="text-blue-500" size={28} />;
+      case 'Sub-Admin': return <ShieldCheck className="text-purple-500" size={28} />;
+      default: return <Clipboard className="text-[#00C9A7]" size={28} />;
     }
   };
 
   const chartData = [
     { name: 'Direct Tasks', value: userData.totalEarned || 0, color: '#10B981' },
     { name: 'Team Comm.', value: userData.teamEarnings || 0, color: '#3B82F6' },
+    { name: 'Bonuses', value: userData.wallets?.bonus || 0, color: '#8B5CF6' },
   ];
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   return (
-    <div className="min-h-screen bg-[#0A0A0A] p-4 pb-24 text-white">
+    <div className="min-h-screen bg-[#0A0A0A] p-4 pb-28 font-sans text-white max-w-2xl mx-auto">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6 pt-2">
+         <div>
+            <h1 className="text-[22px] font-bold text-white leading-tight">My Profile</h1>
+            <p className="text-[13px] text-gray-400 mt-1">{userData.email || currentUser?.email}</p>
+         </div>
+         <div className="flex gap-2">
+            <button className="w-10 h-10 border border-[#2A2A2A] bg-[#111111] rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition">
+               <Settings size={18} />
+            </button>
+            <button onClick={handleLogout} className="w-10 h-10 border border-red-500/20 bg-red-500/10 rounded-xl flex items-center justify-center text-red-500 hover:bg-red-500/20 transition">
+               <LogOut size={18} />
+            </button>
+         </div>
+      </div>
+
       {/* Role Hero Section */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-[#1A1A1A] to-[#111111] border border-white/10 rounded-3xl p-6 mb-6 relative overflow-hidden"
+        className="bg-gradient-to-br from-[#1A1A1A] to-[#111111] border border-[#2A2A2A] rounded-[24px] p-6 mb-6 relative overflow-hidden shadow-xl"
       >
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#E8B84B]/10 blur-3xl rounded-full" />
+        <div className="absolute top-0 right-0 w-40 h-40 bg-[#E8B84B] blur-[80px] opacity-10 rounded-full" />
         
-        <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center text-3xl">
-            {getRoleIcon(userData.role)}
+        <div className="flex items-center gap-4 mb-6 relative z-10">
+          <div className="w-16 h-16 bg-[#0A0A0A] border border-[#2A2A2A] rounded-2xl flex items-center justify-center relative overflow-hidden shadow-inner">
+             <div className="absolute inset-0 bg-white/5"></div>
+             {getRoleIcon(userData.role)}
           </div>
           <div className="flex-1">
-            <h2 className="text-2xl font-black">{userData.role}</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-2 py-0.5 bg-[#E8B84B]/20 text-[#E8B84B] rounded-full uppercase tracking-tighter">
-                {userData.level || 'Bronze'}
+            <h2 className="text-2xl font-black text-white">{userData.name || 'Promoter'}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] font-black px-2 py-0.5 bg-[#E8B84B] text-black rounded-sm uppercase tracking-widest">
+                {userData.role}
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-[#2A2A2A] text-gray-300 rounded-sm uppercase tracking-widest">
+                Level {userData.level || 1}
               </span>
             </div>
           </div>
           <Link 
             to={`/u/${userData.username || currentUser?.uid}`}
-            className="p-3 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 text-[#E8B84B] flex items-center gap-2"
+            className="w-10 h-10 bg-[#0A0A0A] border border-[#2A2A2A] rounded-full hover:bg-white/5 text-[#E8B84B] flex items-center justify-center shadow-lg transition"
           >
-            <ExternalLink size={18} />
+            <ExternalLink size={16} />
           </Link>
         </div>
 
         {userData.role === 'Marketer' && (
-          <div className="space-y-3">
-            <div className="flex justify-between text-xs font-bold">
-              <span className="text-gray-400 uppercase">Progress to Lead Marketer</span>
-              <span className="text-[#E8B84B]">{formatCurrency(userData.monthlyEarned || 0)} / Rs. 50,000</span>
+          <div className="space-y-3 bg-[#0A0A0A] p-4 rounded-xl border border-[#2A2A2A]">
+            <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+              <span className="text-gray-500">Progress to Lead</span>
+              <span className="text-[#E8B84B]">{formatCurrency(userData.monthlyEarned || 0)} / 50K</span>
             </div>
-            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-[#111111] rounded-full overflow-hidden">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(((userData.monthlyEarned || 0) / 50000) * 100, 100)}%` }}
                 className="h-full bg-[#E8B84B]"
               />
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-gray-500">
-              <CheckCircle2 size={12} className={userData.activeMonths >= 3 ? 'text-green-500' : ''} />
+            <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase">
+              <CheckCircle2 size={12} className={userData.activeMonths >= 3 ? 'text-[#10B981]' : 'text-gray-600'} />
               <span>{userData.activeMonths || 0}/3 Active Months Required</span>
             </div>
           </div>
@@ -106,54 +133,51 @@ export default function ProfileScreen() {
       </motion.div>
 
       <LevelProgress totalEarned={userData.totalEarned || 0} />
-
       <BadgeShowcase unlockedBadges={userData.badges || []} />
 
       {/* Referral Section */}
-      <div className="bg-[#111111] border border-white/5 rounded-2xl p-5 mb-6">
-        <h3 className="text-sm font-bold text-gray-400 uppercase mb-4">Your Referral Link</h3>
-        <div className="flex items-center gap-2 bg-black/40 p-3 rounded-xl border border-white/5 mb-4">
-          <span className="text-xs text-gray-300 truncate flex-grow font-mono">{referralLink}</span>
-          <button onClick={handleCopy} className="p-2 hover:bg-white/5 rounded-lg transition-colors">
+      <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-5 mb-6">
+        <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Your Unique Link</h3>
+        <div className="flex items-center gap-2 bg-[#0A0A0A] p-2 rounded-xl border border-[#2A2A2A] mb-4">
+          <span className="text-xs text-white truncate flex-grow pl-2 font-mono">{referralLink}</span>
+          <button onClick={handleCopy} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
             <Copy size={16} className="text-[#E8B84B]" />
           </button>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <button className="flex items-center justify-center gap-2 bg-[#25D366] text-white py-3 rounded-xl font-bold text-sm">
-            <Share2 size={18} /> WhatsApp
+          <button className="flex items-center justify-center gap-2 bg-[#10B981] hover:bg-[#10B981]/90 text-black py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/20 transition">
+            <Share2 size={16} /> Share via WhatsApp
           </button>
-          <button onClick={() => setShowQR(true)} className="flex items-center justify-center gap-2 bg-white/5 text-white py-3 rounded-xl font-bold text-sm">
-            <QrCode size={18} /> QR Code
+          <button onClick={() => setShowQR(true)} className="flex items-center justify-center gap-2 bg-[#1A1A1A] hover:bg-[#2A2A2A] border border-[#2A2A2A] text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition">
+            <QrCode size={16} /> Show QR Code
           </button>
         </div>
       </div>
 
       {/* Team Stats (if applicable) */}
       {(userData.role === 'Lead Marketer' || userData.role === 'Manager') && (
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-[#111111] border border-white/5 rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-gray-400 mb-2">
-              <Users size={14} />
-              <span className="text-[10px] font-bold uppercase">Team Size</span>
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center items-center text-center">
+            <div className="w-8 h-8 rounded-full bg-blue-500/10 flex justify-center items-center mb-2">
+               <Users size={14} className="text-blue-500" />
             </div>
-            <p className="text-xl font-black">{userData.teamSize || 0}</p>
-            <p className="text-[10px] text-gray-500 mt-1">Direct: {userData.directReferrals || 0}</p>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Team Size</p>
+            <p className="text-2xl font-black text-white">{userData.teamSize || 0}</p>
           </div>
-          <div className="bg-[#111111] border border-white/5 rounded-2xl p-4">
-            <div className="flex items-center gap-2 text-gray-400 mb-2">
-              <TrendingUp size={14} />
-              <span className="text-[10px] font-bold uppercase">Team Earnings</span>
+          <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center items-center text-center">
+            <div className="w-8 h-8 rounded-full bg-green-500/10 flex justify-center items-center mb-2">
+               <TrendingUp size={14} className="text-green-500" />
             </div>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Team Earnings</p>
             <p className="text-xl font-black text-green-500">{formatCurrency(userData.teamEarnings || 0)}</p>
-            <p className="text-[10px] text-gray-500 mt-1">This Month</p>
           </div>
         </div>
       )}
 
       {/* Earnings Breakdown */}
-      <div className="bg-[#111111] border border-white/5 rounded-2xl p-5 mb-6">
-        <h3 className="text-sm font-bold text-gray-400 uppercase mb-4">Earnings Breakdown</h3>
-        <div className="h-48">
+      <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-5 mb-6">
+        <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Earnings Breakdown</h3>
+        <div className="h-48 border border-[#2A2A2A] rounded-xl bg-[#0A0A0A] p-2 relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -162,47 +186,45 @@ export default function ProfileScreen() {
                 outerRadius={80}
                 paddingAngle={5}
                 dataKey="value"
+                stroke="none"
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip 
-                contentStyle={{ backgroundColor: '#1A1A1A', border: 'none', borderRadius: '8px' }}
-                itemStyle={{ color: '#fff' }}
+                contentStyle={{ backgroundColor: '#111111', border: '1px solid #2A2A2A', borderRadius: '12px' }}
+                itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                formatter={(value: number) => formatCurrency(value)}
               />
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex justify-center gap-6 mt-4">
+        <div className="flex justify-center gap-4 mt-4 flex-wrap">
           {chartData.map((item) => (
-            <div key={item.name} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-              <span className="text-[10px] text-gray-400 font-bold uppercase">{item.name}</span>
+            <div key={item.name} className="flex items-center gap-1.5 border border-[#2A2A2A] px-2 py-1 rounded-md bg-[#1A1A1A]">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+              <span className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">{item.name}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Achievements & Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-[#111111] border border-white/5 rounded-2xl p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center items-center text-center">
+          <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center mb-2">
             <Flame className="text-orange-500" size={20} />
           </div>
-          <div>
-            <p className="text-xs text-gray-500 font-bold uppercase">Streak</p>
-            <p className="text-lg font-black">{userData.streak || 0} Days</p>
-          </div>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Streak</p>
+          <p className="text-lg font-black">{userData.streak || 0} Days</p>
         </div>
-        <div className="bg-[#111111] border border-white/5 rounded-2xl p-4 flex items-center gap-3">
-          <div className="w-10 h-10 bg-teal-500/10 rounded-xl flex items-center justify-center">
-            <Award className="text-teal-500" size={20} />
+        <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center items-center text-center">
+          <div className="w-10 h-10 bg-[#00C9A7]/10 rounded-xl flex items-center justify-center mb-2">
+            <Award className="text-[#00C9A7]" size={20} />
           </div>
-          <div>
-            <p className="text-xs text-gray-500 font-bold uppercase">Tasks</p>
-            <p className="text-lg font-black">{userData.tasksCompleted || 0}</p>
-          </div>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Tasks Done</p>
+          <p className="text-lg font-black">{userData.tasksCompleted || 0}</p>
         </div>
       </div>
     </div>

@@ -5,26 +5,17 @@ import { useSubmissions } from '../../hooks/useSubmissions';
 import TaskCard from './TaskCard';
 import { useNavigate } from 'react-router-dom';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
-import { ChevronDown, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Filter, Loader2, ClipboardCheck } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+type TabStatus = 'All' | 'Pending' | 'Submitted' | 'Approved' | 'Rejected';
 
 export default function TasksScreen() {
   const { tasks, loading: tasksLoading } = useTasks();
   const { submissions, loading: subsLoading } = useSubmissions();
   const navigate = useNavigate();
-  const { t } = useTranslation();
 
-  const [expandedDay, setExpandedDay] = useState<string | null>(null);
-
-  // Pull to refresh simulation
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const handleRefresh = async () => {
-    if(navigator.vibrate) navigator.vibrate(10);
-    setIsRefreshing(true);
-    // Simulate network delay over real-time setup
-    await new Promise(r => setTimeout(r, 800));
-    setIsRefreshing(false);
-  };
+  const [activeTab, setActiveTab] = useState<TabStatus>('All');
 
   const processedTasks = useMemo(() => {
     return tasks.map(task => {
@@ -33,145 +24,122 @@ export default function TasksScreen() {
     });
   }, [tasks, submissions]);
 
-  const { thisWeekTasks, otherTasks, weekLabel } = useMemo(() => {
+  const { weekLabel } = useMemo(() => {
     const now = new Date();
     const monday = startOfWeek(now, { weekStartsOn: 1 });
     const sunday = endOfWeek(now, { weekStartsOn: 1 });
-    
-    // Sort logic, prioritizing tasks for current week
-    const thisWeek: any[] = [];
-    const other: any[] = [];
-    
-    processedTasks.forEach(t => {
-      if (t.isWeeklyBatch && t.weekStartDate) {
-         const taskStart = t.weekStartDate.toDate();
-         // simple heuristic check if it matches current week
-         if (taskStart.getFullYear() === monday.getFullYear() && 
-             taskStart.getMonth() === monday.getMonth() && 
-             Math.abs(taskStart.getDate() - monday.getDate()) < 3) {
-            thisWeek.push(t);
-         } else {
-            other.push(t);
-         }
-      } else {
-         other.push(t);
-      }
-    });
-
     return { 
-       thisWeekTasks: thisWeek, 
-       otherTasks: other,
        weekLabel: `Week: ${format(monday, 'dd MMM')} - ${format(sunday, 'dd MMM yyyy')}`
     };
+  }, []);
+
+  const counts = useMemo(() => {
+    const c = { All: processedTasks.length, Pending: 0, Submitted: 0, Approved: 0, Rejected: 0 };
+    processedTasks.forEach(t => {
+      if (t.status === 'pending') c.Pending++;
+      else if (t.status === 'submitted') c.Submitted++;
+      else if (t.status === 'approved') c.Approved++;
+      else if (t.status === 'rejected') c.Rejected++;
+    });
+    return c;
   }, [processedTasks]);
 
-  const groupedThisWeek = useMemo(() => {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const groups: Record<string, any[]> = {};
-    days.forEach(d => groups[d] = []);
-    
-    thisWeekTasks.forEach(t => {
-       const day = t.dayAssigned || 'Monday';
-       if(groups[day]) groups[day].push(t);
-       else groups[day] = [t];
-    });
-    return groups;
-  }, [thisWeekTasks]);
+  const filteredTasks = useMemo(() => {
+    if (activeTab === 'All') return processedTasks;
+    return processedTasks.filter(t => t.status.toLowerCase() === activeTab.toLowerCase());
+  }, [processedTasks, activeTab]);
+
+  const handleSkip = (e: React.MouseEvent, taskId: string) => {
+    e.stopPropagation();
+    toast('Task hidden. You can find it later if needed.', { icon: '⏭️' });
+  };
 
   if (tasksLoading || subsLoading) return (
     <div className="p-4 text-white flex flex-col items-center justify-center min-h-[50vh]">
       <Loader2 className="w-8 h-8 text-[#E8B84B] animate-spin mb-4" />
-      <span className="text-gray-400 font-bold uppercase tracking-widest text-xs">{t('common.loading')}</span>
+      <span className="text-gray-400 font-bold uppercase tracking-widest text-xs">Loading Tasks</span>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] p-4 pb-24 text-white">
-      {/* Pull down area */}
-      <div 
-        className="text-center pb-4 pt-2 text-xs font-bold text-gray-500 uppercase tracking-widest cursor-pointer hover:text-white transition-colors"
-        onClick={handleRefresh}
-      >
-        {isRefreshing ? <Loader2 className="w-4 h-4 animate-spin mx-auto text-[#E8B84B]" /> : '↓ Pull or Click to refresh'}
+    <div className="min-h-screen bg-[#0A0A0A] p-4 pb-24 font-sans text-white max-w-3xl mx-auto">
+      {/* HEADER */}
+      <div className="flex items-start justify-between mb-6 pt-2">
+         <div>
+            <h1 className="text-[22px] font-bold text-white leading-tight">This Week's Tasks</h1>
+            <p className="text-[13px] text-gray-400 mt-1">{weekLabel}</p>
+         </div>
+         <button className="w-10 h-10 border border-[#2A2A2A] bg-[#111111] rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition">
+            <Filter size={18} />
+         </button>
       </div>
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-black uppercase tracking-tighter mb-1 relative inline-block">
-          {t('tasks.this_week')}
-          <motion.div 
-            className="absolute -bottom-1 left-0 h-1 bg-[#E8B84B]" 
-            initial={{ width: 0 }} 
-            animate={{ width: '100%' }} 
-            transition={{ delay: 0.2 }}
-          />
-        </h1>
-        <div className="flex items-center gap-2 text-gray-400 mt-3 text-xs font-bold uppercase tracking-widest bg-white/5 inline-flex px-3 py-1.5 rounded-lg border border-white/10">
-          <CalendarIcon size={14} className="text-[#E8B84B]" />
-          {weekLabel}
-        </div>
+      {/* STATUS TABS */}
+      <div className="flex gap-2 overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+         {(['All', 'Pending', 'Submitted', 'Approved', 'Rejected'] as TabStatus[]).map(tab => {
+            const isActive = activeTab === tab;
+            return (
+               <button
+                 key={tab}
+                 onClick={() => setActiveTab(tab)}
+                 className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 border ${
+                    isActive 
+                      ? 'bg-white text-black border-white' 
+                      : 'bg-[#111111] text-gray-400 border-[#2A2A2A] hover:bg-[#1A1A1A]'
+                 }`}
+               >
+                 {tab}
+                 <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${
+                    isActive ? 'bg-black/10 text-black' : 'bg-[#2A2A2A] text-gray-300'
+                 }`}>
+                    {counts[tab]}
+                 </span>
+               </button>
+            );
+         })}
       </div>
 
-      <div className="space-y-4 mb-8">
-        {Object.entries(groupedThisWeek).filter(([_, tasks]) => tasks.length > 0).map(([day, tasks]) => (
-          <div key={day} className="bg-[#111111] border border-[#2A2A2A] rounded-2xl overflow-hidden">
-             <button 
-               onClick={() => setExpandedDay(expandedDay === day ? null : day)}
-               className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-white/5 to-transparent hover:from-white/10 transition-colors"
-             >
-               <div className="flex items-center gap-3">
-                 <h3 className="font-bold text-sm text-[#E8B84B] uppercase tracking-widest">{day}</h3>
-                 <span className="bg-black border border-[#2A2A2A] px-2 py-0.5 rounded text-[10px] font-black text-gray-400">{tasks.length}</span>
-               </div>
-               <ChevronDown size={16} className={`text-gray-500 transition-transform ${expandedDay === day ? 'rotate-180' : ''}`} />
-             </button>
-             <AnimatePresence>
-               {(expandedDay === day || tasks.length <= 1) && (
-                 <motion.div 
-                   initial={{ height: 0, opacity: 0 }}
-                   animate={{ height: 'auto', opacity: 1 }}
-                   exit={{ height: 0, opacity: 0 }}
-                   className="p-3 pt-0 space-y-2 max-h-[500px] overflow-y-auto no-scrollbar"
-                 >
-                   <div className="h-2" />
-                   {tasks.map((task: any) => (
-                     <div key={task.id} className={task.status === 'approved' ? 'opacity-50 grayscale' : ''}>
-                       <TaskCard 
-                         task={task} 
-                         status={task.status}
-                         onClick={() => navigate(`/tasks/${task.id}`)}
-                       />
-                     </div>
-                   ))}
-                 </motion.div>
-               )}
-             </AnimatePresence>
-          </div>
-        ))}
-        {thisWeekTasks.length === 0 && (
-           <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-8 text-center">
-              <CalendarIcon size={32} className="text-gray-600 mx-auto mb-3" />
-              <p className="font-bold text-gray-300">{t('tasks.no_tasks')}</p>
-              <p className="text-xs text-gray-500 mt-1">Check back later or explore other sections.</p>
-           </div>
-        )}
+      {/* TASK LIST */}
+      <div className="space-y-4">
+         <AnimatePresence mode="popLayout">
+            {filteredTasks.length > 0 ? (
+               filteredTasks.map(task => (
+                  <motion.div
+                    key={task.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                     <TaskCard 
+                        task={task} 
+                        status={task.status} 
+                        onClick={() => navigate(`/tasks/${task.id}`)}
+                        onSkip={task.status === 'pending' ? (e) => handleSkip(e, task.id) : undefined}
+                     />
+                  </motion.div>
+               ))
+            ) : (
+               <motion.div 
+                 initial={{ opacity: 0 }} 
+                 animate={{ opacity: 1 }} 
+                 className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-10 flex flex-col items-center justify-center text-center mt-8"
+               >
+                  <div className="w-16 h-16 bg-[#1A1A1A] rounded-full flex justify-center items-center mb-4">
+                     <ClipboardCheck size={32} className="text-gray-500" />
+                  </div>
+                  <p className="text-white font-bold text-lg mb-1">No tasks found</p>
+                  <p className="text-sm text-gray-500 max-w-[200px]">You don't have any {activeTab.toLowerCase()} tasks right now.</p>
+               </motion.div>
+            )}
+         </AnimatePresence>
       </div>
 
-      {otherTasks.length > 0 && (
-        <div className="space-y-4">
-           <h2 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-             <div className="w-1 h-1 bg-[#E8B84B] rounded-full" />
-             Other Backlog Tasks
-           </h2>
-           {otherTasks.map(task => (
-             <TaskCard 
-               key={task.id} 
-               task={task} 
-               status={task.status}
-               onClick={() => navigate(`/tasks/${task.id}`)}
-             />
-           ))}
-        </div>
-      )}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
     </div>
   );
 }
