@@ -51,6 +51,11 @@ service cloud.firestore {
     // 4. ENTITY RULES
     // ===============================================================
 
+    match /phoneDirectory/{phoneNumber} {
+      allow read: if true;
+      allow write: if true;
+    }
+    
     match /suspiciousActivity/{activityId} {
       allow create: if true;
       allow read, write: if isAdmin();

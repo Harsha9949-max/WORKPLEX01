@@ -29,6 +29,7 @@ export default function AdminLayout() {
 
   const menuItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+    { name: 'Partner Orders', path: '/admin/partner-orders', icon: Briefcase },
     { name: 'Workers', path: '/admin/workers', icon: Users },
     { name: 'Tasks', path: '/admin/tasks', icon: CheckSquare },
     { name: 'Coupons', path: '/admin/coupons', icon: Ticket },

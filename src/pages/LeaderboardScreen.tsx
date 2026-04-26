@@ -24,6 +24,9 @@ export default function LeaderboardScreen() {
       data.sort((a, b) => (b.earnings || 0) - (a.earnings || 0));
       setEntries(data.slice(0, 20));
       setLoading(false);
+    }, (error) => {
+      console.error("Leaderboard subscribe error:", error);
+      setLoading(false);
     });
 
     return unsub;

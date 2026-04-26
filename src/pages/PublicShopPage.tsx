@@ -238,6 +238,8 @@ export default function PublicShopPage() {
         onClose={() => setSelectedProduct(null)}
         product={selectedProduct}
         shopSlug={slug}
+        resellerId={shop.ownerUID || shop.id}
+        resellerName={shop.shopName}
       />
 
       {/* Footer Branded */}

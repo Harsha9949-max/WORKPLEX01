@@ -5,23 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Google AI Studio App</title>
     <script>
-      // Shield against some libraries trying to overwrite fetch in read-only environments
+      // Shield fetch silently to prevent polyfills from crashing when fetch is read-only
       (function() {
         try {
           const originalFetch = window.fetch;
           if (originalFetch) {
             Object.defineProperty(window, 'fetch', {
               get() { return originalFetch; },
-              set(v) { 
-                console.warn('Blocked attempt to overwrite fetch. If you intended to mock fetch, use a different strategy.'); 
-              },
+              set(v) { /* silently ignore overwrite attempts */ },
               configurable: true,
               enumerable: true
             });
           }
         } catch (e) {
-          // Fallback or ignore if defineProperty fails
-          console.error('Failed to protect fetch property:', e);
+          // Ignore
         }
       })();
     </script>

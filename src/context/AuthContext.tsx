@@ -38,6 +38,9 @@ export interface UserData {
   weeklyEarnings?: number;
   totalEarned?: number;
   teamEarnings?: number;
+  workerType?: string;
+  fullName?: string;
+  ifsc?: string;
   username?: string;
   monthlyEarned?: number;
   activeMonths?: number;

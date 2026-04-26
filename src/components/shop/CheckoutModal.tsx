@@ -4,22 +4,28 @@ import { X, CreditCard, Truck, User, Phone, MapPin, ShieldCheck, CheckCircle2, A
 import { db } from '../../lib/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   product: any;
   shopSlug: string | undefined;
+  resellerId?: string;
+  resellerName?: string;
 }
 
-export default function CheckoutModal({ isOpen, onClose, product, shopSlug }: Props) {
+export default function CheckoutModal({ isOpen, onClose, product, shopSlug, resellerId, resellerName }: Props) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     address: '',
-    upi: ''
+    city: '',
+    state: '',
+    pincode: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,39 +34,44 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug }: Pr
 
     setLoading(true);
     try {
-      // Razorpay Dummy Simulation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Small artificial delay for UX
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       const orderData = {
+        orderId: `WP-${Math.floor(Math.random() * 100000)}`,
         shopSlug,
-        customerDetails: {
+        resellerId: resellerId || product.ownerUID || '', 
+        resellerName: resellerName || 'Partner',
+        venture: product.venture || 'BuyRix',
+        customer: {
           name: formData.name,
           phone: formData.phone,
           address: formData.address,
-          upiId: formData.upi
+          city: formData.city,
+          state: formData.state,
+          pincode: formData.pincode
         },
         items: [{
           productId: product.productId,
-          name: product.productData.name,
+          productName: product.name || product.productData?.name || 'Product',
           quantity: 1,
           sellingPrice: product.partnerSellingPrice,
+          hvrsBasePrice: product.hvrsBasePrice,
           margin: product.partnerMargin
         }],
         totalAmount: product.partnerSellingPrice,
-        totalPartnerMargin: product.partnerMargin,
-        status: 'pending',
-        marginStatus: 'holding',
+        totalMargin: product.partnerMargin,
+        paymentMode: 'COD',
+        status: 'new',
+        resellerForwarded: false,
         createdAt: serverTimestamp()
       };
 
       await addDoc(collection(db, 'partnerOrders'), orderData);
       
-      setSuccess(true);
       toast.success('Order Placed Successfully!');
-      setTimeout(() => {
-        onClose();
-        setSuccess(false);
-      }, 3000);
+      onClose();
+      navigate('/order-success', { state: { orderDetails: orderData } });
     } catch (error) {
       toast.error('Payment failed. Please try again.');
     } finally {
@@ -164,21 +175,44 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug }: Pr
                       />
                     </div>
 
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">City</label>
+                        <input
+                          required
+                          value={formData.city}
+                          onChange={(e) => setFormData({...formData, city: e.target.value})}
+                          placeholder="City"
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold focus:border-teal-500 outline-none"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">State</label>
+                        <input
+                          required
+                          value={formData.state}
+                          onChange={(e) => setFormData({...formData, state: e.target.value})}
+                          placeholder="State"
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold focus:border-teal-500 outline-none"
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5"><CreditCard size={12}/> UPI ID (for Refund)</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Pincode</label>
                       <input
                         required
-                        value={formData.upi}
-                        onChange={(e) => setFormData({...formData, upi: e.target.value})}
-                        placeholder="yourname@upi"
+                        value={formData.pincode}
+                        onChange={(e) => setFormData({...formData, pincode: e.target.value})}
+                        placeholder="6-digit pincode"
                         className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold focus:border-teal-500 outline-none"
                       />
                     </div>
 
                     <div className="flex items-center gap-3 bg-teal-500/5 p-4 rounded-2xl border border-teal-500/10">
-                      <ShieldCheck className="text-teal-500 shrink-0" size={20} />
+                      <Truck className="text-teal-500 shrink-0" size={20} />
                       <p className="text-[10px] text-teal-500/80 font-bold uppercase tracking-tight leading-relaxed">
-                        Secure transaction via Razorpay. Encrypted at HVRS Master Merchant level.
+                        Cash on Delivery Only. You will pay when the order arrives. 
                       </p>
                     </div>
 
@@ -189,7 +223,7 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug }: Pr
                       {loading ? (
                         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-black border-t-transparent rounded-full" />
                       ) : (
-                        <>Pay Rs.{product?.partnerSellingPrice} <ArrowRight size={20} /></>
+                        <>Place Order (COD) <ArrowRight size={20} /></>
                       )}
                     </button>
                   </form>

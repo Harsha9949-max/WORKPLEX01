@@ -7,7 +7,16 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
-import { safeStringify } from './utils/jsonUtils';
+
+import ResellerLayout from './components/reseller/ResellerLayout';
+import ResellerDashboard from './pages/reseller/ResellerDashboard';
+import ResellerProducts from './pages/reseller/ResellerProducts';
+import ResellerOrders from './pages/reseller/ResellerOrders';
+import ResellerShop from './pages/reseller/ResellerShop';
+import ResellerPerformance from './pages/reseller/ResellerPerformance';
+import ResellerEarnings from './pages/reseller/ResellerEarnings';
+import ResellerSettings from './pages/reseller/ResellerSettings';
+import PartnerRouteGuard from './components/reseller/PartnerRouteGuard';
 
 import { useState, useEffect } from 'react';
 
@@ -55,6 +64,9 @@ import WithdrawalManagement from './pages/admin/WithdrawalManagement';
 import SubAdminCreation from './pages/admin/SubAdminCreation';
 import FraudAlerts from './pages/admin/FraudAlerts';
 import AnnouncementBroadcaster from './pages/admin/AnnouncementBroadcaster';
+import AdminPartnerOrders from './pages/admin/AdminPartnerOrders';
+
+import OrderSuccessPage from './pages/OrderSuccessPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useAuth();
@@ -123,6 +135,7 @@ function AppContent() {
         {/* Phase 7 Admin Panel */}
         <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
           <Route index element={<AdminDashboard />} />
+          <Route path="partner-orders" element={<AdminPartnerOrders />} />
           <Route path="workers" element={<WorkerManagement />} />
           <Route path="tasks" element={<TaskManagement />} />
           <Route path="coupons" element={<CouponManagement />} />
@@ -138,6 +151,18 @@ function AppContent() {
         
         {/* Partner Store Routes */}
         <Route path="/shop/:slug" element={<PublicShopPage />} />
+        <Route path="/order-success" element={<OrderSuccessPage />} />
+        
+        {/* Reseller Routes */}
+        <Route path="/reseller" element={<PartnerRouteGuard><ResellerLayout /></PartnerRouteGuard>}>
+          <Route path="dashboard" element={<ResellerDashboard />} />
+          <Route path="products" element={<ResellerProducts />} />
+          <Route path="orders" element={<ResellerOrders />} />
+          <Route path="my-shop" element={<ResellerShop />} />
+          <Route path="performance" element={<ResellerPerformance />} />
+          <Route path="earnings" element={<ResellerEarnings />} />
+          <Route path="settings" element={<ResellerSettings />} />
+        </Route>
         
         {/* Legal Routes */}
         <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -199,7 +224,7 @@ class GlobalErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
           <div className="mt-6">
             <p className="text-sm text-gray-400 mb-2">Technical Details:</p>
             <pre className="p-4 bg-[#111] rounded border border-white/10 text-[10px] overflow-auto max-h-60">
-              {safeStringify(this.state.error, 2)}
+              {this.state.error?.code ? `Error Code: ${this.state.error.code}` : 'No additional technical details.'}
             </pre>
           </div>
         </div>

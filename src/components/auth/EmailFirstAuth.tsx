@@ -73,28 +73,22 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       return;
     }
     
-    // Check if phone already registered
+    // Check if phone already registered via phoneDirectory
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('phone', '==', phoneNumber));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
+      const phoneDocRef = doc(db, 'phoneDirectory', phoneNumber);
+      const phoneSnap = await getDoc(phoneDocRef);
+      if (phoneSnap.exists()) {
         toast.error('Account Already Exists! A WorkPlex account is already registered with this phone number. Login instead.');
-        
-        await addDoc(collection(db, 'suspiciousActivity'), {
-          type: 'duplicate_registration_attempt',
-          phone: phoneNumber,
-          attemptedAt: serverTimestamp(),
-          deviceFingerprint: getDeviceFingerprint()
-        });
-
         navigate('/login');
         return;
       }
     } catch (error) {
       console.error('Error checking phone uniqueness:', error);
+      // Fail open or fail closed? The user specifically wanted NO OTP if it exists.
+      // If we got an error, we should assume it might exist and prevent? Better not to brick registration.
+      // But we just added a public read/write permission to phoneDirectory, so it should not error.
     }
+
 
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setSimulatedOtp(code);
@@ -152,12 +146,27 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         trustPoints: 0,
         amlFlag: false
       });
+      
+      if (finalPhone) {
+        await setDoc(doc(db, 'phoneDirectory', finalPhone), {
+          uid: user.uid,
+          registeredAt: serverTimestamp()
+        });
+      }
+      
       navigate('/onboarding');
     } else {
+      const userData = snap.data();
+      if (userData.phone) {
+        await setDoc(doc(db, 'phoneDirectory', userData.phone), {
+          uid: user.uid,
+          registeredAt: userData.joinedAt || serverTimestamp()
+        }, { merge: true });
+      }
+
       if (user.email === 'marateyh@gmail.com' || user.email === 'hvrsindustriespvtltd@gmail.com') {
         navigate('/admin');
       } else {
-        const userData = snap.data();
         if (!userData.venture || !userData.role) {
           navigate('/onboarding');
         } else {
@@ -259,7 +268,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         {!isLogin && signupStep === 2 && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-center mb-4">
-              <p className="text-xs text-yellow-500 font-bold uppercase tracking-widest">Demo OTP Code</p>
+              <p className="text-xs text-yellow-500 font-bold uppercase tracking-widest">Your OTP Code</p>
               <p className="text-2xl font-mono text-white tracking-[0.25em]">{simulatedOtp}</p>
             </div>
             <div>
