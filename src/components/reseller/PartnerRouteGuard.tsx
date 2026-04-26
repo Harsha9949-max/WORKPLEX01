@@ -11,7 +11,12 @@ export default function PartnerRouteGuard({ children }: { children: React.ReactN
 
   // Allow admins or users who specifically have workerType as partner
   // Note: if your system gives them workerType = 'partner', check for it.
-  if (userData?.role === 'admin' || userData?.workerType === 'partner') {
+  if (
+    userData?.role === 'admin' || 
+    userData?.workerType === 'partner' || 
+    userData?.role === 'Partner' || 
+    userData?.role === 'Reseller' 
+  ) {
     return <>{children}</>;
   }
 

@@ -23,11 +23,8 @@ import LiveEarningsFeed from '../components/viral/LiveEarningsFeed';
 import WhatsAppShareModal from '../components/viral/WhatsAppShareModal';
 import ReferralQRModal from '../components/viral/ReferralQRModal';
 import FamilyTransferModal from '../components/viral/FamilyTransferModal';
-import PartnerDashboard from '../components/shop/PartnerDashboard';
 import { Share2, QrCode, Heart, TrendingUp, MessageCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
-
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 
 export default function HomeDashboard() {
   const navigate = useNavigate();
@@ -148,16 +145,8 @@ export default function HomeDashboard() {
   if (authLoading || loading) return <SkeletonLoader />;
   if (!userData) return <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-white">User data not found</div>;
 
-  if (userData.role === 'Partner') {
-    return (
-      <div className="min-h-screen bg-[#0A0A0A] pb-32">
-        <TopBar userData={userData} />
-        <ProfileCompletionBar />
-        <div className="max-w-7xl mx-auto px-4 pt-6">
-          <PartnerDashboard />
-        </div>
-      </div>
-    );
+  if (userData.workerType === 'partner' || userData.role === 'Partner' || userData.role === 'Reseller') {
+    return <Navigate to="/reseller/dashboard" replace />;
   }
 
   const containerVariants = {

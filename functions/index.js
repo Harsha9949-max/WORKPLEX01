@@ -7,13 +7,11 @@
  * 3. ORDER_STATUS_UPDATE_NOTIFICATION: Triggers on partnerOrders status change
  */
 
-/*
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
 const db = admin.firestore();
-const messaging = admin.messaging();
 
 // 1. RELEASE_PARTNER_MARGINS
 exports.releasePartnerMargins = functions.pubsub.schedule('0 2 * * *')
@@ -21,6 +19,7 @@ exports.releasePartnerMargins = functions.pubsub.schedule('0 2 * * *')
   .onRun(async (context) => {
     const sevenDaysAgo = admin.firestore.Timestamp.fromDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
     
+    // In actual production, ensure indexes are built for this query
     const ordersSnap = await db.collection('partnerOrders')
       .where('status', '==', 'delivered')
       .where('marginStatus', '==', 'holding')
@@ -30,11 +29,9 @@ exports.releasePartnerMargins = functions.pubsub.schedule('0 2 * * *')
     if (ordersSnap.empty) return null;
     
     const batch = db.batch();
-    const notifications = [];
     
     ordersSnap.forEach(doc => {
       const order = doc.data();
-      const orderId = doc.id;
       const resellerId = order.resellerId;
       const margin = order.totalMargin || 0;
       
@@ -59,26 +56,12 @@ exports.releasePartnerMargins = functions.pubsub.schedule('0 2 * * *')
          category: 'partner_margin',
          amount: margin,
          wallet: 'main',
-         description: \`Margin released: Order #\${order.orderId || orderId}\`,
+         description: `Margin released: Order #${order.orderId || doc.id}`,
          timestamp: admin.firestore.FieldValue.serverTimestamp()
-      });
-      
-      // Prepare notification
-      notifications.push({
-         token: order.fcmToken, // fetch or use stored
-         resellerId,
-         notification: {
-           title: 'Margin Released!',
-           body: \`💰 Rs.\${margin} margin released for Order #\${order.orderId}!\`
-         }
       });
     });
     
     await batch.commit();
-    
-    // Process notifications separately 
-    // notifications.forEach(...)
-    
     return null;
 });
 
@@ -86,13 +69,8 @@ exports.releasePartnerMargins = functions.pubsub.schedule('0 2 * * *')
 exports.newOrderNotification = functions.firestore.document('partnerOrders/{orderId}')
   .onCreate(async (snap, context) => {
     const order = snap.data();
-    
-    // Notification for reseller
-    // \`🛍️ New order! Customer ordered \${order.items?.[0]?.productName}. Forward to admin to process.\`
-    
-    // Notification for admin
-    // \`New order from \${order.resellerName}'s shop awaiting admin action.\`
-    
+    // Logic for notifications to reseller and admin
+    console.log('New partner order created:', order.orderId);
     return null;
 });
 
@@ -103,29 +81,8 @@ exports.orderStatusNotification = functions.firestore.document('partnerOrders/{o
     const after = change.after.data();
     
     if (before.status === after.status) return null;
+    console.log(`Order ${after.orderId} status changed from ${before.status} to ${after.status}`);
     
-    const status = after.status;
-    let message = '';
-    
-    switch(status) {
-      case 'forwarded':
-         message = 'Order forwarded to Admin';
-         break;
-      case 'accepted':
-         message = 'Your order was accepted!'; // -> Notify Reseller
-         break;
-      case 'shipped':
-         message = \`Order shipped! Tracking: \${after.trackingId}\`; // -> Notify Reseller + Customer
-         break;
-      case 'delivered':
-         message = 'Order delivered successfully'; // -> Notify Reseller
-         break;
-      case 'rejected':
-         message = \`Order rejected. Reason: \${after.rejectionReason}\`; // -> Notify Reseller + Customer
-         break;
-    }
-    
-    // Send push notification here
+    // Logic for notifications (push, FCM etc)
     return null;
 });
-*/
