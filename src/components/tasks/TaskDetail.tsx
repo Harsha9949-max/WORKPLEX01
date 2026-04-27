@@ -6,7 +6,7 @@ import { db, storage } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, getVentureColor } from '../../utils/taskUtils';
 import CountdownTimer from './CountdownTimer';
-import { ArrowLeft, Clock, Info, UploadCloud, Link as LinkIcon, FileText, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Clock, Info, UploadCloud, Link as LinkIcon, FileText, CheckCircle, Camera, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Timestamp } from 'firebase/firestore';
 
@@ -21,6 +21,8 @@ export default function TaskDetail() {
   // Submission state
   const [proofText, setProofText] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [links, setLinks] = useState<string[]>(['']);
   const [uploading, setUploading] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -39,28 +41,63 @@ export default function TaskDetail() {
     
     // Validation based on type
     const proofType = task.proofType || 'text';
-    if (proofType === 'image' && !file) {
-      toast.error('Please upload an image proof');
-      return;
+    const isCC = userData.role === 'Content Creator';
+
+    if (proofType === 'image') {
+      if (isCC && files.length === 0) {
+        toast.error('Please upload at least one image proof');
+        return;
+      } else if (!isCC && !file) {
+        toast.error('Please upload an image proof');
+        return;
+      }
     }
-    if (proofType === 'link' && !proofText.includes('http')) {
-      toast.error('Please provide a valid URL');
-      return;
+    
+    if (proofType === 'link') {
+      if (isCC) {
+        const validLinks = links.filter(l => l.includes('http'));
+        if (validLinks.length === 0) {
+          toast.error('Please provide at least one valid URL');
+          return;
+        }
+      } else if (!proofText.includes('http')) {
+        toast.error('Please provide a valid URL');
+        return;
+      }
     }
-    if (proofType === 'text' && proofText.trim().length < 10) {
-      toast.error('Please provide more details in your text proof');
-      return;
+    
+    if (proofType === 'text') {
+      const wordCount = proofText.trim().split(/\s+/).length;
+      if (isCC && wordCount < 100) {
+        toast.error('Please provide at least 100 words for content tasks');
+        return;
+      } else if (!isCC && proofText.trim().length < 10) {
+        toast.error('Please provide more details in your text proof');
+        return;
+      }
     }
 
     setUploading(true);
     
     try {
       let proofUrl = '';
-      if (file) {
-        // Compress logic would go here in prod
-        const storageRef = ref(storage, `proofs/${currentUser.uid}/${taskId}/${Date.now()}_${file.name}`);
-        await uploadBytes(storageRef, file);
-        proofUrl = await getDownloadURL(storageRef);
+      let proofUrls: string[] = [];
+      const validLinks = isCC ? links.filter(l => l.includes('http')) : [proofText];
+
+      if (proofType === 'image') {
+        if (isCC) {
+          for (const f of files) {
+            const storageRef = ref(storage, `proofs/${currentUser.uid}/${taskId}/${Date.now()}_${f.name}`);
+            await uploadBytes(storageRef, f);
+            proofUrls.push(await getDownloadURL(storageRef));
+          }
+          proofUrl = proofUrls[0] || '';
+        } else if (file) {
+          const storageRef = ref(storage, `proofs/${currentUser.uid}/${taskId}/${Date.now()}_${file.name}`);
+          await uploadBytes(storageRef, file);
+          proofUrl = await getDownloadURL(storageRef);
+          proofUrls = [proofUrl];
+        }
       }
 
       await addDoc(collection(db, 'taskSubmissions'), {
@@ -68,7 +105,9 @@ export default function TaskDetail() {
         workerId: currentUser.uid,
         workerName: userData.name,
         proofUrl,
-        proofText,
+        proofUrls: isCC && proofType === 'image' ? proofUrls : [],
+        proofText: isCC && proofType === 'link' ? validLinks.join('\n') : proofText,
+        proofLinks: isCC && proofType === 'link' ? validLinks : [],
         proofType,
         status: 'submitted',
         aiReview: { status: 'pending_admin', reason: 'Manual review pending' },
@@ -100,6 +139,21 @@ export default function TaskDetail() {
   const isExpired = timeDiff <= 0;
 
   const proofType = task.proofType || 'text';
+  const isCC = userData?.role === 'Content Creator';
+
+  const handleAddFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+     if (e.target.files && e.target.files[0]) {
+        if (files.length < 5) {
+           setFiles([...files, e.target.files[0]]);
+        } else {
+           toast.error('Maximum 5 images allowed');
+        }
+     }
+  };
+
+  const removeFile = (index: number) => {
+     setFiles(files.filter((_, i) => i !== index));
+  };
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white p-4 pb-32 font-sans relative overflow-x-hidden w-full max-w-2xl mx-auto">
@@ -183,43 +237,99 @@ export default function TaskDetail() {
 
             {proofType === 'image' && (
                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-[#2A2A2A] rounded-xl p-8 hover:border-[#E8B84B] transition bg-[#111111] text-center relative group">
-                     <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={(e) => setFile(e.target.files?.[0] || null)} 
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                        disabled={uploading}
-                     />
-                     {file ? (
-                        <div className="flex flex-col items-center">
-                           <CheckCircle className="text-[#00C9A7] mb-2" size={32} />
-                           <p className="text-white font-bold">{file.name}</p>
-                           <p className="text-xs text-gray-500 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                        </div>
-                     ) : (
-                        <div className="flex flex-col items-center opacity-70 group-hover:opacity-100 transition">
-                           <Camera className="text-gray-500 mb-3" size={40} />
-                           <p className="text-gray-300 font-bold mb-1">Upload Screenshot</p>
-                           <p className="text-gray-500 text-xs">Max 2MB (Auto-compressed)</p>
-                        </div>
-                     )}
-                  </div>
+                  {isCC ? (
+                     <div className="space-y-3">
+                        {files.map((f, i) => (
+                           <div key={i} className="flex justify-between items-center bg-[#111111] p-3 rounded-xl border border-[#2A2A2A]">
+                              <div className="flex items-center gap-2">
+                                 <CheckCircle className="text-[#00C9A7]" size={16} />
+                                 <span className="text-sm font-bold text-gray-300 truncate max-w-[200px]">{f.name}</span>
+                              </div>
+                              <button onClick={() => removeFile(i)} className="text-gray-500 hover:text-red-500 p-1">
+                                 <Trash2 size={16} />
+                              </button>
+                           </div>
+                        ))}
+                        {files.length < 5 && (
+                           <div className="border-2 border-dashed border-[#2A2A2A] rounded-xl hover:border-[#E8B84B] transition bg-[#111111] text-center relative group p-4">
+                              <input 
+                                 type="file" 
+                                 accept="image/*"
+                                 onChange={handleAddFile} 
+                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                 disabled={uploading}
+                              />
+                              <div className="flex items-center justify-center gap-2 opacity-70 group-hover:opacity-100 transition">
+                                 <Plus className="text-[#E8B84B]" size={20} />
+                                 <span className="text-[#E8B84B] font-bold text-sm">Add Image ({files.length}/5)</span>
+                              </div>
+                           </div>
+                        )}
+                     </div>
+                  ) : (
+                     <div className="border-2 border-dashed border-[#2A2A2A] rounded-xl p-8 hover:border-[#E8B84B] transition bg-[#111111] text-center relative group">
+                        <input 
+                           type="file" 
+                           accept="image/*"
+                           onChange={(e) => setFile(e.target.files?.[0] || null)} 
+                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                           disabled={uploading}
+                        />
+                        {file ? (
+                           <div className="flex flex-col items-center">
+                              <CheckCircle className="text-[#00C9A7] mb-2" size={32} />
+                              <p className="text-white font-bold">{file.name}</p>
+                              <p className="text-xs text-gray-500 mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                           </div>
+                        ) : (
+                           <div className="flex flex-col items-center opacity-70 group-hover:opacity-100 transition">
+                              <Camera className="text-gray-500 mb-3" size={40} />
+                              <p className="text-gray-300 font-bold mb-1">Upload Screenshot</p>
+                              <p className="text-gray-500 text-xs">Max 2MB (Auto-compressed)</p>
+                           </div>
+                        )}
+                     </div>
+                  )}
                </div>
             )}
 
             {proofType === 'link' && (
                <div className="space-y-3">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">URL Link</label>
-                  <input 
-                     type="url"
-                     placeholder="https://..."
-                     className="w-full bg-[#111111] border border-[#2A2A2A] rounded-xl px-4 py-3 text-white focus:border-[#E8B84B] focus:ring-1 focus:ring-[#E8B84B] outline-none"
-                     value={proofText}
-                     onChange={(e) => setProofText(e.target.value)}
-                     disabled={uploading}
-                  />
-                  {proofText.includes('http') && (
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">{isCC ? 'URL Links' : 'URL Link'}</label>
+                  {isCC ? (
+                     <div className="space-y-2">
+                        {links.map((link, idx) => (
+                           <input 
+                              key={idx}
+                              type="url"
+                              placeholder={`https://... (Link ${idx + 1})`}
+                              className="w-full bg-[#111111] border border-[#2A2A2A] rounded-xl px-4 py-3 text-white focus:border-[#E8B84B] focus:ring-1 focus:ring-[#E8B84B] outline-none mb-2"
+                              value={link}
+                              onChange={(e) => {
+                                 const newLinks = [...links];
+                                 newLinks[idx] = e.target.value;
+                                 setLinks(newLinks);
+                              }}
+                              disabled={uploading}
+                           />
+                        ))}
+                        {links.length < 3 && (
+                           <button onClick={() => setLinks([...links, ''])} className="text-xs font-bold text-[#E8B84B] flex items-center gap-1 hover:underline">
+                              <Plus size={14} /> Add Another Link
+                           </button>
+                        )}
+                     </div>
+                  ) : (
+                     <input 
+                        type="url"
+                        placeholder="https://..."
+                        className="w-full bg-[#111111] border border-[#2A2A2A] rounded-xl px-4 py-3 text-white focus:border-[#E8B84B] focus:ring-1 focus:ring-[#E8B84B] outline-none"
+                        value={proofText}
+                        onChange={(e) => setProofText(e.target.value)}
+                        disabled={uploading}
+                     />
+                  )}
+                  {!isCC && proofText.includes('http') && (
                      <a href={proofText} target="_blank" rel="noreferrer" className="text-xs text-[#00C9A7] font-bold hover:underline inline-block mt-1">
                         Preview Link →
                      </a>
@@ -230,12 +340,14 @@ export default function TaskDetail() {
             {proofType === 'text' && (
                <div className="space-y-3">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest flex justify-between">
-                     <span>Details</span>
-                     <span className={`${proofText.length > 500 ? 'text-red-500' : 'text-gray-600'}`}>{proofText.length} / 500</span>
+                     <span>Details {isCC && '(Min 100 words)'}</span>
+                     <span className={`${isCC ? (proofText.trim().split(/\s+/).length < 100 ? 'text-yellow-500' : 'text-gray-600') : (proofText.length > 500 ? 'text-red-500' : 'text-gray-600')}`}>
+                        {isCC ? `${proofText.trim().split(/\s+/).filter(w => w.length > 0).length} / 100 min words` : `${proofText.length} / 500 max chars`}
+                     </span>
                   </label>
                   <textarea 
-                     rows={5}
-                     placeholder="Describe completion..."
+                     rows={6}
+                     placeholder={isCC ? "Provide detail about your content..." : "Describe completion..."}
                      className="w-full bg-[#111111] border border-[#2A2A2A] rounded-xl px-4 py-3 text-white focus:border-[#E8B84B] focus:ring-1 focus:ring-[#E8B84B] outline-none resize-none"
                      value={proofText}
                      onChange={(e) => setProofText(e.target.value)}

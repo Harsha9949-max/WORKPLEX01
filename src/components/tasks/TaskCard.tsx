@@ -2,8 +2,9 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { formatCurrency, getStatusColor, getVentureColor } from '../../utils/taskUtils';
 import CountdownTimer from './CountdownTimer';
-import { ImageIcon, Link as LinkIcon, FileText, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { ImageIcon, Link as LinkIcon, FileText, CheckCircle, XCircle, Clock, ChevronDown } from 'lucide-react';
 import { Timestamp } from 'firebase/firestore';
+import { useState } from 'react';
 
 interface Props {
   task: any;
@@ -50,10 +51,35 @@ const VentureBadge = ({ venture }: { venture: string }) => {
   );
 };
 
+const getPlatformIcon = (platform?: string) => {
+  if (!platform) return null;
+  switch (platform.toLowerCase()) {
+    case 'instagram': return <span className="bg-gradient-to-tr from-yellow-500 via-pink-500 to-purple-500 text-white px-2 py-0.5 rounded-sm">📷 IG</span>;
+    case 'youtube': return <span className="bg-red-500/20 text-red-500 border border-red-500/30 px-2 py-0.5 rounded-sm">▶️ YT</span>;
+    case 'facebook': return <span className="bg-blue-500/20 text-blue-500 border border-blue-500/30 px-2 py-0.5 rounded-sm">📘 FB</span>;
+    case 'twitter': return <span className="bg-sky-500/20 text-sky-500 border border-sky-500/30 px-2 py-0.5 rounded-sm">🐦 X</span>;
+    default: return null;
+  }
+};
+
+const getContentTypeIcon = (cType?: string) => {
+  if (!cType) return null;
+  switch (cType.toLowerCase()) {
+    case 'photo': return <span className="bg-[#2A2A2A] text-gray-300 px-2 py-0.5 rounded-sm">📸 Photo</span>;
+    case 'video': return <span className="bg-[#2A2A2A] text-gray-300 px-2 py-0.5 rounded-sm">🎬 Video</span>;
+    case 'reel': return <span className="bg-[#2A2A2A] text-gray-300 px-2 py-0.5 rounded-sm">🎵 Reel</span>;
+    case 'caption': return <span className="bg-[#2A2A2A] text-gray-300 px-2 py-0.5 rounded-sm">✍️ Caption</span>;
+    case 'blog': return <span className="bg-[#2A2A2A] text-gray-300 px-2 py-0.5 rounded-sm">📖 Blog</span>;
+    case 'infographic': return <span className="bg-[#2A2A2A] text-gray-300 px-2 py-0.5 rounded-sm">📊 Info</span>;
+    default: return null;
+  }
+};
+
 export default function TaskCard({ task, status = 'pending', onClick, onSkip }: Props) {
   // If task has expiresAt or deadline
   const deadline = task.expiresAt instanceof Timestamp ? task.expiresAt.toDate() : (task.deadline || new Date(Date.now() + 86400000));
   const isPending = status === 'pending';
+  const [showBrief, setShowBrief] = useState(false);
 
   return (
     <motion.div 
@@ -62,8 +88,16 @@ export default function TaskCard({ task, status = 'pending', onClick, onSkip }: 
       onClick={!isPending ? onClick : undefined}
     >
       <div className="flex justify-between items-center">
-         <VentureBadge venture={task.venture || 'BuyRix'} />
-         <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest bg-[#1A1A1A] px-2 py-0.5 rounded-sm">
+         <div className="flex items-center gap-2 flex-wrap">
+            <VentureBadge venture={task.venture || 'BuyRix'} />
+            {(task.contentType || task.platform) && (
+               <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest">
+                  {getContentTypeIcon(task.contentType)}
+                  {getPlatformIcon(task.platform)}
+               </div>
+            )}
+         </div>
+         <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest bg-[#1A1A1A] px-2 py-0.5 rounded-sm ml-2 shrink-0">
            {task.dayAssigned || 'DAY 1'}
          </span>
       </div>
@@ -90,9 +124,28 @@ export default function TaskCard({ task, status = 'pending', onClick, onSkip }: 
          </div>
       </div>
 
-      <div className="text-xs font-bold text-gray-500 uppercase tracking-widest border-t border-[#2A2A2A] pt-3 mt-1 flex items-center gap-1">
-         Proof type: <span className="text-gray-300 ml-1">{getProofIcon(task.proofType || 'image')}</span>
+      <div className="flex justify-between items-center text-xs font-bold text-gray-500 uppercase tracking-widest border-t border-[#2A2A2A] mt-1 pt-3">
+         <div className="flex items-center gap-1">
+            Proof type: <span className="text-gray-300 ml-1">{getProofIcon(task.proofType || 'image')}</span>
+         </div>
+         {task.contentBrief && (
+            <button 
+               onClick={(e) => { e.stopPropagation(); setShowBrief(!showBrief); }}
+               className="text-pink-500 hover:text-pink-400 flex items-center gap-1"
+            >
+               View Brief <ChevronDown size={14} className={`transition-transform ${showBrief ? 'rotate-180' : ''}`} />
+            </button>
+         )}
       </div>
+
+      {showBrief && task.contentBrief && (
+         <div className="bg-pink-500/10 border border-pink-500/20 rounded-lg p-3 mt-1 text-sm text-pink-100">
+            <p className="font-bold text-pink-400 text-xs uppercase tracking-widest mb-1.5 flex items-center gap-1">
+               <span>📋</span> Content Brief
+            </p>
+            <p className="leading-relaxed opacity-90">{task.contentBrief}</p>
+         </div>
+      )}
 
       {isPending ? (
          <div className="flex gap-2 mt-2">

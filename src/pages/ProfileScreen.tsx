@@ -15,7 +15,10 @@ import {
   CheckCircle2,
   ExternalLink,
   Settings,
-  LogOut
+  LogOut,
+  Camera,
+  CheckCircle,
+  Award as AwardIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTeamData } from '../hooks/useTeamData';
@@ -46,6 +49,7 @@ export default function ProfileScreen() {
       case 'Lead Marketer': return <Crown className="text-[#E8B84B]" size={28} />;
       case 'Manager': return <Briefcase className="text-blue-500" size={28} />;
       case 'Sub-Admin': return <ShieldCheck className="text-purple-500" size={28} />;
+      case 'Content Creator': return <Camera className="text-pink-500" size={28} />;
       default: return <Clipboard className="text-[#00C9A7]" size={28} />;
     }
   };
@@ -132,8 +136,35 @@ export default function ProfileScreen() {
         )}
       </motion.div>
 
-      <LevelProgress totalEarned={userData.totalEarned || 0} />
-      <BadgeShowcase unlockedBadges={userData.badges || []} />
+      {userData.role === 'Content Creator' ? (
+        <div className="grid grid-cols-2 gap-4 mb-6">
+           <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center text-center">
+              <div className="text-pink-500 mb-1 flex justify-center"><Camera size={20} /></div>
+              <span className="text-2xl font-black text-white">{userData.contentStats?.totalSubmitted || 0}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Submitted</span>
+           </div>
+           <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center text-center">
+              <div className="text-[#10B981] mb-1 flex justify-center"><CheckCircle size={20} /></div>
+              <span className="text-2xl font-black text-white">{userData.contentStats?.approvalRate || 100}%</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Approval Rate</span>
+           </div>
+           <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center text-center">
+              <div className="text-[#3B82F6] mb-1 flex justify-center"><AwardIcon size={20} /></div>
+              <span className="text-2xl font-black text-white">{userData.badges?.length || 0}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Achievements</span>
+           </div>
+           <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center text-center">
+              <div className="text-yellow-500 mb-1 flex justify-center"><TrendingUp size={20} /></div>
+              <span className="text-2xl font-black text-white">{userData.contentStats?.totalApproved || 0}</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Approved</span>
+           </div>
+        </div>
+      ) : (
+        <>
+          <LevelProgress totalEarned={userData.totalEarned || 0} />
+          <BadgeShowcase unlockedBadges={userData.badges || []} />
+        </>
+      )}
 
       {/* Referral Section */}
       <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-5 mb-6">

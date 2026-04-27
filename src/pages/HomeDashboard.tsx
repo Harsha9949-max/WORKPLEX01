@@ -145,10 +145,20 @@ export default function HomeDashboard() {
           </div>
 
           <div 
-            className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shrink-0 mx-2 truncate max-w-[120px] text-center"
-            style={{ backgroundColor: `${ventureColor}20`, color: ventureColor, border: `1px solid ${ventureColor}40` }}
+            className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shrink-0 mx-2 truncate max-w-[120px] text-center"
+            style={
+              userData.role === 'Sub-Admin' 
+                ? { backgroundColor: '#F59E0B20', color: '#F59E0B', border: '1px solid #F59E0B40' } 
+                : userData.role === 'Content Creator'
+                ? { backgroundColor: '#EC489920', color: '#EC4899', border: '1px solid #EC489940' }
+                : { backgroundColor: `${ventureColor}20`, color: ventureColor, border: `1px solid ${ventureColor}40` }
+            }
           >
-            {userData.venture || 'WorkPlex'} {userData.role === 'Promoter' ? 'Promoter' : userData.role === 'Lead Marketer' ? 'Lead' : 'Marketer'}
+            {userData.role === 'Sub-Admin' 
+              ? `${userData.venture || 'WorkPlex'} Sub-Admin` 
+              : userData.role === 'Content Creator'
+              ? `📷 ${userData.venture || 'WorkPlex'} Content Creator`
+              : `${userData.venture || 'WorkPlex'} ${userData.role === 'Promoter' ? 'Promoter' : userData.role === 'Lead Marketer' ? 'Lead' : 'Marketer'}`}
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
@@ -293,6 +303,115 @@ export default function HomeDashboard() {
               <p className="text-[10px] text-gray-400 font-bold mt-1">Releases in 24-48hrs</p>
            </div>
         </section>
+
+         {userData.role === 'Sub-Admin' && (
+            <section className="bg-gradient-to-r from-[#F59E0B]/10 to-[#F59E0B]/5 border border-[#F59E0B]/40 rounded-xl p-4 relative overflow-hidden mt-4">
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-[#F59E0B] font-bold text-sm tracking-tight flex items-center gap-1.5">
+                     🏢 {userData.venture} Overview
+                  </h3>
+                  <button onClick={() => navigate('/sub-admin')} className="text-[#F59E0B] text-xs font-bold hover:underline flex items-center gap-1">
+                     Open Admin <ArrowRight size={14} />
+                  </button>
+               </div>
+               <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Total Workers</span>
+                     <span className="text-lg font-black text-white">42</span>
+                  </div>
+                  <div className="flex flex-col relative">
+                     <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Pending Approval</span>
+                     <span className="text-lg font-black text-[#F59E0B]">3</span>
+                     <div className="absolute top-0 left-24 w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Active Today</span>
+                     <span className="text-lg font-black text-[#10B981]">18</span>
+                  </div>
+               </div>
+               <div className="flex justify-between items-center border-t border-[#F59E0B]/20 pt-3">
+                  <span className="text-xs text-[#F59E0B] font-medium flex items-center gap-1.5 bg-[#F59E0B]/10 px-2 py-1 rounded">
+                     ⚠️ 2 withdrawal requests pending
+                  </span>
+                  <button onClick={() => navigate('/sub-admin?tab=withdrawals')} className="text-[#F59E0B] text-xs font-bold hover:underline">
+                     Review Now
+                  </button>
+               </div>
+            </section>
+         )}
+
+         {/* SECTION 3.5 — MANAGEMENT OVERVIEW CARD (MANAGER) */}
+         {userData.role === 'Manager' && (
+            <section className="bg-gradient-to-r from-[#7C3AED]/10 to-[#7C3AED]/5 border border-[#7C3AED]/40 rounded-xl p-4 relative overflow-hidden mt-4">
+               {/* ... (Manager content remains same) */}
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-[#7C3AED] font-bold text-sm tracking-tight flex items-center gap-1.5">
+                     💼 Management Overview
+                  </h3>
+                  <button onClick={() => navigate('/manager/team')} className="text-[#7C3AED] text-xs font-bold hover:underline flex items-center gap-1">
+                     View All <ArrowRight size={14} />
+                  </button>
+               </div>
+               <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">My Leads</span>
+                     <span className="text-lg font-black text-white">{userData.totalLeadCount || 0}</span>
+                  </div>
+                  <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Total Members</span>
+                     <span className="text-lg font-black text-gray-300">0</span>
+                  </div>
+                  <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">This Month</span>
+                     <span className="text-lg font-black text-[#F59E0B]">Rs.{userData.managerCommissionThisMonth || 0}</span>
+                  </div>
+               </div>
+               <div className="mt-2">
+                  <div className="flex justify-between items-center mb-1">
+                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Earning 3% from {userData.totalLeadCount || 0} Leads' performance</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-[#2A2A2A] rounded-full overflow-hidden">
+                     <div className="h-full bg-[#7C3AED] w-1/3"></div>
+                  </div>
+               </div>
+            </section>
+         )}
+
+         {/* SECTION 3.5 — CONTENT SNAPSHOT CARD (CONTENT CREATOR) */}
+         {userData.role === 'Content Creator' && (
+            <section className="bg-gradient-to-r from-pink-500/10 to-pink-500/5 border border-pink-500/40 rounded-xl p-4 relative overflow-hidden mt-4">
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-pink-500 font-bold text-sm tracking-tight flex items-center gap-1.5">
+                     📷 Content This Week
+                  </h3>
+                  <button onClick={() => navigate('/studio')} className="text-pink-500 text-xs font-bold hover:underline flex items-center gap-1">
+                     View Studio <ArrowRight size={14} />
+                  </button>
+               </div>
+               <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Submitted</span>
+                     <span className="text-lg font-black text-white">4</span>
+                  </div>
+                  <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Approved</span>
+                     <span className="text-lg font-black text-[#10B981]">2</span>
+                  </div>
+                  <div className="flex flex-col">
+                     <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Pending</span>
+                     <span className="text-lg font-black text-yellow-500">1</span>
+                  </div>
+               </div>
+               <div className="flex justify-between items-center border-t border-pink-500/20 pt-3">
+                  <span className="text-xs text-pink-400 font-medium flex items-center gap-1.5 bg-pink-500/10 px-2 py-1 rounded">
+                     📋 This week's content brief available
+                  </span>
+                  <button onClick={() => navigate('/studio')} className="text-pink-500 text-xs font-bold hover:underline bg-pink-500/10 px-3 py-1 rounded">
+                     View Brief
+                  </button>
+               </div>
+            </section>
+         )}
 
          {/* SECTION 3.5 — TEAM SUMMARY CARD (LEAD MARKETER) */}
          {userData.role === 'Lead Marketer' && (

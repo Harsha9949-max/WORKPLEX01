@@ -66,6 +66,9 @@ import SubAdminCreation from './pages/admin/SubAdminCreation';
 import FraudAlerts from './pages/admin/FraudAlerts';
 import AnnouncementBroadcaster from './pages/admin/AnnouncementBroadcaster';
 import AdminPartnerOrders from './pages/admin/AdminPartnerOrders';
+import SubAdminPanel from './pages/admin/SubAdminPanel';
+import ManagerTeamPanel from './pages/manager/ManagerTeamPanel';
+import ContentStudio from './pages/content-creator/ContentStudio';
 
 import OrderSuccessPage from './pages/OrderSuccessPage';
 
@@ -136,6 +139,9 @@ function AppContent() {
           <Route path="/chat/:leadId" element={<TeamChatScreen />} />
           <Route path="/catalog" element={<ResellerCatalogPage />} />
           <Route path="/shop-setup" element={<ShopSetupWizard />} />
+          <Route path="/sub-admin" element={<SubAdminPanel />} />
+          <Route path="/manager/team" element={<ManagerTeamPanel />} />
+          <Route path="/studio" element={<ContentStudio />} />
         </Route>
         
         {/* Phase 7 Admin Panel */}

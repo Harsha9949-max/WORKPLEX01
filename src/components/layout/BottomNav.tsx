@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, ClipboardList, Wallet, User, Tag } from 'lucide-react';
+import { Home, ClipboardList, Wallet, User, Tag, ShieldAlert, Palette } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
@@ -16,13 +16,41 @@ export default function BottomNav() {
   
   const showHomeWarning = userData?.inactiveWarning;
 
-  const tabs = [
-    { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
-    { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
-    { path: '/coupon', icon: Tag, label: 'Coupon', badge: null },
-    { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
-    { path: '/profile', icon: User, label: 'Profile', badge: hasNewBadge ? 'purple' : null }
-  ];
+  let tabs = [];
+  
+  if (userData?.role === 'Sub-Admin') {
+     tabs = [
+       { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
+       { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
+       { path: '/coupon', icon: Tag, label: 'Coupon', badge: null },
+       { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
+       { path: '/sub-admin', icon: ShieldAlert, label: 'Admin', badge: null }
+     ];
+  } else if (userData?.role === 'Manager') {
+     tabs = [
+       { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
+       { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
+       { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
+       { path: '/manager/team', icon: User, label: 'Team', badge: null }, // Reusing User icon like Profile/Team
+       { path: '/profile', icon: User, label: 'Profile', badge: hasNewBadge ? 'purple' : null }
+     ];
+  } else if (userData?.role === 'Content Creator') {
+     tabs = [
+       { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
+       { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
+       { path: '/studio', icon: Palette, label: 'Studio', badge: null },
+       { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
+       { path: '/profile', icon: User, label: 'Profile', badge: hasNewBadge ? 'purple' : null }
+     ];
+  } else {
+     tabs = [
+       { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
+       { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
+       { path: '/coupon', icon: Tag, label: 'Coupon', badge: null },
+       { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
+       { path: '/profile', icon: User, label: 'Profile', badge: hasNewBadge ? 'purple' : null }
+     ];
+  }
   
   return (
     <nav style={{
