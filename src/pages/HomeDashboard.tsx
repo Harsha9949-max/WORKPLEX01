@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import TeamSummaryCard from '../components/dashboard/TeamSummaryCard';
 import TeamDashboard from './TeamDashboard';
 import InactiveWarningOverlay from '../components/dashboard/InactiveWarningOverlay';
+import { Logo } from '../components/ui/Logo';
 import LeadMarketerCelebration from '../components/dashboard/LeadMarketerCelebration';
 
 // Format Helpers
@@ -139,21 +140,8 @@ export default function HomeDashboard() {
       {/* SECTION 1 — STICKY TOP BAR */}
       <header className="sticky top-0 z-40 bg-[#111111] border-b border-[#2A2A2A] px-4 flex flex-col justify-center">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full border-2 border-[#E8B84B] overflow-hidden bg-[#1A1A1A] shrink-0">
-               {userData.photoURL ? (
-                  <img src={userData.photoURL} alt="Profile" className="w-full h-full object-cover" />
-               ) : (
-                  <div className="w-full h-full flex justify-center items-center font-bold text-[#E8B84B]">{userData.name?.charAt(0) || 'U'}</div>
-               )}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-400 font-medium">{getGreeting()}</span>
-              <span className="text-sm font-bold text-white leading-tight flex items-center gap-1">
-                 {userData.name || 'User'} 
-                 {userData.role === 'Lead Marketer' && <span className="text-[12px]" title="Lead Marketer">👑</span>}
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            <Logo variant="primary" size="sm" animated />
           </div>
 
           <div 
@@ -164,6 +152,13 @@ export default function HomeDashboard() {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
+             <div className="w-8 h-8 rounded-full border-2 border-[#E8B84B] overflow-hidden bg-[#1A1A1A] shrink-0" onClick={() => navigate('/settings')}>
+               {userData.photoURL ? (
+                  <img src={userData.photoURL} alt="Profile" className="w-full h-full object-cover" />
+               ) : (
+                  <div className="w-full h-full flex justify-center items-center font-bold text-[#E8B84B]">{userData.name?.charAt(0) || 'U'}</div>
+               )}
+             </div>
              <button className="relative text-gray-400 hover:text-white transition">
                <Bell size={20} />
                {userData?.inactiveWarning && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}

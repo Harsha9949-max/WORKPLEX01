@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Logo } from '../ui/Logo';
 import { Mail, Phone, MapPin, ShieldCheck, ChevronRight, Zap, Twitter, Instagram, Linkedin, Facebook } from 'lucide-react';
 
 export default function Footer() {
@@ -13,11 +14,14 @@ export default function Footer() {
           
           {/* Column 1: Brand */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#E8B84B] to-[#d4a63f] flex items-center justify-center p-1">
-                <img src="https://gcdnb.pbrd.co/images/-QD5NsLGLsZD.png" alt="HVRS Innovations Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-              </div>
-              <span className="font-outfit font-black text-xl text-white tracking-tight">HVRS INNOVATIONS</span>
+            <div className="flex flex-col gap-4">
+               <Logo variant="white" size="md" />
+               <div className="flex items-center gap-2">
+                 <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[#E8B84B] to-[#d4a63f] flex items-center justify-center p-0.5">
+                   <img src="https://gcdnb.pbrd.co/images/-QD5NsLGLsZD.png" alt="HVRS Innovations Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                 </div>
+                 <span className="font-outfit font-bold text-xs text-gray-400 tracking-tight">POWERED BY HVRS INNOVATIONS</span>
+               </div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
               Empowering India's gig workforce with transparent, compliant, and highly rewarding digital opportunities.

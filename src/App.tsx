@@ -7,6 +7,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import { Logo } from './components/ui/Logo';
+import { motion } from 'framer-motion';
 
 import ResellerLayout from './components/reseller/ResellerLayout';
 import ResellerDashboard from './pages/reseller/ResellerDashboard';
@@ -70,7 +72,13 @@ import OrderSuccessPage from './pages/OrderSuccessPage';
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useAuth();
   
-  if (loading) return <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-white">Loading...</div>;
+  if (loading) return (
+    <div className="fixed inset-0 bg-[#0A0A0A] flex flex-col items-center justify-center z-[9999]">
+      <motion.div animate={{ scale: [1, 1.05, 1], opacity: [0.7, 1, 0.7] }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}>
+        <Logo variant="vertical" size="xl" animated />
+      </motion.div>
+    </div>
+  );
   
   if (!currentUser) return <Navigate to="/join" />;
   

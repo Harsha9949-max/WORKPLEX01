@@ -23,6 +23,7 @@ import {
 import { format } from 'date-fns';
 import { BADGES } from '../constants/gamification';
 import SkeletonLoader from '../components/dashboard/SkeletonLoader';
+import { Logo } from '../components/ui/Logo';
 import toast from 'react-hot-toast';
 
 export default function PublicProfilePage() {
@@ -197,8 +198,8 @@ export default function PublicProfilePage() {
 
       {/* Footer Branding */}
       <div className="fixed bottom-0 left-0 w-full p-8 flex justify-center bg-gradient-to-t from-[#0A0A0A] to-transparent">
-        <Link to="/" className="flex items-center gap-2 grayscale brightness-50 hover:grayscale-0 hover:brightness-100 transition-all">
-          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white">WorkPlex</span>
+        <Link to="/" className="opacity-50 hover:opacity-100 transition-opacity">
+          <Logo variant="mono" size="xs" />
         </Link>
       </div>
     </div>

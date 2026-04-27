@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Outlet, useLocation, Link } from 'react-router-dom';
+import { Logo } from '../../components/ui/Logo';
 import { 
   LayoutDashboard, Users, CheckSquare, Ticket, 
   CreditCard, UserPlus, AlertTriangle, Megaphone, LogOut 
@@ -35,11 +36,9 @@ export default function AdminLayout() {
     <div className="min-h-screen bg-[#0A0A0A] text-white flex">
       {/* Sidebar */}
       <aside className="w-64 bg-[#111111] border-r border-[#2A2A2A] flex flex-col">
-        <div className="p-6 border-b border-[#2A2A2A] flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E8B84B] to-[#d4a63f] flex items-center justify-center shadow-[0_0_20px_rgba(232,184,75,0.3)] overflow-hidden p-1">
-            <img src="https://gcdnb.pbrd.co/images/-QD5NsLGLsZD.png" alt="WorkPlex Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-          </div>
-          <span className="font-bold text-xl tracking-tight">WorkPlex Admin</span>
+        <div className="p-6 border-b border-[#2A2A2A] flex flex-col justify-center">
+          <Logo variant="primary" size="sm" />
+          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">Admin Panel</span>
         </div>
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
           {navItems.map((item) => {

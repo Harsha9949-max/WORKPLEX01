@@ -18,6 +18,7 @@ import { collection, query, where, getDocs, doc, getDoc, limit } from 'firebase/
 import { db } from '../lib/firebase';
 import CheckoutModal from '../components/shop/CheckoutModal';
 import toast from 'react-hot-toast';
+import { Logo } from '../components/ui/Logo';
 
 export default function PublicShopPage() {
   const { slug } = useParams();
@@ -246,7 +247,8 @@ export default function PublicShopPage() {
       <div className="mt-20 flex flex-col items-center gap-4 opacity-30">
         <div className="flex items-center gap-2">
           <ShieldCheck size={16} className="text-gray-400" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Powered by WorkPlex</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Powered by</span>
+          <Logo variant="mono" size="xs" />
         </div>
         <div className="w-12 h-1 bg-gray-900 rounded-full" />
       </div>

@@ -7,6 +7,7 @@ import {
   Instagram, Linkedin, Mail, Phone, MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Logo } from '../components/ui/Logo';
 import { useTranslation } from 'react-i18next';
 
 // 3D Tilt Card Component
@@ -102,12 +103,7 @@ export default function LandingPage() {
       {/* 1. Unified Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-2xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E8B84B] to-[#d4a63f] flex items-center justify-center shadow-[0_0_20px_rgba(232,184,75,0.3)] overflow-hidden p-1">
-              <img src="https://gcdnb.pbrd.co/images/-QD5NsLGLsZD.png" alt="WorkPlex Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-            </div>
-            <span className="font-outfit font-black text-2xl tracking-tight">WORKPLEX</span>
-          </div>
+          <Logo variant="horizontal" size="md" onClick={() => navigate('/')} animated />
           
           <div className="hidden lg:flex items-center gap-8 text-sm font-medium text-gray-400">
             <a href="#ventures" className="hover:text-white transition-colors">Ventures</a>

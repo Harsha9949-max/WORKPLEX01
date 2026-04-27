@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
+import { Logo } from '../ui/Logo';
 import { 
   LayoutDashboard, 
   Users, 
@@ -62,8 +63,9 @@ export default function AdminLayout() {
       `}>
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
-          <div className="p-6">
-            <h1 className="text-xl font-black text-[#E8B84B] tracking-tighter">WORKPLEX ADMIN</h1>
+          <div className="p-6 border-b border-[#2A2A2A]">
+            <Logo variant="primary" size="md" />
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">Admin Dashboard</p>
           </div>
 
           {/* Navigation Links */}

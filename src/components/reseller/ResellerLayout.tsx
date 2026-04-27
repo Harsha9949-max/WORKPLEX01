@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../lib/firebase';
 import { signOut } from 'firebase/auth';
+import { Logo } from '../ui/Logo';
 
 export default function ResellerLayout() {
   const { userData, currentUser } = useAuth();
@@ -32,9 +33,9 @@ export default function ResellerLayout() {
     <div className="min-h-screen bg-[#0A0A0A] flex flex-col md:flex-row text-white font-sans">
       {/* Sidebar (Desktop) */}
       <aside className="hidden md:flex w-64 flex-col bg-[#111111] border-r border-[#2A2A2A] h-screen sticky top-0 shrink-0">
-        <div className="p-6">
-          <h1 className="text-2xl font-black text-[#E8B84B] tracking-tight uppercase">WorkPlex</h1>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Partner Panel</p>
+        <div className="p-6 border-b border-[#2A2A2A] flex flex-col justify-center">
+          <Logo variant="primary" size="sm" />
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">Partner Panel</p>
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">

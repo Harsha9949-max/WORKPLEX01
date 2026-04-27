@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { ChevronLeft, Zap, Target, Globe } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { Logo } from '../components/ui/Logo';
 
 export default function CompressedOnboarding() {
   const [step, setStep] = useState(1);
@@ -113,8 +114,8 @@ export default function CompressedOnboarding() {
   if (showWelcome) {
     return (
       <div className="min-h-screen bg-black/95 flex items-center justify-center p-6 z-50 fixed inset-0">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#111111] border border-[#E8B84B]/30 rounded-3xl p-8 max-w-sm w-full space-y-6 text-center">
-          <h2 className="text-3xl font-black uppercase text-white">Welcome to WorkPlex! 🎉</h2>
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#111111] border border-[#E8B84B]/30 rounded-3xl p-8 max-w-sm w-full space-y-6 text-center flex flex-col items-center">
+          <Logo variant="vertical" size="xl" />
           <p className="text-gray-400">Your welcome incentive has been credited to your pending wallet.</p>
           <p className="text-xs text-[#E8B84B] font-bold mt-2">Complete your first task to unlock your incentive + earn more!</p>
           <button onClick={() => navigate('/wallet')} className="w-full bg-[#E8B84B] text-black font-black uppercase py-4 rounded-xl mt-6 hover:scale-105 transition-transform min-h-[48px]">
@@ -127,6 +128,9 @@ export default function CompressedOnboarding() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center p-4 pt-10 sm:p-6">
+      <div className="mb-8 scale-90">
+        <Logo variant="primary" size="md" />
+      </div>
       <div className="w-full max-w-xl">
         <div className="flex items-center justify-between mb-8">
           <button 

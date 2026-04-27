@@ -1,0 +1,47 @@
+src/components/layout/Footer.tsx:131:            <span className="hover:text-gray-400 transition-colors cursor-pointer">Workplex Hub</span>
+src/components/tasks/TaskDetail.tsx:124:           {task.venture || 'Workplex'} Task
+src/components/admin/AdminRouteGuard.tsx:67:          This section is restricted to authorized Workplex administrators only.
+src/components/viral/ReferralQRModal.tsx:34:      downloadLink.download = `Workplex-Referral-QR.png`;
+src/components/auth/EmailFirstAuth.tsx:81:        toast.error('Account Already Exists! A Workplex account is already registered with this phone number. Login instead.');
+src/components/auth/EmailFirstAuth.tsx:223:          {isLogin ? 'Login to continue earning' : 'Join Workplex and start earning today'}
+src/components/auth/EmailFirstAuth.tsx:385:            {isLogin ? "New to Workplex? " : "Already have account? "}
+src/components/onboarding/Step7Agreement.tsx:60:          I have read and agree to the Independent Contractor Agreement and the Terms & Conditions of Workplex.
+src/components/ui/Logo.tsx:52:    // We will render beautiful inline SVGs for the Workplex brand since files aren't uploaded yet
+src/components/ui/Logo.tsx:116:      aria-label="Workplex - Earn From Home"
+src/components/chat/AIChatbotWidget.tsx:79:                  <h3 className="font-black text-black uppercase tracking-widest text-sm leading-tight">Workplex Support</h3>
+src/i18n/locales/ta.json:11:      "q2_answer": "[ta] No, Workplex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+src/i18n/locales/ta.json:26:    "existing_account_msg": "[ta] A Workplex account is already registered with this phone number.",
+src/i18n/locales/en.json:11:      "q2_answer": "No, Workplex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+src/i18n/locales/en.json:26:    "existing_account_msg": "A Workplex account is already registered with this phone number.",
+src/i18n/locales/te.json:11:      "q2_answer": "[te] No, Workplex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+src/i18n/locales/te.json:26:    "existing_account_msg": "[te] A Workplex account is already registered with this phone number.",
+src/i18n/locales/kn.json:11:      "q2_answer": "[kn] No, Workplex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+src/i18n/locales/kn.json:26:    "existing_account_msg": "[kn] A Workplex account is already registered with this phone number.",
+src/i18n/locales/mr.json:11:      "q2_answer": "[mr] No, Workplex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+src/i18n/locales/mr.json:26:    "existing_account_msg": "[mr] A Workplex account is already registered with this phone number.",
+src/i18n/locales/ml.json:11:      "q2_answer": "[ml] No, Workplex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+src/i18n/locales/ml.json:26:    "existing_account_msg": "[ml] A Workplex account is already registered with this phone number.",
+src/i18n/locales/gu.json:11:      "q2_answer": "[gu] No, Workplex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+src/i18n/locales/gu.json:26:    "existing_account_msg": "[gu] A Workplex account is already registered with this phone number.",
+src/i18n/locales/hi.json:11:      "q2_answer": "[hi] No, Workplex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+src/i18n/locales/hi.json:26:    "existing_account_msg": "[hi] A Workplex account is already registered with this phone number.",
+src/i18n/locales/bn.json:11:      "q2_answer": "[bn] No, Workplex is completely free to join. In fact, we give you a welcome incentive just for creating your account and completing your profile.",
+src/i18n/locales/bn.json:26:    "existing_account_msg": "[bn] A Workplex account is already registered with this phone number.",
+src/pages/ShopSetupWizard.tsx:78:          { id: 'c1', name: 'Workplex Pro Setup', hvrsBasePrice: 3500, suggestedRetailPrice: 4999, category: 'Electronics', images: ['https://picsum.photos/seed/tech/400/400'], venture }
+src/pages/reseller/ResellerDashboard.tsx:141:              {shop?.shopName || 'Workplex Reseller'}
+src/pages/admin/WithdrawalManagement.tsx:279:            All approved payouts are processed via Workplex Master Merchant Account. Funds will reflect in worker's UPI ID within 2–24 hours based on bank clearance.
+src/pages/ResellerCatalogPage.tsx:50:    ? `Check out ${selectedProduct.name} on Workplex! Only Rs.${selectedProduct.suggestedRetailPrice}. Use my referral code: ${userData?.uid}`
+src/pages/ResellerCatalogPage.tsx:51:    : `Browse the Workplex Reseller Catalog and start earning today!`;
+src/pages/legal/LegalPages.tsx:37:    <p>By accessing and using Workplex, provided by HVRS Innovations, you accept and agree to be bound by the terms and provision of this agreement.</p>
+src/pages/onboarding/Step7Agreement.jsx:47:        <p>SECTION 3 — SERVICES: The Contractor agrees to perform digital marketing tasks, content creation, product promotion, and related services as assigned through the Workplex platform. The Contractor retains full discretion over work hours, methods, and tools used to complete tasks.</p>
+src/pages/onboarding/Step7Agreement.jsx:48:        <p>SECTION 4 — COMPENSATION: The Contractor shall receive commission-based compensation as displayed within the Workplex platform. Earnings are performance-based and not guaranteed...</p>
+src/pages/HomeDashboard.tsx:151:            {userData.venture || 'Workplex'} {userData.role === 'Promoter' ? 'Promoter' : userData.role === 'Lead Marketer' ? 'Lead' : 'Marketer'}
+src/utils/admin/generateTemplate.ts:29:  XLSX.utils.book_append_sheet(wb, ws, "Workplex Catalog");
+src/utils/admin/generateTemplate.ts:31:  XLSX.writeFile(wb, "Workplex_Catalog_Template.xlsx");
+src/constants/gamification.ts:37:  { id: 'elite', name: 'Workplex Elite', description: 'Reach Legend level', icon: Crown, category: 'Activity', rarity: 'Legendary', condition: 'level === "Legend"' },
+public/manifest.json:2:  "name": "Workplex - Earn From Home",
+public/manifest.json:3:  "short_name": "Workplex",
+index.html:6:    <title>Workplex - Earn From Home</title>
+index.html:13:    <meta property="og:title" content="Workplex - Earn From Home" />
+index.html:18:    <meta property="og:image:alt" content="Workplex - Earn From Home" />
+metadata.json:2:  "name": "Workplex",
