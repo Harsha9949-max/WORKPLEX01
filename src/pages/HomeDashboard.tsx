@@ -4,16 +4,48 @@ import { collection, query, where, onSnapshot, limit, orderBy } from 'firebase/f
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { Bell, Settings as SettingsIcon, BrainCircuit, TrendingUp, Calendar, Clock, ClipboardCheck, Gift, ChevronRight, Share2, Award, ArrowRight } from 'lucide-react';
-import { Link, useNavigate, Navigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import TeamSummaryCard from '../components/dashboard/TeamSummaryCard';
+import TeamDashboard from './TeamDashboard';
+import InactiveWarningOverlay from '../components/dashboard/InactiveWarningOverlay';
+import LeadMarketerCelebration from '../components/dashboard/LeadMarketerCelebration';
 
 // Format Helpers
 const formatInr = (amount: number) => `Rs.${amount?.toLocaleString('en-IN') || 0}`;
 
 export default function HomeDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser, userData, loading: authLoading } = useAuth();
   
+  const searchParams = new URLSearchParams(location.search);
+  const tabFromUrl = searchParams.get('tab') || 'earnings';
+
+  const [activeTab, setActiveTab] = useState(sessionStorage.getItem('homeTab') || tabFromUrl);
+  const [showInactiveOverlay, setShowInactiveOverlay] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  
+  useEffect(() => {
+     if (tabFromUrl === 'team' || tabFromUrl === 'earnings') {
+        setActiveTab(tabFromUrl);
+        sessionStorage.setItem('homeTab', tabFromUrl);
+     }
+  }, [tabFromUrl]);
+
+  useEffect(() => {
+     if (userData?.inactiveWarning && userData?.role === 'Lead Marketer') {
+        if (!sessionStorage.getItem('inactiveWarningShown')) {
+           setShowInactiveOverlay(true);
+        }
+     }
+     
+     // Celebration logic
+     if (userData?.role === 'Lead Marketer' && !sessionStorage.getItem('leadCelebrationShown')) {
+        setShowCelebration(true);
+     }
+  }, [userData]);
+
   const [tasks, setTasks] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [isMysteryModalOpen, setIsMysteryModalOpen] = useState(false);
@@ -105,61 +137,87 @@ export default function HomeDashboard() {
     <div className="min-h-screen bg-[#0A0A0A] pb-24 font-sans relative overflow-hidden">
       
       {/* SECTION 1 — STICKY TOP BAR */}
-      <header className="sticky top-0 z-40 bg-[#111111] border-b border-[#2A2A2A] h-16 px-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full border-2 border-[#E8B84B] overflow-hidden bg-[#1A1A1A] shrink-0">
-             {userData.photoURL ? (
-                <img src={userData.photoURL} alt="Profile" className="w-full h-full object-cover" />
-             ) : (
-                <div className="w-full h-full flex justify-center items-center font-bold text-[#E8B84B]">{userData.name?.charAt(0) || 'U'}</div>
-             )}
+      <header className="sticky top-0 z-40 bg-[#111111] border-b border-[#2A2A2A] px-4 flex flex-col justify-center">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full border-2 border-[#E8B84B] overflow-hidden bg-[#1A1A1A] shrink-0">
+               {userData.photoURL ? (
+                  <img src={userData.photoURL} alt="Profile" className="w-full h-full object-cover" />
+               ) : (
+                  <div className="w-full h-full flex justify-center items-center font-bold text-[#E8B84B]">{userData.name?.charAt(0) || 'U'}</div>
+               )}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] text-gray-400 font-medium">{getGreeting()}</span>
+              <span className="text-sm font-bold text-white leading-tight flex items-center gap-1">
+                 {userData.name || 'User'} 
+                 {userData.role === 'Lead Marketer' && <span className="text-[12px]" title="Lead Marketer">👑</span>}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] text-gray-400 font-medium">{getGreeting()}</span>
-            <span className="text-sm font-bold text-white leading-tight truncate max-w-[120px]">{userData.name || 'User'}</span>
+
+          <div 
+            className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shrink-0 mx-2 truncate max-w-[120px] text-center"
+            style={{ backgroundColor: `${ventureColor}20`, color: ventureColor, border: `1px solid ${ventureColor}40` }}
+          >
+            {userData.venture || 'WorkPlex'} {userData.role === 'Promoter' ? 'Promoter' : userData.role === 'Lead Marketer' ? 'Lead' : 'Marketer'}
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+             <button className="relative text-gray-400 hover:text-white transition">
+               <Bell size={20} />
+               {userData?.inactiveWarning && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+             </button>
+             <button onClick={() => navigate('/settings')} className="text-gray-400 hover:text-white transition">
+               <SettingsIcon size={20} />
+             </button>
           </div>
         </div>
 
-        <div 
-          className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shrink-0 mx-2 truncate max-w-[120px] text-center"
-          style={{ backgroundColor: `${ventureColor}20`, color: ventureColor, border: `1px solid ${ventureColor}40` }}
-        >
-          {userData.venture || 'WorkPlex'} {userData.role === 'Promoter' ? 'Promoter' : 'Marketer'}
-        </div>
-
-        <div className="flex items-center gap-3 shrink-0">
-           <button className="relative text-gray-400 hover:text-white transition">
-             <Bell size={20} />
-             <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-           </button>
-           <button onClick={() => navigate('/settings')} className="text-gray-400 hover:text-white transition">
-             <SettingsIcon size={20} />
-           </button>
-        </div>
+        {userData.role === 'Lead Marketer' && (
+          <div className="flex bg-[#1A1A1A] rounded-lg p-1 mb-2 border border-[#2A2A2A]">
+             <button 
+               onClick={() => setActiveTab('earnings')}
+               className={`flex-1 text-[11px] font-bold uppercase tracking-widest py-2 rounded-md transition-colors ${activeTab === 'earnings' ? 'bg-[#2A2A2A] text-white' : 'text-gray-500 hover:text-gray-300'}`}
+             >
+               My Earnings
+             </button>
+             <button 
+               onClick={() => setActiveTab('team')}
+               className={`flex-1 text-[11px] font-bold uppercase tracking-widest py-2 rounded-md transition-colors ${activeTab === 'team' ? 'bg-[#2A2A2A] text-[#8B5CF6]' : 'text-gray-500 hover:text-gray-300'}`}
+             >
+               My Team {userData?.inactiveWarning && '⚠️'}
+             </button>
+          </div>
+        )}
       </header>
 
-      {/* SECTION 8 — ADMIN ANNOUNCEMENTS TICKER */}
-      {announcements.length > 0 && (
-        <div className="bg-gradient-to-r from-[#E8B84B]/20 to-[#00C9A7]/20 border-b border-[#E8B84B]/30 overflow-hidden py-2" >
-           <div className="whitespace-nowrap animate-marquee flex gap-8">
-              {announcements.map((ann, i) => (
-                 <span key={i} className="text-white text-[13px] font-medium flex items-center gap-2">
-                    📢 {ann.text}
-                 </span>
-              ))}
-              {/* Duplicate for seamless looping */}
-              {announcements.map((ann, i) => (
-                 <span key={`dup-${i}`} className="text-white text-[13px] font-medium flex items-center gap-2">
-                    📢 {ann.text}
-                 </span>
-              ))}
-           </div>
-        </div>
-      )}
+      {activeTab === 'team' && userData.role === 'Lead Marketer' ? (
+         <TeamDashboard />
+      ) : (
+         <>
+            {/* SECTION 8 — ADMIN ANNOUNCEMENTS TICKER */}
+            {announcements.length > 0 && (
+              <div className="bg-gradient-to-r from-[#E8B84B]/20 to-[#00C9A7]/20 border-b border-[#E8B84B]/30 overflow-hidden py-2" >
+                 <div className="whitespace-nowrap animate-marquee flex gap-8">
+                    {announcements.map((ann, i) => (
+                       <span key={i} className="text-white text-[13px] font-medium flex items-center gap-2">
+                          📢 {ann.text}
+                       </span>
+                    ))}
+                    {/* Duplicate for seamless looping */}
+                    {announcements.map((ann, i) => (
+                       <span key={`dup-${i}`} className="text-white text-[13px] font-medium flex items-center gap-2">
+                          📢 {ann.text}
+                       </span>
+                    ))}
+                 </div>
+              </div>
+            )}
 
-      <main className="p-4 max-w-5xl mx-auto space-y-6">
+            <main className="p-4 max-w-5xl mx-auto space-y-6">
 
-        {/* SECTION 2 — HERO STREAK CARD */}
+              {/* SECTION 2 — HERO STREAK CARD */}
         <section className="bg-gradient-to-br from-[#1A1A1A] to-[#0A0A0A] border border-[#2A2A2A] rounded-2xl p-5 relative overflow-hidden">
            {/* Fire particles CSS in global or style tag */}
            <div className="flex justify-between items-start mb-6">
@@ -240,6 +298,16 @@ export default function HomeDashboard() {
               <p className="text-[10px] text-gray-400 font-bold mt-1">Releases in 24-48hrs</p>
            </div>
         </section>
+
+         {/* SECTION 3.5 — TEAM SUMMARY CARD (LEAD MARKETER) */}
+         {userData.role === 'Lead Marketer' && (
+            <TeamSummaryCard 
+               teamSize={userData.teamSize || 0}
+               todayCommission={userData.teamCommissionToday || 0}
+               monthCommission={userData.teamEarningsThisMonth || 0}
+               inactiveWarning={userData.inactiveWarning}
+            />
+         )}
 
         {/* SECTION 4 — AI MOTIVATION BANNER */}
         <section className="relative overflow-hidden rounded-2xl border border-[#E8B84B]/30 p-4" style={{ background: 'linear-gradient(135deg, rgba(232,184,75,0.15), rgba(0,201,167,0.15))' }}>
@@ -440,7 +508,29 @@ export default function HomeDashboard() {
            50% { color: #FFF; text-shadow: 0 0 20px rgba(255,255,255,0.8); }
         }
       `}</style>
+      </>
+      )}
 
+      {showInactiveOverlay && (
+        <InactiveWarningOverlay 
+          daysRemaining={userData?.inactiveRemainingDays || 7} 
+          onClose={() => {
+            setShowInactiveOverlay(false);
+            sessionStorage.setItem('inactiveWarningShown', 'true');
+          }} 
+        />
+      )}
+
+      {showCelebration && (
+         <LeadMarketerCelebration 
+           userName={userData?.name || 'User'}
+           onClose={() => {
+              setShowCelebration(false);
+              sessionStorage.setItem('leadCelebrationShown', 'true');
+              setActiveTab('team'); // switch to team tab
+           }}
+         />
+      )}
     </div>
   );
 }

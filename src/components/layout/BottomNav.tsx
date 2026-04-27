@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, ClipboardList, Wallet, User, Tag } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 
-// Mock values for badges (in prod, getting from context or useMarketerData)
+// Mock values for badges 
 const hasPendingTasks = true;
 const hasPendingRelease = true;
 const hasNewBadge = false;
@@ -11,9 +12,12 @@ const hasNewBadge = false;
 export default function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { userData } = useAuth();
   
+  const showHomeWarning = userData?.inactiveWarning;
+
   const tabs = [
-    { path: '/home', icon: Home, label: 'Home', badge: null },
+    { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
     { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
     { path: '/coupon', icon: Tag, label: 'Coupon', badge: null },
     { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },

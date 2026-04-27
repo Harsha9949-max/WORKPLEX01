@@ -210,6 +210,43 @@ export default function ProfileScreen() {
         </div>
       </div>
 
+      {/* Path to Manager Section */}
+      {userData.role === 'Lead Marketer' && (
+        <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-5 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+             <Briefcase className="text-blue-500" size={18} />
+             <h3 className="text-[14px] font-black text-white uppercase tracking-widest">Path to Manager</h3>
+          </div>
+          <p className="text-sm text-gray-400 font-medium mb-4">
+             Become a Manager to unlock <span className="text-white font-bold">10% Team Commission</span>, higher priorities, and custom campaigns!
+          </p>
+          <div className="space-y-4">
+             <div>
+                <div className="flex justify-between items-center mb-1">
+                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Team Size (Target: 30)</span>
+                   <span className={`text-[10px] font-bold ${userData.teamSize >= 30 ? 'text-green-500' : 'text-[#E8B84B]'}`}>
+                      {userData.teamSize || 0} / 30
+                   </span>
+                </div>
+                <div className="w-full bg-[#1A1A1A] h-2 rounded-full overflow-hidden">
+                   <div className="bg-blue-500 h-full rounded-full transition-all" style={{ width: `${Math.min(((userData.teamSize || 0) / 30) * 100, 100)}%`}}></div>
+                </div>
+             </div>
+             <div>
+                <div className="flex justify-between items-center mb-1">
+                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Monthly Team Earnings (Target: Rs.15,000)</span>
+                   <span className={`text-[10px] font-bold ${(userData.teamEarningsThisMonth || 0) >= 15000 ? 'text-green-500' : 'text-[#E8B84B]'}`}>
+                      {formatCurrency(userData.teamEarningsThisMonth || 0)} / 15K
+                   </span>
+                </div>
+                <div className="w-full bg-[#1A1A1A] h-2 rounded-full overflow-hidden">
+                   <div className="bg-blue-500 h-full rounded-full transition-all" style={{ width: `${Math.min(((userData.teamEarningsThisMonth || 0) / 15000) * 100, 100)}%`}}></div>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
       {/* Achievements & Stats */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center items-center text-center">

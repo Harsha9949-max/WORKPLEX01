@@ -150,3 +150,55 @@ export async function generateMysteryTask(uid: string, role: string, venture: st
    return newTask;
 }
 
+export async function checkLeadInactivity() {
+   // Simulated cron job
+   const usersRef = collection(db, 'users');
+   const q = query(usersRef, where('role', '==', 'Lead Marketer'));
+   const snap = await getDocs(q);
+
+   for (const docSnap of snap.docs) {
+      const user = docSnap.data();
+      if (!user.lastActiveDate) continue;
+
+      const lastActiveD = user.lastActiveDate.toDate();
+      const diffDays = (new Date().getTime() - lastActiveD.getTime()) / (1000 * 60 * 60 * 24);
+
+      if (diffDays >= 30 && !user.inactiveWarning) {
+         await updateDoc(docSnap.ref, {
+            inactiveWarning: true,
+            warningStartDate: new Date(),
+            teamTransferDeadline: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000)
+         });
+      } else if (user.inactiveWarning && user.warningStartDate) {
+         const warningDays = (new Date().getTime() - user.warningStartDate.toDate().getTime()) / (1000 * 60 * 60 * 24);
+         if (warningDays >= 7) {
+            await updateDoc(docSnap.ref, {
+               teamTransferred: true,
+               teamSize: 0,
+               inactiveWarning: false
+            });
+         }
+      }
+   }
+}
+
+export async function distributeTeamCommission(workerId: string, earnAmount: number) {
+   // Simulated team commission distribution on task complete
+   const workerSnap = await getDoc(doc(db, 'users', workerId));
+   if (!workerSnap.exists()) return;
+   
+   const worker = workerSnap.data();
+   if (worker.referredBy) {
+      const leadSnap = await getDoc(doc(db, 'users', worker.referredBy));
+      if (leadSnap.exists() && leadSnap.data().role === 'Lead Marketer') {
+         const level1Comm = earnAmount * 0.05;
+         // Add to lead wallet
+         const leadWallets = leadSnap.data().wallets || {};
+         await updateDoc(leadSnap.ref, {
+            'wallets.pending': (leadWallets.pending || 0) + level1Comm
+         });
+      }
+   }
+}
+
+
