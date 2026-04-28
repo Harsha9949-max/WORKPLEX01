@@ -22,12 +22,7 @@ export default function WalletScreen() {
   const isKycDone = !!userData.kycCompletedAt;
   const lifetimeEarnings = (wallets.earned || 0) + (wallets.withdrawn || 0);
   
-  // Dummy data for transactions
-  const dummyTransactions = [
-     { id: 1, type: 'credit', amount: 150, desc: 'Task: App Review', date: Date.now() - 86400000, status: 'success' },
-     { id: 2, type: 'credit', amount: 50, desc: 'Streak Bonus', date: Date.now() - 172800000, status: 'success' },
-     { id: 3, type: 'debit', amount: 500, desc: 'Bank Withdrawal', date: Date.now() - 432000000, status: 'pending' },
-  ];
+  const transactions: any[] = [];
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] p-4 pb-24 font-sans text-white max-w-2xl mx-auto">
@@ -204,29 +199,36 @@ export default function WalletScreen() {
          </div>
          
          <div className="space-y-3">
-            {dummyTransactions.slice(0, showHistory ? 10 : 3).map((txn) => (
-               <div key={txn.id} className="bg-[#111111] border border-[#2A2A2A] p-4 rounded-2xl flex items-center justify-between hover:bg-[#1A1A1A] transition">
-                  <div className="flex items-center gap-3">
-                     <div className={`w-10 h-10 rounded-full flex justify-center items-center ${txn.type === 'credit' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                        {txn.type === 'credit' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
-                     </div>
-                     <div>
-                        <p className="text-white font-bold text-sm">{txn.desc}</p>
-                        <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">{format(new Date(txn.date), 'dd MMM, hh:mm a')}</p>
-                     </div>
-                  </div>
-                  <div className="text-right">
-                     <p className={`font-black tracking-wide ${txn.type === 'credit' ? 'text-green-500' : 'text-red-500'}`}>
-                        {txn.type === 'credit' ? '+' : '-'}{formatCurrency(txn.amount)}
-                     </p>
-                     <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded mt-1 inline-block ${
-                        txn.status === 'success' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'
-                     }`}>
-                        {txn.status}
-                     </span>
-                  </div>
+            {transactions.length === 0 ? (
+               <div className="text-center text-gray-500 py-8 border border-[#2A2A2A] rounded-2xl">
+                  <p className="text-sm font-bold">No transactions yet</p>
+                  <p className="text-xs">Your earnings and withdrawals will appear here</p>
                </div>
-            ))}
+            ) : (
+               transactions.slice(0, showHistory ? 10 : 3).map((txn: any) => (
+                  <div key={txn.id} className="bg-[#111111] border border-[#2A2A2A] p-4 rounded-2xl flex items-center justify-between hover:bg-[#1A1A1A] transition">
+                     <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex justify-center items-center ${txn.type === 'credit' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                           {txn.type === 'credit' ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                        </div>
+                        <div>
+                           <p className="text-white font-bold text-sm">{txn.desc}</p>
+                           <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-0.5">{format(new Date(txn.date), 'dd MMM, hh:mm a')}</p>
+                        </div>
+                     </div>
+                     <div className="text-right">
+                        <p className={`font-black tracking-wide ${txn.type === 'credit' ? 'text-green-500' : 'text-red-500'}`}>
+                           {txn.type === 'credit' ? '+' : '-'}{formatCurrency(txn.amount)}
+                        </p>
+                        <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded mt-1 inline-block ${
+                           txn.status === 'success' ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'
+                        }`}>
+                           {txn.status}
+                        </span>
+                     </div>
+                  </div>
+               ))
+            )}
          </div>
       </div>
 

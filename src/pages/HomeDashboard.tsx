@@ -129,10 +129,10 @@ export default function HomeDashboard() {
 
   const ventureColor = getVentureColor();
   
-  // Dummy wallet stats for now (replace with actual from userData.wallets if present)
-  const earningsToday = 125;
-  const earningsWeek = 650;
-  const pendingWeek = 300;
+  // Use actual wallet data from userData
+  const earningsToday = userData.wallets?.earned || 0;
+  const earningsWeek = userData.wallets?.earned || 0; // Keeping it same since we don't track temporal data yet
+  const pendingWeek = userData.wallets?.pending || 0;
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] pb-24 font-sans relative overflow-hidden">

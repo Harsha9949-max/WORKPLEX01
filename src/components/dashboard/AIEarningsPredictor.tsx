@@ -19,7 +19,7 @@ export default function AIEarningsPredictor() {
         </div>
         <div className="flex-grow">
           <h3 className="text-black font-black text-lg leading-tight">AI Earnings Predictor</h3>
-          <p className="text-black/70 text-xs font-bold uppercase tracking-tight">Complete 4 more tasks → earn Rs.450 extra today</p>
+          <p className="text-black/70 text-xs font-bold uppercase tracking-tight">Complete more tasks → earn extra today</p>
         </div>
         <button className="p-2 rounded-full bg-black/10 hover:bg-black/20 transition-colors">
           <ArrowRight className="w-5 h-5 text-black" />
