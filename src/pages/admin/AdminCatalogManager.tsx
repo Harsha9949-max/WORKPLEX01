@@ -152,7 +152,7 @@ export default function AdminCatalogManager() {
     setLoading(true);
     const q = query(collection(db, 'catalogProducts'), where('venture', '==', activeTab));
     const unsubscribe = onSnapshot(q, (snap) => {
-      const prods = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const prods = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
       prods.sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       setProducts(prods);
       setLoading(false);
@@ -214,7 +214,7 @@ export default function AdminCatalogManager() {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = new Uint8Array(e.target.result);
+        const data = new Uint8Array(e.target.result as ArrayBuffer);
         const workbook = XLSX.read(data, {
           type: 'array',
           cellDates: true,
@@ -806,7 +806,7 @@ export default function AdminCatalogManager() {
                   <ChevronLeft size={16} />
                 </button>
                 {Array.from({length: totalPages}).filter((_, i) => i === 0 || i === totalPages - 1 || Math.abs(i + 1 - currentPage) <= 1).map((_, i, arr) => {
-                  const pageNum = i === 0 ? 1 : i === arr.length - 1 ? totalPages : arr[i-1] + 1 === arr[i] ? arr[i] : null; // simplified pagination display
+                  const pageNum = i === 0 ? 1 : i === arr.length - 1 ? totalPages : (arr[i-1] as number) + 1 === arr[i] ? arr[i] : null; // simplified pagination display
                   return (
                     <button 
                       key={i} 

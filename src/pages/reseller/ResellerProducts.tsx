@@ -10,7 +10,7 @@ import { formatCurrency } from '../../utils/format';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import toast from 'react-hot-toast';
 
-const ProductImage = ({ images, name, size = 40, className = "" }) => {
+const ProductImage = ({ images, name, size = 40, className = "" }: { images?: string[], name?: string, size?: number | 'full', className?: string }) => {
   const [imgError, setImgError] = useState(false);
   const src = images?.[0] || '';
 

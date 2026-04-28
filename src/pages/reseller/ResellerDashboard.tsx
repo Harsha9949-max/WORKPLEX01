@@ -63,8 +63,7 @@ export default function ResellerDashboard() {
     // 3. Listen to Products
     const productsQuery = query(
       collection(db, `partnerProducts/${currentUser.uid}/products`),
-      where('isActive', '==', true),
-      limit(3)
+      where('isActive', '==', true)
     );
 
     const unsubProducts = onSnapshot(productsQuery, (snap) => {
@@ -80,11 +79,28 @@ export default function ResellerDashboard() {
     };
   }, [currentUser]);
 
-  const copyShopLink = () => {
+  const copyShopLink = async () => {
     if (!shop?.shopSlug) return;
     const url = `${window.location.origin}/shop/${shop.shopSlug}`;
     navigator.clipboard.writeText(url);
     toast.success('Shop link copied to clipboard!');
+
+    // Check if other steps are done and we can complete onboarding
+    const hasLogoOrBanner = !!(shop?.logoUrl || shop?.bannerUrl);
+    const hasMin5Products = products.length >= 5;
+
+    if (!shop?.onboardingComplete && hasLogoOrBanner && hasMin5Products && currentUser) {
+      try {
+        const { updateDoc } = await import('firebase/firestore');
+        await updateDoc(doc(db, 'partnerShops', currentUser.uid), {
+          onboardingComplete: true,
+          isActive: true
+        });
+        toast.success('Onboarding complete! Your shop is now live.');
+      } catch (err) {
+        console.error('Failed to update onboarding status', err);
+      }
+    }
   };
 
   const handleForwardOrder = async (orderId: string) => {
@@ -159,19 +175,31 @@ export default function ResellerDashboard() {
         <div className="bg-[#111111] border border-[#2A2A2A] rounded-[8px] p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-white">Getting Started</h2>
-            <span className="text-sm font-bold text-[#E8B84B]">1/5 Complete</span>
+            <span className="text-sm font-bold text-[#E8B84B]">{[
+              true, 
+              !!(shop?.logoUrl || shop?.bannerUrl), 
+              products.length >= 5, 
+              products.length > 0, 
+              false
+            ].filter(Boolean).length}/5 Complete</span>
           </div>
           <div className="w-full bg-[#2A2A2A] h-2 rounded-full mb-6">
-            <div className="bg-[#E8B84B] h-2 rounded-full" style={{ width: '20%' }} />
+            <div className="bg-[#E8B84B] h-2 rounded-full transition-all duration-500" style={{ width: `${([
+              true, 
+              !!(shop?.logoUrl || shop?.bannerUrl), 
+              products.length >= 5, 
+              products.length > 0, 
+              false
+            ].filter(Boolean).length / 5) * 100}%` }} />
           </div>
           
           <div className="space-y-4">
             {[
-              { label: 'Shop created', done: true },
-              { label: 'Add profile photo + banner', done: false },
-              { label: 'Select products (min 5)', done: false },
-              { label: 'Set your margins', done: false },
-              { label: 'Share your shop link', done: false }
+              { label: 'Shop created', done: true, action: null },
+              { label: 'Add profile photo + banner', done: !!(shop?.logoUrl || shop?.bannerUrl), action: () => window.location.href = '/reseller/settings' },
+              { label: 'Select products (min 5)', done: products.length >= 5, action: () => window.location.href = '/reseller/products' },
+              { label: 'Set your margins', done: products.length > 0, action: () => window.location.href = '/reseller/products' },
+              { label: 'Share your shop link', done: false, action: copyShopLink }
             ].map((step, idx) => (
               <div key={idx} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -180,8 +208,8 @@ export default function ResellerDashboard() {
                   </div>
                   <span className={`text-sm ${step.done ? 'text-gray-400 line-through' : 'text-white'}`}>{step.label}</span>
                 </div>
-                {!step.done && (
-                  <button className="text-xs font-bold text-[#E8B84B] hover:text-[#E8B84B]/80 uppercase tracking-widest">
+                {!step.done && step.action && (
+                  <button onClick={step.action} className="text-xs font-bold text-[#E8B84B] hover:text-[#E8B84B]/80 uppercase tracking-widest">
                     Complete Now
                   </button>
                 )}
