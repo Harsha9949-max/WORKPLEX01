@@ -26,6 +26,7 @@ export interface UserData {
     bonus: number;
     savings: number;
     temp?: number;
+    withdrawn?: number;
   };
   // Missing fields for Phase 7 and beyond
   profileCompletion?: number;
@@ -52,6 +53,23 @@ export interface UserData {
   suspended?: boolean;
   incentiveAmount?: number;
   incentiveRevealed?: boolean;
+  inactiveWarning?: boolean;
+  inactiveRemainingDays?: number;
+  totalLeadCount?: number;
+  managerCommissionThisMonth?: number;
+  teamCommissionToday?: number;
+  teamEarningsThisMonth?: number;
+  totalTeamCommission?: number;
+  contentStats?: {
+    totalSubmitted?: number;
+    approvalRate?: number;
+    totalApproved?: number;
+  };
+  kyc?: {
+    status?: string;
+    url?: string;
+    reason?: string;
+  };
 }
 
 interface AuthContextType {

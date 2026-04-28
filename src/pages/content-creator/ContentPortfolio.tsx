@@ -4,12 +4,7 @@ import { Camera, CheckCircle, Clock, XCircle, ExternalLink, Image as ImageIcon, 
 export default function ContentPortfolio() {
    const [filter, setFilter] = useState('all');
 
-   const portfolioItems = [
-      { id: '1', task: 'Unboxing Reel', type: 'video', date: 'Oct 21', status: 'approved', icon: Video, amount: 50 },
-      { id: '2', task: 'Lifestyle Shot', type: 'image', date: 'Oct 20', status: 'approved', icon: ImageIcon, amount: 35 },
-      { id: '3', task: 'Review Blog', type: 'text', date: 'Oct 22', status: 'pending', icon: Type, amount: 40 },
-      { id: '4', task: 'Feature Post', type: 'image', date: 'Oct 18', status: 'rejected', reason: 'Poor lighting', icon: ImageIcon, amount: 0 },
-   ];
+   const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
 
    const filteredItems = filter === 'all' ? portfolioItems : portfolioItems.filter(i => i.status === filter);
 

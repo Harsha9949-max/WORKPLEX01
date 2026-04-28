@@ -5,15 +5,15 @@ import toast from 'react-hot-toast';
 export default function ContentCalendar({ venture }: { venture: string }) {
    const [selectedDay, setSelectedDay] = useState(1);
    
-   const days = [
-      { day: 'Mon 21', status: 'approved', task: 'Unboxing Reel' },
-      { day: 'Tue 22', status: 'submitted', task: 'Product Story' },
-      { day: 'Wed 23', status: 'in-progress', task: 'Features Carousel' },
-      { day: 'Thu 24', status: 'not-started', task: 'Lifestyle Shot' },
-      { day: 'Fri 25', status: 'not-started', task: 'Review Video' },
+   const [days, setDays] = useState<any[]>([
+      { day: 'Mon 21', status: 'none', task: null },
+      { day: 'Tue 22', status: 'none', task: null },
+      { day: 'Wed 23', status: 'none', task: null },
+      { day: 'Thu 24', status: 'none', task: null },
+      { day: 'Fri 25', status: 'none', task: null },
       { day: 'Sat 26', status: 'none', task: null },
       { day: 'Sun 27', status: 'none', task: null },
-   ];
+   ]);
 
    const getBorderColor = (status: string) => {
       switch(status) {

@@ -4,22 +4,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 export default function SubAdminAnalytics({ venture }: { venture: string }) {
    
    // Dummy Data for charts
-   const revenueData = [
-      { name: 'Mon', amount: 1200 },
-      { name: 'Tue', amount: 1900 },
-      { name: 'Wed', amount: 1500 },
-      { name: 'Thu', amount: 2200 },
-      { name: 'Fri', amount: 2800 },
-      { name: 'Sat', amount: 3500 },
-      { name: 'Sun', amount: 3100 },
-   ];
+   const revenueData: any[] = [];
 
-   const earnersData = [
-      { name: 'Rahul', earned: 4500 },
-      { name: 'Priya', earned: 3800 },
-      { name: 'Amit', earned: 3200 },
-      { name: 'Sneha', earned: 2900 },
-   ];
+   const earnersData: any[] = [];
 
    return (
       <div className="space-y-6 pb-12">
@@ -36,10 +23,10 @@ export default function SubAdminAnalytics({ venture }: { venture: string }) {
 
          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-               { label: 'Total Workers', value: '42' },
-               { label: 'Active This Week', value: '18', color: 'text-[#10B981]' },
-               { label: 'Tasks Completed', value: '156' },
-               { label: 'Paid This Month', value: 'Rs.12,450', color: 'text-[#F59E0B]' },
+               { label: 'Total Workers', value: '0' },
+               { label: 'Active This Week', value: '0', color: 'text-[#10B981]' },
+               { label: 'Tasks Completed', value: '0' },
+               { label: 'Paid This Month', value: 'Rs.0', color: 'text-[#F59E0B]' },
             ].map((stat, i) => (
                <div key={i} className="bg-[#111111] border border-[#2A2A2A] p-4 rounded-2xl flex flex-col justify-center">
                   <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">{stat.label}</span>

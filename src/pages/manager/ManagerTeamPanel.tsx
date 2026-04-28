@@ -12,19 +12,10 @@ export default function ManagerTeamPanel() {
    const [activeTab, setActiveTab] = useState('leads'); // 'leads' or 'commission'
 
    useEffect(() => {
-      // Dummy data fetch just to emulate UI
-      setTimeout(() => {
-         setLeads([
-            { id: '1', leadName: 'Vikram Singh', venture: 'BuyRix', teamSize: 14, totalEarnings: 15600, yourCommission: 468, lastActive: 2 },
-            { id: '2', leadName: 'Anjali Sharma', venture: 'Vyuma', teamSize: 8, totalEarnings: 8400, yourCommission: 252, lastActive: 15 },
-         ]);
-      }, 500);
+      // Data fetch will be implemented later
    }, []);
 
-   const chartData = [
-      { week: 'W1', amount: 120 }, { week: 'W2', amount: 250 }, { week: 'W3', amount: 180 }, { week: 'W4', amount: 310 },
-      { week: 'W5', amount: 450 }, { week: 'W6', amount: 390 }, { week: 'W7', amount: 520 }, { week: 'W8', amount: 720 },
-   ];
+   const [chartData, setChartData] = useState<any[]>([]);
 
    return (
       <div className="min-h-screen bg-[#0A0A0A] pb-24 md:pb-0 font-sans text-white md:p-8">
@@ -57,15 +48,15 @@ export default function ManagerTeamPanel() {
                </div>
                <div className="min-w-[150px] bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4">
                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total Members</p>
-                  <p className="text-2xl font-black text-white">22</p>
+                  <p className="text-2xl font-black text-white">{userData.teamSize || 0}</p>
                </div>
                <div className="min-w-[150px] bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4">
                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">This Month</p>
-                  <p className="text-2xl font-black text-[#F59E0B]">Rs.720</p>
+                  <p className="text-2xl font-black text-[#F59E0B]">Rs.{userData.managerCommissionThisMonth || 0}</p>
                </div>
                <div className="min-w-[150px] bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4">
                   <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">All-Time</p>
-                  <p className="text-2xl font-black text-[#00C9A7]">Rs.2,940</p>
+                  <p className="text-2xl font-black text-[#00C9A7]">Rs.{userData.totalEarned || 0}</p>
                </div>
             </div>
 
@@ -155,19 +146,11 @@ export default function ManagerTeamPanel() {
                         </tr>
                      </thead>
                      <tbody>
-                        <tr className="border-t border-[#2A2A2A]">
-                           <td className="px-4 py-3">Oct 24, 2023</td>
-                           <td className="px-4 py-3">Vikram Singh<br/><span className="text-[10px] text-gray-500">Source: Aman</span></td>
-                           <td className="px-4 py-3">Rs.30</td>
-                           <td className="px-4 py-3 font-bold text-[#F59E0B]">Rs.0.90</td>
-                           <td className="px-4 py-3"><span className="text-[#10B981] text-[10px] uppercase font-bold tracking-widest bg-[#10B981]/20 px-2 py-1 rounded">Released</span></td>
-                        </tr>
-                        <tr className="border-t border-[#2A2A2A]">
-                           <td className="px-4 py-3">Oct 24, 2023</td>
-                           <td className="px-4 py-3">Anjali Sharma<br/><span className="text-[10px] text-gray-500">Source: Priya</span></td>
-                           <td className="px-4 py-3">Rs.45</td>
-                           <td className="px-4 py-3 font-bold text-[#F59E0B]">Rs.1.35</td>
-                           <td className="px-4 py-3"><span className="text-yellow-500 text-[10px] uppercase font-bold tracking-widest bg-yellow-500/20 px-2 py-1 rounded">Pending</span></td>
+                        <tr>
+                           <td colSpan={5} className="py-12 text-center text-gray-500">
+                              <p className="font-bold">No commission records yet</p>
+                              <p className="text-xs">Your leads' completions will appear here.</p>
+                           </td>
                         </tr>
                      </tbody>
                   </table>

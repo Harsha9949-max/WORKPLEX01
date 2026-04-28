@@ -12,7 +12,7 @@ export default function SubAdminWithdrawals({ venture, subAdminId }: { venture: 
       if (!venture) return;
       const q = query(collection(db, 'withdrawals'), where('venture', '==', venture));
       const unsubscribe = onSnapshot(q, (snapshot) => {
-         const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+         const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
          setWithdrawals(list);
          
          // Calculate simple daily approved for this SubAdmin (dummy calculation for now)

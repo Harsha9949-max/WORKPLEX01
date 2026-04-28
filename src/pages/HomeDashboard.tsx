@@ -280,7 +280,7 @@ export default function HomeDashboard() {
                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Today's Earnings</span>
               </div>
               <p className="text-2xl font-black text-white">{formatInr(earningsToday)}</p>
-              <p className="text-[10px] text-[#00C9A7] font-bold mt-1 bg-[#00C9A7]/10 inline-block px-1.5 py-0.5 rounded">+Rs.45 from yesterday</p>
+              <p className="text-[10px] text-[#00C9A7] font-bold mt-1 bg-[#00C9A7]/10 inline-block px-1.5 py-0.5 rounded">Updated today</p>
            </div>
 
            <div className="min-w-[200px] bg-[#111111] border border-[#2A2A2A] p-4 rounded-xl snap-start relative overflow-hidden">
@@ -290,7 +290,7 @@ export default function HomeDashboard() {
                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">This Week</span>
               </div>
               <p className="text-2xl font-black text-white">{formatInr(earningsWeek)}</p>
-              <p className="text-[10px] text-gray-400 font-bold mt-1">12 tasks completed</p>
+              <p className="text-[10px] text-gray-400 font-bold mt-1">Keep it up!</p>
            </div>
 
            <div className="min-w-[200px] bg-[#111111] border border-[#2A2A2A] p-4 rounded-xl snap-start relative overflow-hidden">
@@ -432,7 +432,7 @@ export default function HomeDashboard() {
                  </div>
                  <div>
                     <h4 className="text-[#E8B84B] font-black text-[13px] uppercase tracking-widest mb-1">AI Earnings Predictor</h4>
-                    <p className="text-sm text-white font-medium leading-snug">Complete 3 more tasks → earn Rs.85 extra today</p>
+                    <p className="text-sm text-white font-medium leading-snug">Complete more tasks → earn extra today</p>
                     <p className="text-[10px] text-gray-400 mt-1">Based on your performance</p>
                  </div>
               </div>

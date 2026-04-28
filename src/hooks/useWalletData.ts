@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 export function useWalletData() {
   const { currentUser } = useAuth();
   const [data, setData] = useState({
-    wallets: { earned: 0, pending: 0, bonus: 0, savings: 0 },
+    wallets: { earned: 0, pending: 0, bonus: 0, savings: 0, withdrawn: 0 } as any,
     savingsPercent: 0,
     kycDone: false,
     transactions: [] as any[],
@@ -23,7 +23,7 @@ export function useWalletData() {
         const uData = doc.data();
         setData(prev => ({
           ...prev,
-          wallets: uData.wallets || { earned: 0, pending: 0, bonus: 0, savings: 0 },
+          wallets: uData.wallets || { earned: 0, pending: 0, bonus: 0, savings: 0, withdrawn: 0 },
           savingsPercent: uData.savingsPercent || 0,
           kycDone: uData.kycDone || false
         }));
