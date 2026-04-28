@@ -51,7 +51,7 @@ const ProductImage = ({ images, name, size = 40, className = "" }: { images?: st
 };
 
 export default function ResellerProducts() {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   const [shop, setShop] = useState<any>(null);
   const [myProducts, setMyProducts] = useState<any[]>([]);
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
@@ -85,11 +85,13 @@ export default function ResellerProducts() {
 
   // Load Catalog Products
   const loadCatalog = async () => {
-    if (!shop?.venture) return;
+    const currentVenture = shop?.venture || userData?.venture || 'BuyRix';
+    if (!currentVenture) return;
+    
     try {
       const q = query(
         collection(db, 'catalogProducts'),
-        where('venture', '==', shop.venture),
+        where('venture', '==', currentVenture),
         where('isActive', '==', true)
       );
       const snap = await getDocs(q);
@@ -103,10 +105,11 @@ export default function ResellerProducts() {
     if (showCatalogModal) {
       loadCatalog();
     }
-  }, [showCatalogModal, shop?.venture]);
+  }, [showCatalogModal, shop?.venture, userData?.venture]);
 
   const handleAddProduct = async (catalogProd: any, sellingPrice: number) => {
     if (!currentUser || !shop) return;
+    const currentVenture = shop?.venture || userData?.venture || 'BuyRix';
     try {
       const docRef = doc(db, `partnerProducts/${currentUser.uid}/products`, catalogProd.id);
       await setDoc(docRef, {
@@ -119,7 +122,7 @@ export default function ResellerProducts() {
         category: catalogProd.category || 'General',
         description: catalogProd.description || '',
         isActive: true,
-        venture: shop.venture,
+        venture: currentVenture,
         addedAt: serverTimestamp()
       });
       toast.success('Product added to your shop!');
@@ -305,7 +308,7 @@ export default function ResellerProducts() {
               <div className="flex items-center justify-between p-6 border-b border-[#2A2A2A]">
                 <div>
                   <h2 className="text-xl font-bold text-white">HVRS Catalog</h2>
-                  <p className="text-sm text-gray-400">Available products for {shop?.venture || 'your venture'}</p>
+                  <p className="text-sm text-gray-400">Available products for {shop?.venture || userData?.venture || 'BuyRix'}</p>
                 </div>
                 <button onClick={() => setShowCatalogModal(false)} className="p-2 text-gray-400 hover:text-white rounded bg-[#1A1A1A] hover:bg-[#2A2A2A] transition-colors">
                   <X size={20} />
