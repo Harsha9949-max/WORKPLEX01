@@ -10,6 +10,46 @@ import { formatCurrency } from '../../utils/format';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import toast from 'react-hot-toast';
 
+const ProductImage = ({ images, name, size = 40, className = "" }) => {
+  const [imgError, setImgError] = useState(false);
+  const src = images?.[0] || '';
+
+  if (!src || imgError) {
+    return (
+      <div 
+        className={className}
+        style={{
+          width: size === 'full' ? '100%' : size, 
+          height: size === 'full' ? '100%' : size,
+          background: '#2A2A2A',
+          borderRadius: 6,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: size === 'full' ? 48 : 18
+        }}
+      >
+        📦
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={name}
+      className={className}
+      style={{
+        width: size === 'full' ? '100%' : size,
+        height: size === 'full' ? '100%' : size,
+        objectFit: 'cover',
+        borderRadius: 6
+      }}
+      onError={() => setImgError(true)}
+    />
+  );
+};
+
 export default function ResellerProducts() {
   const { currentUser } = useAuth();
   const [shop, setShop] = useState<any>(null);
@@ -73,9 +113,9 @@ export default function ResellerProducts() {
         productId: catalogProd.id,
         name: catalogProd.name,
         images: catalogProd.images || [],
-        hvrsBasePrice: catalogProd.price,
+        hvrsBasePrice: catalogProd.hvrsBasePrice,
         partnerSellingPrice: sellingPrice,
-        partnerMargin: sellingPrice - catalogProd.price,
+        partnerMargin: sellingPrice - catalogProd.hvrsBasePrice,
         category: catalogProd.category || 'General',
         description: catalogProd.description || '',
         isActive: true,
@@ -185,7 +225,7 @@ export default function ResellerProducts() {
                   <tr key={prod.id} className="hover:bg-white/5 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <img src={prod.images?.[0] || 'https://placehold.co/100x100/1A1A1A/FFFFFF'} alt={prod.name} className="w-10 h-10 rounded border border-[#2A2A2A] object-cover" />
+                        <ProductImage images={prod.images} name={prod.name} size={40} />
                         <span className="font-medium text-white">{prod.name}</span>
                       </div>
                     </td>
@@ -295,7 +335,7 @@ export default function ResellerProducts() {
                     return (
                       <div key={p.id} className="bg-[#111111] border border-[#2A2A2A] rounded-lg overflow-hidden flex flex-col group hover:border-[#E8B84B]/50 transition-colors">
                         <div className="aspect-square bg-[#1A1A1A] relative">
-                          <img src={p.images?.[0] || 'https://placehold.co/300x300/1A1A1A/FFFFFF'} alt={p.name} className="w-full h-full object-cover" />
+                          <ProductImage images={p.images} name={p.name} size="full" />
                           <div className="absolute top-2 right-2 bg-black/60 backdrop-blur text-[10px] font-bold px-2 py-1 rounded text-white capitalize">
                             {p.category}
                           </div>
@@ -305,11 +345,11 @@ export default function ResellerProducts() {
                           <div className="flex justify-between items-end mb-4">
                             <div>
                               <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Base Price</p>
-                              <p className="text-lg font-black text-gray-300">{formatCurrency(p.price)}</p>
+                              <p className="text-lg font-black text-gray-300">{formatCurrency(p.hvrsBasePrice)}</p>
                             </div>
                             <div className="text-right">
                               <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sug. Retail</p>
-                              <p className="text-sm font-bold text-gray-400">{formatCurrency(p.price * 1.5)}</p>
+                              <p className="text-sm font-bold text-gray-400">{formatCurrency(p.suggestedRetailPrice)}</p>
                             </div>
                           </div>
                           <div className="mt-auto">
@@ -342,7 +382,7 @@ export default function ResellerProducts() {
 
 function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, price: number) => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [price, setPrice] = useState(product.price * 1.5);
+  const [price, setPrice] = useState(product.suggestedRetailPrice || product.hvrsBasePrice * 1.5);
 
   if (!isOpen) {
     return (
@@ -355,7 +395,7 @@ function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, pr
     );
   }
 
-  const margin = price - product.price;
+  const margin = price - product.hvrsBasePrice;
 
   return (
     <div className="bg-[#1A1A1A] p-3 rounded border border-[#00C9A7]">
@@ -382,13 +422,13 @@ function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, pr
         </button>
         <button 
           onClick={() => {
-            if (price < product.price) {
-              toast.error(`Price must be above Rs. ${product.price}`);
+            if (price < product.hvrsBasePrice) {
+              toast.error(`Price must be above Rs. ${product.hvrsBasePrice}`);
               return;
             }
             onAdd(product, price);
           }}
-          disabled={price < product.price}
+          disabled={price < product.hvrsBasePrice}
           className="flex-1 py-1.5 bg-[#E8B84B] text-black rounded text-xs font-bold hover:bg-[#E8B84B]/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Confirm Add
