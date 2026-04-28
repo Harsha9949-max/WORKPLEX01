@@ -105,7 +105,7 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug, rese
                 <div>
                   <h3 className="text-3xl font-black text-white uppercase tracking-tighter">Order Success!</h3>
                   <p className="text-gray-500 text-sm font-bold mt-2 uppercase tracking-widest leading-relaxed">
-                    Your order for {product?.productData?.name} has been placed.
+                    Your order for {product?.name || product?.productData?.name} has been placed.
                   </p>
                 </div>
                 <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
@@ -132,9 +132,9 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug, rese
                 <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto no-scrollbar">
                   {/* Order Preview */}
                   <div className="flex gap-4 bg-white/5 p-4 rounded-3xl border border-white/5">
-                    <img src={product?.productData?.image} className="w-16 h-16 rounded-2xl object-cover" />
+                    <img src={product?.images?.[0] || product?.productData?.image || 'https://via.placeholder.com/400'} className="w-16 h-16 rounded-2xl object-cover" />
                     <div>
-                      <h4 className="text-xs font-black text-white uppercase tracking-tight">{product?.productData?.name}</h4>
+                      <h4 className="text-xs font-black text-white uppercase tracking-tight">{product?.name || product?.productData?.name}</h4>
                       <p className="text-lg font-black text-teal-500">Rs.{product?.partnerSellingPrice}</p>
                     </div>
                   </div>

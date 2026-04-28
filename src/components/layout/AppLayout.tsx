@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { userData } = useAuth();
+  
+  useEffect(() => {
+     if (userData?.role === 'Sub-Admin' && !location.pathname.startsWith('/sub-admin')) {
+        navigate('/sub-admin', { replace: true });
+     }
+  }, [userData?.role, location.pathname, navigate]);
   
   // Pages that show bottom nav:
   const showNavPages = [

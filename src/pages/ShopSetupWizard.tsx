@@ -143,15 +143,15 @@ export default function ShopSetupWizard() {
       for (const p of selectedProducts) {
         await setDoc(doc(db, 'partnerProducts', currentUser.uid, 'products', p.id), {
           productId: p.id,
+          name: p.name,
+          images: p.images || [],
+          category: p.category || 'General',
+          description: p.description || '',
           hvrsBasePrice: p.hvrsBasePrice,
           partnerSellingPrice: p.partnerSellingPrice,
           partnerMargin: p.partnerSellingPrice - p.hvrsBasePrice,
-          productData: {
-            name: p.name,
-            image: p.images[0],
-            category: p.category
-          },
-          isActive: true
+          isActive: true,
+          addedAt: serverTimestamp()
         });
       }
 

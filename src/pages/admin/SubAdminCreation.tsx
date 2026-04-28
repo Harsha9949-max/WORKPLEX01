@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { 
   collection, 
   query, 
+  where,
   getDocs, 
   doc, 
   setDoc, 
@@ -11,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
-import { UserPlus, Shield, X, Mail, Layers, Trash2, Check } from 'lucide-react';
+import { UserPlus, Shield, Mail, Layers, Trash2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 /**
@@ -21,11 +22,11 @@ import toast from 'react-hot-toast';
 export default function SubAdminCreation() {
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Form State
   const [form, setForm] = useState({
     email: '',
-    uid: '',
     role: 'Sub-Admin' as const,
     assignedVentures: [] as string[]
   });
@@ -49,30 +50,46 @@ export default function SubAdminCreation() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.email || !form.uid || form.assignedVentures.length === 0) {
+    if (!form.email || form.assignedVentures.length === 0) {
       toast.error('Complete all fields and assign at least one venture');
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      // 1. Add to admins collection (for global admin list)
-      await setDoc(doc(db, 'admins', form.uid), {
-        email: form.email,
+      // 1. Find user by email
+      const q = query(collection(db, 'users'), where('email', '==', form.email.toLowerCase().trim()));
+      const snap = await getDocs(q);
+      
+      if (snap.empty) {
+        toast.error('No worker found with this Gmail address. They must sign up first.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const userId = snap.docs[0].id;
+
+      // 2. Add to admins collection (for global admin list)
+      await setDoc(doc(db, 'admins', userId), {
+        email: form.email.toLowerCase().trim(),
         role: 'Sub-Admin', // Standardize on 'Sub-Admin'
         assignedVentures: form.assignedVentures,
         createdAt: serverTimestamp()
       });
       
-      // 2. Update user's role in users collection to reflect instantly
-      await setDoc(doc(db, 'users', form.uid), {
-        role: 'Sub-Admin'
+      // 3. Update user's role in users collection to reflect instantly
+      await setDoc(doc(db, 'users', userId), {
+        role: 'Sub-Admin',
+        venture: form.assignedVentures[0] || 'BuyRix'
       }, { merge: true });
 
       toast.success('Sub-Admin access granted! 🛡️');
-      setForm({ email: '', uid: '', role: 'Sub-Admin' as any, assignedVentures: [] });
+      setForm({ email: '', role: 'Sub-Admin' as any, assignedVentures: [] });
       fetchAdmins();
-    } catch (error) {
-      toast.error('Failed to create sub-admin');
+    } catch (error: any) {
+      toast.error('Failed to create sub-admin: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -117,32 +134,18 @@ export default function SubAdminCreation() {
           <form onSubmit={handleCreate} className="space-y-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                <Mail size={12} className="text-[#E8B84B]" /> Admin Email Address
+                <Mail size={12} className="text-[#E8B84B]" /> Admin Gmail Address
               </label>
               <input 
                 type="email"
-                placeholder="email@example.com"
+                placeholder="worker@gmail.com"
                 value={form.email}
                 onChange={e => setForm({...form, email: e.target.value})}
                 className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white px-5 py-4 rounded-2xl focus:border-[#E8B84B] outline-none text-sm font-bold"
                 required
               />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                <Shield size={12} className="text-[#E8B84B]" /> Firebase UID
-              </label>
-              <input 
-                type="text"
-                placeholder="User-specific unique identifier"
-                value={form.uid}
-                onChange={e => setForm({...form, uid: e.target.value})}
-                className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white px-5 py-4 rounded-2xl focus:border-[#E8B84B] outline-none text-xs font-mono"
-                required
-              />
               <p className="text-[8px] text-gray-600 font-bold uppercase tracking-widest mt-1 ml-1 px-2 py-1 bg-white/5 rounded-lg w-fit italic">
-                Get this from Worker Management Profile
+                Worker must have already signed up with this email
               </p>
             </div>
 
@@ -176,9 +179,10 @@ export default function SubAdminCreation() {
             <div className="pt-8">
               <button 
                 type="submit"
-                className="w-full bg-white text-black py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all shadow-2xl flex items-center justify-center gap-2 group"
+                disabled={isSubmitting}
+                className="w-full bg-white text-black py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all shadow-2xl flex items-center justify-center gap-2 group disabled:opacity-50"
               >
-                Appoint Sub-Admin <Shield size={16} className="group-hover:rotate-12 transition-transform" />
+                {isSubmitting ? 'Appointing...' : 'Appoint Sub-Admin'} <Shield size={16} className="group-hover:rotate-12 transition-transform" />
               </button>
             </div>
           </form>
@@ -204,7 +208,7 @@ export default function SubAdminCreation() {
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-[#E8B84B]/10 text-[#E8B84B] flex items-center justify-center font-black">
-                    {admin.email?.charAt(0).toUpperCase()}
+                    {admin.email?.charAt(0).toUpperCase() || '?'}
                   </div>
                   <div>
                     <h4 className="text-sm font-black text-white uppercase tracking-tight">{admin.email}</h4>
@@ -221,7 +225,7 @@ export default function SubAdminCreation() {
                     <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-0.5">Role</p>
                     <p className="text-[10px] font-black text-white uppercase tracking-widest">{admin.role}</p>
                   </div>
-                  {admin.email !== 'marateyh@gmail.com' && (
+                  {admin.email !== 'marateyh@gmail.com' && admin.role === 'Sub-Admin' && (
                     <button 
                       onClick={() => handleDelete(admin.id)}
                       className="p-3 bg-[#EF4444]/10 text-[#EF4444] rounded-xl border border-[#EF4444]/10 hover:bg-[#EF4444]/20 transition-all opacity-0 group-hover:opacity-100"

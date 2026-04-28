@@ -206,7 +206,7 @@ export default function PublicShopPage() {
           >
             <div className="relative aspect-square">
               <img 
-                src={product.productData.image} 
+                src={product.images?.[0] || product.productData?.image || 'https://via.placeholder.com/400'} 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 font-bold" 
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
@@ -219,7 +219,7 @@ export default function PublicShopPage() {
               </div>
             </div>
             <div className="p-5 space-y-4">
-              <h3 className="text-xs font-black uppercase leading-snug line-clamp-2">{product.productData.name}</h3>
+              <h3 className="text-xs font-black uppercase leading-snug line-clamp-2">{product.name || product.productData?.name}</h3>
               <button 
                 onClick={() => setSelectedProduct(product)}
                 className={`w-full py-4 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all ${buttonClass}`}

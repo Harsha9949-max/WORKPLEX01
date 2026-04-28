@@ -35,6 +35,11 @@ export default function HomeDashboard() {
   }, [tabFromUrl]);
 
   useEffect(() => {
+     if (userData?.role === 'Sub-Admin') {
+        navigate('/sub-admin', { replace: true });
+        return;
+     }
+
      if (userData?.inactiveWarning && userData?.role === 'Lead Marketer') {
         if (!sessionStorage.getItem('inactiveWarningShown')) {
            setShowInactiveOverlay(true);
@@ -45,7 +50,7 @@ export default function HomeDashboard() {
      if (userData?.role === 'Lead Marketer' && !sessionStorage.getItem('leadCelebrationShown')) {
         setShowCelebration(true);
      }
-  }, [userData]);
+  }, [userData, navigate]);
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
