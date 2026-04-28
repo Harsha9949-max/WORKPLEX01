@@ -79,26 +79,42 @@ export default function ResellerDashboard() {
     };
   }, [currentUser]);
 
+  // Automatically recognize onboarding completion
+  useEffect(() => {
+    if (!shop || shop.onboardingComplete || !currentUser) return;
+    
+    // Check completion
+    const hasLogoOrBanner = !!(shop?.logo || shop?.branding?.logo || shop?.branding?.bannerImage);
+    const hasMin5Products = products.length >= 5;
+    const hasSharedLink = !!shop.hasSharedLink;
+
+    if (hasLogoOrBanner && hasMin5Products && hasSharedLink) {
+      import('firebase/firestore').then(({ updateDoc }) => {
+        updateDoc(doc(db, 'partnerShops', currentUser.uid), {
+          onboardingComplete: true,
+          isActive: true
+        }).then(() => {
+          toast.success('Onboarding complete! Your shop is now live.', { id: 'onboarding-complete' });
+        }).catch(console.error);
+      });
+    }
+  }, [shop, products.length, currentUser]);
+
   const copyShopLink = async () => {
     if (!shop?.shopSlug) return;
     const url = `${window.location.origin}/shop/${shop.shopSlug}`;
     navigator.clipboard.writeText(url);
     toast.success('Shop link copied to clipboard!');
 
-    // Check if other steps are done and we can complete onboarding
-    const hasLogoOrBanner = !!(shop?.logoUrl || shop?.bannerUrl);
-    const hasMin5Products = products.length >= 5;
-
-    if (!shop?.onboardingComplete && hasLogoOrBanner && hasMin5Products && currentUser) {
+    // Mark that they shared the link
+    if (!shop?.hasSharedLink && currentUser) {
       try {
         const { updateDoc } = await import('firebase/firestore');
         await updateDoc(doc(db, 'partnerShops', currentUser.uid), {
-          onboardingComplete: true,
-          isActive: true
+          hasSharedLink: true
         });
-        toast.success('Onboarding complete! Your shop is now live.');
       } catch (err) {
-        console.error('Failed to update onboarding status', err);
+        console.error('Failed to update shared status', err);
       }
     }
   };
@@ -177,29 +193,29 @@ export default function ResellerDashboard() {
             <h2 className="text-lg font-bold text-white">Getting Started</h2>
             <span className="text-sm font-bold text-[#E8B84B]">{[
               true, 
-              !!(shop?.logoUrl || shop?.bannerUrl), 
+              !!(shop?.logo || shop?.branding?.logo || shop?.branding?.bannerImage), 
               products.length >= 5, 
               products.length > 0, 
-              false
+              !!shop?.hasSharedLink
             ].filter(Boolean).length}/5 Complete</span>
           </div>
           <div className="w-full bg-[#2A2A2A] h-2 rounded-full mb-6">
             <div className="bg-[#E8B84B] h-2 rounded-full transition-all duration-500" style={{ width: `${([
               true, 
-              !!(shop?.logoUrl || shop?.bannerUrl), 
+              !!(shop?.logo || shop?.branding?.logo || shop?.branding?.bannerImage), 
               products.length >= 5, 
               products.length > 0, 
-              false
+              !!shop?.hasSharedLink
             ].filter(Boolean).length / 5) * 100}%` }} />
           </div>
           
           <div className="space-y-4">
             {[
               { label: 'Shop created', done: true, action: null },
-              { label: 'Add profile photo + banner', done: !!(shop?.logoUrl || shop?.bannerUrl), action: () => window.location.href = '/reseller/settings' },
+              { label: 'Add profile photo + banner', done: !!(shop?.logo || shop?.branding?.logo || shop?.branding?.bannerImage), action: () => window.location.href = '/reseller/settings' },
               { label: 'Select products (min 5)', done: products.length >= 5, action: () => window.location.href = '/reseller/products' },
               { label: 'Set your margins', done: products.length > 0, action: () => window.location.href = '/reseller/products' },
-              { label: 'Share your shop link', done: false, action: copyShopLink }
+              { label: 'Share your shop link', done: !!shop?.hasSharedLink, action: copyShopLink }
             ].map((step, idx) => (
               <div key={idx} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
