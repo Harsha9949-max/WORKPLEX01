@@ -26,7 +26,7 @@ export default function SubAdminCreation() {
   const [form, setForm] = useState({
     email: '',
     uid: '',
-    role: 'SubAdmin' as const,
+    role: 'Sub-Admin' as const,
     assignedVentures: [] as string[]
   });
 
@@ -55,14 +55,21 @@ export default function SubAdminCreation() {
     }
 
     try {
+      // 1. Add to admins collection (for global admin list)
       await setDoc(doc(db, 'admins', form.uid), {
         email: form.email,
-        role: form.role,
+        role: 'Sub-Admin', // Standardize on 'Sub-Admin'
         assignedVentures: form.assignedVentures,
         createdAt: serverTimestamp()
       });
+      
+      // 2. Update user's role in users collection to reflect instantly
+      await setDoc(doc(db, 'users', form.uid), {
+        role: 'Sub-Admin'
+      }, { merge: true });
+
       toast.success('Sub-Admin access granted! 🛡️');
-      setForm({ email: '', uid: '', role: 'SubAdmin', assignedVentures: [] });
+      setForm({ email: '', uid: '', role: 'Sub-Admin' as any, assignedVentures: [] });
       fetchAdmins();
     } catch (error) {
       toast.error('Failed to create sub-admin');
@@ -73,6 +80,12 @@ export default function SubAdminCreation() {
     if (!window.confirm('Revoke admin access? This cannot be undone.')) return;
     try {
       await deleteDoc(doc(db, 'admins', id));
+      
+      // Also downgrade their role in the users collection instantly
+      await setDoc(doc(db, 'users', id), {
+        role: 'Worker' // Default back to worker
+      }, { merge: true });
+      
       toast.success('Access revoked');
       fetchAdmins();
     } catch (error) {

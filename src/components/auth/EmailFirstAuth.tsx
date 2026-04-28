@@ -73,8 +73,9 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       return;
     }
     
-    // Check if phone already registered via phoneDirectory
+    // Check if phone already registered via phoneDirectory or users collection
     try {
+      // 1. Check phone directory
       const phoneDocRef = doc(db, 'phoneDirectory', phoneNumber);
       const phoneSnap = await getDoc(phoneDocRef);
       if (phoneSnap.exists()) {
@@ -82,11 +83,21 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         navigate('/login');
         return;
       }
+
+      // 2. Check users collection (for workers added via admin panel)
+      // Check both formats since AddWorkerModal uses +91 prefix
+      const q1 = query(collection(db, 'users'), where('phone', '==', phoneNumber));
+      const q2 = query(collection(db, 'users'), where('phone', '==', `+91${phoneNumber}`));
+      
+      const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+      
+      if (!snap1.empty || !snap2.empty) {
+        toast.error('Account Already Exists! A WorkPlex account is already registered with this phone number (found in system). Login instead.');
+        navigate('/login');
+        return;
+      }
     } catch (error) {
       console.error('Error checking phone uniqueness:', error);
-      // Fail open or fail closed? The user specifically wanted NO OTP if it exists.
-      // If we got an error, we should assume it might exist and prevent? Better not to brick registration.
-      // But we just added a public read/write permission to phoneDirectory, so it should not error.
     }
 
 
