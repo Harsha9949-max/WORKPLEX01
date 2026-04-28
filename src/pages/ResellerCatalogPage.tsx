@@ -21,6 +21,7 @@ import WhatsAppShareModal from '../components/viral/WhatsAppShareModal';
 import toast from 'react-hot-toast';
 
 import { useCatalogProducts } from '../hooks/admin/useCatalogProducts';
+import { db } from '../lib/firebase';
 
 export default function ResellerCatalogPage() {
   const { userData } = useAuth();
@@ -259,9 +260,28 @@ export default function ResellerCatalogPage() {
                       Share
                     </button>
                     <button 
-                      onClick={() => {
-                        toast.success('Product added to your shop!');
-                        setSelectedProduct(null);
+                      onClick={async () => {
+                        try {
+                          const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+                          const docRef = doc(db, `partnerProducts/${userData?.uid}/products`, selectedProduct.id);
+                          await setDoc(docRef, {
+                            productId: selectedProduct.id,
+                            name: selectedProduct.name,
+                            images: selectedProduct.images || [],
+                            hvrsBasePrice: selectedProduct.hvrsBasePrice,
+                            partnerSellingPrice: selectedProduct.suggestedRetailPrice || (selectedProduct.hvrsBasePrice * 1.5),
+                            partnerMargin: (selectedProduct.suggestedRetailPrice || (selectedProduct.hvrsBasePrice * 1.5)) - selectedProduct.hvrsBasePrice,
+                            category: selectedProduct.category || 'General',
+                            description: selectedProduct.description || '',
+                            isActive: true,
+                            venture: currentVenture,
+                            addedAt: serverTimestamp()
+                          });
+                          toast.success('Product added to your shop!');
+                          setSelectedProduct(null);
+                        } catch (err: any) {
+                          toast.error('Failed to add product: ' + err.message);
+                        }
                       }}
                       className="flex-[2] bg-[#E8B84B] text-black py-5 rounded-[32px] font-black uppercase tracking-widest shadow-xl shadow-[#E8B84B]/20 active:scale-95 transition-all"
                     >

@@ -29,11 +29,15 @@ export function useCatalogProducts(adminUserId: string, venture: string = 'BuyRi
     setLoading(true);
     const q = query(
       collection(db, 'catalogProducts'), 
-      where('venture', '==', venture),
-      orderBy('createdAt', 'desc')
+      where('venture', '==', venture)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as CatalogProduct));
+      let data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as CatalogProduct));
+      data.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || 0;
+        const bTime = b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
       setProducts(data);
       setLoading(false);
     }, (error) => {

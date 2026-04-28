@@ -377,6 +377,10 @@ export default function AdminCatalogManager() {
         toast(`⚠️ ${duplicates.length} duplicate products skipped. Uploading ${newProducts.length} new.`, { icon: '⚠️' });
       }
 
+      // Get all reseller shops for this venture
+      const shopsQuery = await getDocs(query(collection(db, 'partnerShops'), where('venture', '==', activeTab)));
+      const resellerShops = shopsQuery.docs.map(doc => doc.id);
+
       // Batch upload in chunks of 20
       const chunks = [];
       for (let i = 0; i < newProducts.length; i += 20) {
@@ -385,8 +389,17 @@ export default function AdminCatalogManager() {
 
       let uploaded = 0;
       for (const chunk of chunks) {
-        const batch = writeBatch(db);
-        chunk.forEach(product => {
+        let batch = writeBatch(db);
+        let batchCount = 0;
+        const commitAndReset = async () => {
+             if (batchCount > 0) {
+                 await batch.commit();
+                 batch = writeBatch(db);
+                 batchCount = 0;
+             }
+        };
+
+        for (const product of chunk) {
           const ref = doc(collection(db, 'catalogProducts'));
           batch.set(ref, {
             sku: product.sku,
@@ -394,7 +407,7 @@ export default function AdminCatalogManager() {
             category: product.category,
             description: product.description || '',
             hvrsBasePrice: product.basePrice,
-            suggestedRetailPrice: product.suggestedPrice || product.basePrice,
+            suggestedRetailPrice: product.suggestedPrice || (product.basePrice * 1.5),
             images: product.images || [],
             tags: product.tags || [],
             isActive: true,
@@ -404,8 +417,30 @@ export default function AdminCatalogManager() {
             updatedAt: serverTimestamp(),
             uploadedBy: auth?.currentUser?.uid || 'admin'
           });
-        });
-        await batch.commit();
+          batchCount++;
+
+          // Sync to all respective resellers
+          for (const shopUid of resellerShops) {
+              const partnerProdRef = doc(db, `partnerProducts/${shopUid}/products`, ref.id);
+              batch.set(partnerProdRef, {
+                 productId: ref.id,
+                 name: product.name,
+                 images: product.images || [],
+                 hvrsBasePrice: product.basePrice,
+                 partnerSellingPrice: product.suggestedPrice || (product.basePrice * 1.5),
+                 partnerMargin: (product.suggestedPrice || (product.basePrice * 1.5)) - product.basePrice,
+                 category: product.category || 'General',
+                 description: product.description || '',
+                 isActive: true,
+                 venture: activeTab,
+                 addedAt: serverTimestamp()
+              });
+              batchCount++;
+              if (batchCount >= 450) await commitAndReset();
+          }
+           await commitAndReset();
+        }
+        await commitAndReset();
         uploaded += chunk.length;
         setUploadProgress(Math.round((uploaded / newProducts.length) * 100));
       }
@@ -472,12 +507,45 @@ export default function AdminCatalogManager() {
         await updateDoc(doc(db, 'catalogProducts', productForm.id), payload);
         toast.success("Product updated successfully!");
       } else {
-        await writeBatch(db).set(doc(collection(db, 'catalogProducts')), {
+        const productRef = doc(collection(db, 'catalogProducts'));
+        let batch = writeBatch(db);
+        let batchCount = 0;
+        const commitAndReset = async () => {
+             if (batchCount > 0) {
+                 await batch.commit();
+                 batch = writeBatch(db);
+                 batchCount = 0;
+             }
+        };
+
+        batch.set(productRef, {
           ...payload,
           createdAt: serverTimestamp(),
           uploadedBy: auth?.currentUser?.uid || 'admin'
-        }).commit();
-        toast.success("Product added successfully!");
+        });
+        batchCount++;
+
+        const shopsQuery = await getDocs(query(collection(db, 'partnerShops'), where('venture', '==', activeTab)));
+        for (const shopDoc of shopsQuery.docs) {
+             const partnerProdRef = doc(db, `partnerProducts/${shopDoc.id}/products`, productRef.id);
+             batch.set(partnerProdRef, {
+                 productId: productRef.id,
+                 name: payload.name,
+                 images: payload.images || [],
+                 hvrsBasePrice: payload.hvrsBasePrice,
+                 partnerSellingPrice: payload.suggestedRetailPrice || (payload.hvrsBasePrice * 1.5),
+                 partnerMargin: (payload.suggestedRetailPrice || (payload.hvrsBasePrice * 1.5)) - payload.hvrsBasePrice,
+                 category: payload.category || 'General',
+                 description: payload.description || '',
+                 isActive: payload.isActive,
+                 venture: activeTab,
+                 addedAt: serverTimestamp()
+             });
+             batchCount++;
+             if (batchCount >= 450) await commitAndReset();
+        }
+        await commitAndReset();
+        toast.success("Product added and synced to resellers successfully!");
       }
       setShowSingleAdd(false);
     } catch (error) {
