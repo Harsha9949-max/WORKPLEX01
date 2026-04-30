@@ -46,16 +46,21 @@ export default function PartnerDashboard() {
     if (shop?.shopSlug) {
       const q = query(
         collection(db, 'partnerOrders'), 
-        where('shopSlug', '==', shop.shopSlug),
-        orderBy('createdAt', 'desc'),
-        limit(5)
+        where('shopSlug', '==', shop.shopSlug)
       );
       
       const unsubOrders = onSnapshot(q, (snap) => {
-        const orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let orders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        orders.sort((a: any, b: any) => {
+          const dateA = a.createdAt?.toMillis?.() || 0;
+          const dateB = b.createdAt?.toMillis?.() || 0;
+          return dateB - dateA;
+        });
+        orders = orders.slice(0, 5);
+        
         setRecentOrders(orders);
         
-        const pending = (orders as any[]).reduce((acc, curr) => curr.marginStatus === 'holding' ? acc + (curr.totalPartnerMargin || 0) : acc, 0);
+        const pending = (orders as unknown as any[]).reduce((acc, curr) => curr.marginStatus === 'holding' ? acc + (curr.totalPartnerMargin || curr.totalMargin || 0) : acc, 0);
         setStats(prev => ({ ...prev, pendingMargin: pending }));
       });
 

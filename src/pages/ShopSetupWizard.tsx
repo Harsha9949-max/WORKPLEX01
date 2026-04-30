@@ -164,8 +164,7 @@ export default function ShopSetupWizard() {
       toast.success('Shop Published Successfully! 🎉');
       navigate('/home');
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to publish shop');
+      handleFirestoreError(error, OperationType.WRITE, 'partnerShops');
     } finally {
       setLoading(false);
     }
@@ -471,10 +470,10 @@ export default function ShopSetupWizard() {
                           <input
                             type="number"
                             value={isSelected.partnerSellingPrice}
-                            onChange={(e) => updateProductPrice(product.id, parseFloat(e.target.value))}
+                            onChange={(e) => updateProductPrice(product.id, parseFloat(e.target.value) || 0)}
                             className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-2 text-xs font-black text-teal-400 outline-none"
                           />
-                          <p className="text-[8px] text-center mt-1 text-green-500 font-black">Profit: Rs.{isSelected.partnerSellingPrice - product.hvrsBasePrice}</p>
+                          <p className="text-[8px] text-center mt-1 text-green-500 font-black">Profit: Rs.{(isSelected.partnerSellingPrice || 0) - product.hvrsBasePrice}</p>
                         </div>
                       )}
                     </div>

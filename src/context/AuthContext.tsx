@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           setLoading(false);
         }, (error) => {
-          console.error("Error fetching user data:", error);
+          console.error("Error fetching user data:", error instanceof Error ? error.message : String(error));
           setLoading(false);
         });
       } else {

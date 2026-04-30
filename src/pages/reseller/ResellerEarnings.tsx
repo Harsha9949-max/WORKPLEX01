@@ -28,12 +28,17 @@ export default function ResellerEarnings() {
     // Listen to partner withdrawal transactions etc..
     const q = query(
       collection(db, 'transactions'),
-      where('userId', '==', currentUser.uid),
-      orderBy('timestamp', 'desc')
+      where('userId', '==', currentUser.uid)
     );
 
     const unsubTx = onSnapshot(q, (snap) => {
-       setTransactions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+       let docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+       docs.sort((a: any, b: any) => {
+          const dateA = a.timestamp?.toMillis?.() || 0;
+          const dateB = b.timestamp?.toMillis?.() || 0;
+          return dateB - dateA;
+       });
+       setTransactions(docs);
     }, (e) => handleFirestoreError(e, OperationType.LIST, 'transactions'));
 
     return () => {

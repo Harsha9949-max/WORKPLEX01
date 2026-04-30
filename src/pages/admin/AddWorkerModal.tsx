@@ -65,8 +65,7 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
       toast.success(`Worker account created! ${name} will receive a notification.`);
       onClose();
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to create worker account');
+      handleFirestoreError(error, OperationType.CREATE, 'users');
     } finally {
       setIsSubmitting(false);
     }

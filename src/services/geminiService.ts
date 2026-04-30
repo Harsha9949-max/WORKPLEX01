@@ -50,7 +50,7 @@ Be motivational and realistic.`,
       if (!text) throw new Error("No response from Gemini");
       return JSON.parse(text);
     } catch (error) {
-      console.error("Gemini generateAIPredictions Error:", error);
+      console.error("Gemini generateAIPredictions Error:", error instanceof Error ? error.message : String(error));
       throw error;
     }
   },
@@ -90,7 +90,7 @@ If overall score is < 5, reject it.`,
       if (!text) throw new Error("No response from Gemini");
       return JSON.parse(text);
     } catch (error) {
-      console.error("Gemini reviewProofContent Error:", error);
+      console.error("Gemini reviewProofContent Error:", error instanceof Error ? error.message : String(error));
       throw error;
     }
   }

@@ -54,8 +54,6 @@ export default function HomeDashboard() {
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [isMysteryModalOpen, setIsMysteryModalOpen] = useState(false);
-  const [showMysteryFab, setShowMysteryFab] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(true);
 
   // Venture config
@@ -499,28 +497,10 @@ export default function HomeDashboard() {
               <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm mb-4" style={{ backgroundColor: `${ventureColor}20`, color: ventureColor }}>{userData.venture || 'Global'} Team</span>
               
               <div className="flex flex-col items-center mb-4">
-                 <span className="text-5xl font-black text-[#E8B84B] drop-shadow-[0_2px_10px_rgba(232,184,75,0.3)]">#42</span>
-                 <span className="text-xs text-gray-400 font-medium">out of 1,284 workers</span>
+                 <span className="text-5xl font-black text-[#E8B84B] drop-shadow-[0_2px_10px_rgba(232,184,75,0.3)]">#{userData?.leaderboardRank || '-'}</span>
+                 <span className="text-xs text-gray-400 font-medium">Keep climbing!</span>
               </div>
-
-              <div className="w-full bg-[#1A1A1A] rounded-xl p-3 flex justify-around items-end mb-4 border border-[#2A2A2A]">
-                 <div className="flex flex-col items-center relative">
-                    <span className="text-[10px] font-bold text-gray-400 absolute -top-4">#2</span>
-                    <div className="w-8 h-12 bg-gray-600 rounded-t-lg"></div>
-                    <span className="text-[9px] font-bold text-white mt-1 truncate w-12 text-center">Rahul</span>
-                 </div>
-                 <div className="flex flex-col items-center relative">
-                    <span className="text-[10px] font-black text-[#E8B84B] absolute -top-5">#1</span>
-                    <div className="w-10 h-16 bg-[#E8B84B] rounded-t-lg shadow-[0_0_15px_rgba(232,184,75,0.4)]"></div>
-                    <span className="text-[9px] font-bold text-white mt-1 truncate w-12 text-center">Priya</span>
-                 </div>
-                 <div className="flex flex-col items-center relative">
-                    <span className="text-[10px] font-bold text-amber-700 absolute -top-4">#3</span>
-                    <div className="w-8 h-10 bg-amber-700 rounded-t-lg"></div>
-                    <span className="text-[9px] font-bold text-white mt-1 truncate w-12 text-center">Amit</span>
-                 </div>
-              </div>
-
+              
               <button onClick={() => navigate('/leaderboard')} className="text-[#00C9A7] text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:underline">
                  View Full Leaderboard <ChevronRight size={14} />
               </button>
@@ -528,84 +508,6 @@ export default function HomeDashboard() {
         </section>
 
       </main>
-
-      {/* SECTION 7 — MYSTERY BONUS (CONDITIONAL FAB) */}
-      <AnimatePresence>
-        {showMysteryFab && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0, y: 50 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0, y: 50 }}
-            className="fixed bottom-20 right-4 z-50"
-          >
-            <div className="relative">
-              <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-black z-10 shadow-lg">!</span>
-              <button 
-                onClick={() => {
-                  setShowMysteryFab(false);
-                  setIsMysteryModalOpen(true);
-                }}
-                 className="w-16 h-16 bg-[#8B5CF6] text-white rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.5)] hover:scale-105 transition-transform relative group"
-              >
-                <div className="absolute inset-0 rounded-full border-4 border-[#8B5CF6] animate-ping opacity-30"></div>
-                <Gift size={32} className="group-hover:animate-bounce" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* MYSTERY MODAL */}
-      <AnimatePresence>
-        {isMysteryModalOpen && (
-           <motion.div 
-             initial={{ opacity: 0 }}
-             animate={{ opacity: 1 }}
-             exit={{ opacity: 0 }}
-             className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex justify-center items-center p-4"
-           >
-             <motion.div
-               initial={{ scale: 0.9, y: 20 }}
-               animate={{ scale: 1, y: 0 }}
-               exit={{ scale: 0.9, y: 20 }}
-               className="bg-[#111111] border border-[#8B5CF6]/40 rounded-2xl p-8 w-full max-w-sm flex flex-col items-center text-center shadow-[0_0_50px_rgba(139,92,246,0.2)]"
-             >
-                <div className="w-20 h-20 bg-[#8B5CF6]/20 rounded-full flex justify-center items-center mb-6">
-                   <Gift size={40} className="text-[#8B5CF6] animate-bounce" />
-                </div>
-                <h2 className="text-2xl font-black text-[#E8B84B] uppercase tracking-tighter mb-2">Mystery Task!</h2>
-                <p className="text-sm text-gray-300 font-medium mb-6">A limited time opportunity just appeared.</p>
-                
-                <div className="bg-[#1A1A1A] border border-[#2A2A2A] w-full rounded-xl p-4 mb-6">
-                   <p className="text-[#E8B84B] font-black text-3xl mb-1 pulsing-text">Rs.75</p>
-                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Instant Bonus</p>
-                </div>
-
-                <div className="text-red-500 font-mono text-sm font-bold mb-8">
-                   Expires in <span className="animate-pulse">01:59:59</span>
-                </div>
-
-                <div className="flex flex-col w-full gap-3">
-                   <button 
-                     onClick={() => {
-                        setIsMysteryModalOpen(false);
-                        toast.success('Task Added! Go to Tasks to complete it.');
-                     }}
-                     className="w-full bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl shadow-[0_0_20px_rgba(232,184,75,0.4)] hover:bg-[#E8B84B]/90 transition animate-pulse"
-                   >
-                     Accept Challenge
-                   </button>
-                   <button 
-                     onClick={() => setIsMysteryModalOpen(false)}
-                     className="w-full text-xs font-bold text-gray-500 uppercase py-2 hover:text-white transition"
-                   >
-                     Decline
-                   </button>
-                </div>
-             </motion.div>
-           </motion.div>
-        )}
-      </AnimatePresence>
 
       <style>{`
         .scrollbar-hide::-webkit-scrollbar { display: none; }

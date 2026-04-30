@@ -28,6 +28,7 @@ import BadgeShowcase from '../components/gamification/BadgeShowcase';
 import LevelProgress from '../components/gamification/LevelProgress';
 import toast from 'react-hot-toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import QRCode from 'react-qr-code';
 
 export default function ProfileScreen() {
   const { userData, currentUser, logout } = useAuth();
@@ -37,11 +38,17 @@ export default function ProfileScreen() {
 
   if (!userData) return null;
 
-  const referralLink = `workplex.in/join?ref=${currentUser?.uid}`;
+  const referralCode = userData.referralCode || currentUser?.uid?.substring(0,6).toUpperCase();
+  const referralLink = `${window.location.origin}/join?ref=${referralCode}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
     toast.success('Referral link copied!');
+  };
+
+  const handleWhatsAppShare = () => {
+    const text = `Hey! Join me on WorkPlex and start earning. Use my invite code: *${referralCode}* or click here: ${referralLink}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const getRoleIcon = (role: string) => {
@@ -92,9 +99,15 @@ export default function ProfileScreen() {
         <div className="absolute top-0 right-0 w-40 h-40 bg-[#E8B84B] blur-[80px] opacity-10 rounded-full" />
         
         <div className="flex items-center gap-4 mb-6 relative z-10">
-          <div className="w-16 h-16 bg-[#0A0A0A] border border-[#2A2A2A] rounded-2xl flex items-center justify-center relative overflow-hidden shadow-inner">
-             <div className="absolute inset-0 bg-white/5"></div>
-             {getRoleIcon(userData.role)}
+          <div className="w-16 h-16 bg-[#0A0A0A] border border-[#2A2A2A] rounded-2xl flex items-center justify-center relative overflow-hidden shadow-inner cursor-pointer" onClick={() => navigate('/settings')}>
+             {userData.photoURL ? (
+                <img src={userData.photoURL} alt="Profile" className="w-full h-full object-cover" />
+             ) : (
+                <>
+                   <div className="absolute inset-0 bg-white/5"></div>
+                   {getRoleIcon(userData.role)}
+                </>
+             )}
           </div>
           <div className="flex-1">
             <h2 className="text-2xl font-black text-white">{userData.name || 'Promoter'}</h2>
@@ -167,20 +180,32 @@ export default function ProfileScreen() {
       )}
 
       {/* Referral Section */}
-      <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-5 mb-6">
-        <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Your Unique Link</h3>
-        <div className="flex items-center gap-2 bg-[#0A0A0A] p-2 rounded-xl border border-[#2A2A2A] mb-4">
-          <span className="text-xs text-white truncate flex-grow pl-2 font-mono">{referralLink}</span>
-          <button onClick={handleCopy} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
-            <Copy size={16} className="text-[#E8B84B]" />
-          </button>
+      <div className="bg-[#111111] border border-[#E8B84B]/30 rounded-2xl p-5 mb-6 relative overflow-hidden shadow-[0_0_30px_rgba(232,184,75,0.05)]">
+        <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#E8B84B] blur-[80px] opacity-20 pointer-events-none" />
+        <h3 className="text-xs font-black text-[#E8B84B] uppercase tracking-widest mb-1 flex items-center gap-2">
+            Invite & Earn
+        </h3>
+        <p className="text-sm font-medium text-gray-400 mb-4">Build your team and earn commissions on their tasks!</p>
+        
+        <div className="flex items-center justify-between mb-4 bg-[#0A0A0A] border border-[#2A2A2A] p-4 rounded-xl">
+           <div>
+               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Your Code</p>
+               <p className="text-2xl font-black text-white tracking-widest">{referralCode}</p>
+           </div>
+           <button onClick={() => {
+              navigator.clipboard.writeText(referralCode);
+              toast.success('Code copied!');
+           }} className="w-10 h-10 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg flex items-center justify-center hover:bg-[#2A2A2A] transition text-gray-300">
+               <Copy size={16} />
+           </button>
         </div>
+
         <div className="grid grid-cols-2 gap-3">
-          <button className="flex items-center justify-center gap-2 bg-[#10B981] hover:bg-[#10B981]/90 text-black py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/20 transition">
-            <Share2 size={16} /> Share via WhatsApp
+          <button onClick={handleWhatsAppShare} className="flex items-center justify-center gap-2 bg-[#10B981] hover:bg-[#10B981]/90 text-black py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/20 transition">
+            <Share2 size={16} /> WhatsApp
           </button>
           <button onClick={() => setShowQR(true)} className="flex items-center justify-center gap-2 bg-[#1A1A1A] hover:bg-[#2A2A2A] border border-[#2A2A2A] text-white py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition">
-            <QrCode size={16} /> Show QR Code
+            <QrCode size={16} /> Show QR
           </button>
         </div>
       </div>
@@ -285,7 +310,7 @@ export default function ProfileScreen() {
             <Flame className="text-orange-500" size={20} />
           </div>
           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Streak</p>
-          <p className="text-lg font-black">{userData.streak || 0} Days</p>
+          <p className="text-lg font-black">{userData.streak || 0}  Days</p>
         </div>
         <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-4 flex flex-col justify-center items-center text-center">
           <div className="w-10 h-10 bg-[#00C9A7]/10 rounded-xl flex items-center justify-center mb-2">
@@ -295,6 +320,19 @@ export default function ProfileScreen() {
           <p className="text-lg font-black">{userData.tasksCompleted || 0}</p>
         </div>
       </div>
+
+      {showQR && (
+         <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-8 max-w-sm w-full flex flex-col items-center">
+               <h3 className="text-xl font-black mb-4">Scan to Join</h3>
+               <div className="bg-white p-4 rounded-xl mb-4">
+                  <QRCode value={referralLink} size={200} />
+               </div>
+               <p className="text-center text-gray-400 text-sm mb-6 font-medium">Have your friend scan this code to join your team automatically.</p>
+               <button onClick={() => setShowQR(false)} className="w-full bg-[#E8B84B] text-black font-black uppercase py-4 rounded-xl transition hover:scale-105 min-h-[48px]">Close</button>
+            </motion.div>
+         </div>
+      )}
     </div>
   );
 }

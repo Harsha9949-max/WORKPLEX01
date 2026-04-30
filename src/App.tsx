@@ -18,6 +18,7 @@ import ResellerShop from './pages/reseller/ResellerShop';
 import ResellerPerformance from './pages/reseller/ResellerPerformance';
 import ResellerEarnings from './pages/reseller/ResellerEarnings';
 import ResellerSettings from './pages/reseller/ResellerSettings';
+import ResellerProfile from './pages/reseller/ResellerProfile';
 import PartnerRouteGuard from './components/reseller/PartnerRouteGuard';
 
 import { useState, useEffect } from 'react';
@@ -174,6 +175,7 @@ function AppContent() {
           <Route path="performance" element={<ResellerPerformance />} />
           <Route path="earnings" element={<ResellerEarnings />} />
           <Route path="settings" element={<ResellerSettings />} />
+          <Route path="profile" element={<ResellerProfile />} />
         </Route>
         
         {/* Legal Routes */}
@@ -219,7 +221,7 @@ class GlobalErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBound
   }
 
   componentDidCatch(error: any, errorInfo: any) {
-    console.error("Global Error Caught:", error, errorInfo);
+    console.error("Global Error Caught:", String(error), errorInfo?.componentStack);
   }
 
   render() {

@@ -40,9 +40,16 @@ export function useWalletData() {
 
     // 3. Withdrawals
     const wdUnsub = onSnapshot(
-      query(collection(db, 'withdrawals'), where('workerId', '==', currentUser.uid), orderBy('requestedAt', 'desc'), limit(10)),
+      query(collection(db, 'withdrawals'), where('workerId', '==', currentUser.uid)),
       (snapshot) => {
-        setData(prev => ({ ...prev, withdrawals: snapshot.docs.map(d => ({ id: d.id, ...d.data() })) }));
+        let wdData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        wdData.sort((a: any, b: any) => {
+           const dateA = a.requestedAt?.toMillis?.() || 0;
+           const dateB = b.requestedAt?.toMillis?.() || 0;
+           return dateB - dateA;
+        });
+        wdData = wdData.slice(0, 10);
+        setData(prev => ({ ...prev, withdrawals: wdData }));
         setLoading(false);
       }
     );

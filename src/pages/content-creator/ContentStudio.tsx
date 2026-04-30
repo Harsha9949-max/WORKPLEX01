@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ContentCalendar from './ContentCalendar';
 import ContentPortfolio from './ContentPortfolio';
 import CouponDashboard from '../../pages/CouponDashboard'; // Assuming we re-use existing
+import ContentStudioGuide from './ContentStudioGuide';
 
 export default function ContentStudio() {
    const { userData } = useAuth();
@@ -21,6 +22,8 @@ export default function ContentStudio() {
                   {userData?.venture || 'WorkPlex'} Content Creator
                </p>
             </div>
+
+            <ContentStudioGuide />
 
             <div className="flex border-b border-[#2A2A2A] pb-0 overflow-x-auto scrollbar-hide">
                {[

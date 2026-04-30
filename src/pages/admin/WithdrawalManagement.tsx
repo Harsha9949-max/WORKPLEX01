@@ -47,9 +47,15 @@ export default function WithdrawalManagement() {
   const SUB_ADMIN_LIMIT = 500;
 
   useEffect(() => {
-    const q = query(collection(db, 'withdrawals'), where('status', '==', 'pending'), orderBy('createdAt', 'asc'));
+    const q = query(collection(db, 'withdrawals'), where('status', '==', 'pending'));
     const unsub = onSnapshot(q, (snapshot) => {
-      setWithdrawals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      data.sort((a: any, b: any) => {
+        const dateA = a.createdAt?.toMillis?.() || 0;
+        const dateB = b.createdAt?.toMillis?.() || 0;
+        return dateA - dateB;
+      });
+      setWithdrawals(data);
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'withdrawals');

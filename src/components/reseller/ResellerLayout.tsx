@@ -2,7 +2,8 @@ import React from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, Package, ShoppingCart, Store, 
-  BarChart, Wallet, Settings, LogOut 
+  BarChart, Wallet, Settings, LogOut,
+  User
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../lib/firebase';
@@ -27,6 +28,7 @@ export default function ResellerLayout() {
     { icon: BarChart, label: 'Performance', path: '/reseller/performance' },
     { icon: Wallet, label: 'Earnings', path: '/reseller/earnings' },
     { icon: Settings, label: 'Settings', path: '/reseller/settings' },
+    { icon: User, label: 'Profile', path: '/reseller/profile' },
   ];
 
   return (
@@ -86,7 +88,7 @@ export default function ResellerLayout() {
 
       {/* Bottom Nav (Mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#111111] border-t border-[#2A2A2A] z-50 px-2 py-2 pb-safe flex justify-between items-center text-gray-400">
-        {[navItems[0], navItems[1], navItems[2], navItems[3], navItems[5]].map((item) => {
+        {[navItems[0], navItems[1], navItems[2], navItems[3], navItems[7]].map((item) => {
           const isActive = location.pathname.startsWith(item.path);
           return (
             <NavLink

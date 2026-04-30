@@ -25,8 +25,8 @@ export default function LeaderboardScreen() {
       setEntries(data.slice(0, 20));
       setLoading(false);
     }, (error) => {
-      console.error("Leaderboard subscribe error:", error);
       setLoading(false);
+      handleFirestoreError(error, OperationType.LIST, 'leaderboard');
     });
 
     return unsub;
@@ -163,11 +163,11 @@ export default function LeaderboardScreen() {
 
       {/* Sticky My Rank */}
       {userData && (
-        <div className="fixed bottom-24 left-4 right-4 z-40">
+        <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom)+1rem)] left-4 right-4 z-40">
           <div className="bg-[#1A1A1A] border border-[#00C9A7]/20 rounded-2xl p-4 flex items-center justify-between shadow-2xl shadow-black">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-[#00C9A7]/20 flex items-center justify-center text-[#00C9A7] font-black">
-                #42
+                #{entries.findIndex(e => e.id === currentUser?.uid) + 1 || '-'}
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase">Your Rank</p>

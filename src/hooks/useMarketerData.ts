@@ -27,15 +27,23 @@ export const useMarketerData = (uid?: string) => {
     const unsubTasks = onSnapshot(
       query(
         collection(db, 'tasks'),
-        where('assignedTo', 'array-contains', uid),
-        where('weekStartDate', '>=', weekStart),
-        orderBy('weekStartDate', 'desc')
+        where('assignedTo', 'array-contains', uid)
       ),
-      (snap) => setTasks(
-        snap.docs.map(d => ({
-          id: d.id, ...d.data()
-        }))
-      )
+      (snap) => {
+        let docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Filter by weekStartDate >= weekStart
+        docs = docs.filter((d: any) => {
+            const dTime = d.weekStartDate?.toMillis?.() || 0;
+            return dTime >= weekStart.getTime();
+        });
+        // Sort by weekStartDate desc
+        docs.sort((a: any, b: any) => {
+            const aTime = a.weekStartDate?.toMillis?.() || 0;
+            const bTime = b.weekStartDate?.toMillis?.() || 0;
+            return bTime - aTime;
+        });
+        setTasks(docs);
+      }
     );
     return () => unsubTasks();
   }, [uid]);

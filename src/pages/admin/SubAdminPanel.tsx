@@ -109,8 +109,7 @@ export default function SubAdminPanel() {
         });
         toast.success('Worker approved & activated!');
      } catch (error) {
-        console.error(error);
-        toast.error('Failed to approve worker');
+        handleFirestoreError(error, OperationType.UPDATE, 'users');
      }
   };
 
@@ -121,8 +120,7 @@ export default function SubAdminPanel() {
         });
         toast.success('Worker application rejected.');
      } catch (error) {
-        console.error(error);
-        toast.error('Failed to reject worker');
+        handleFirestoreError(error, OperationType.UPDATE, 'users');
      }
   };
 

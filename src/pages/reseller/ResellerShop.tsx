@@ -89,7 +89,6 @@ export default function ResellerShop() {
       setBranding(prev => ({ ...prev, [type]: url }));
       toast.success('Uploaded successfully', { id: toastId });
     } catch (error) {
-      console.error(error);
       toast.error('Failed to upload image', { id: toastId });
     }
   };

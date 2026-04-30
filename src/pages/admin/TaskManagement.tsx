@@ -299,7 +299,7 @@ export default function TaskManagement() {
         toast.success(`AI Note: ${data.reason}`, { icon: '🤖' });
       }
     } catch (error) {
-      console.error(error);
+      console.error(error.message);
       toast.error('AI Review failed to process');
     } finally {
       setAiReviewingId(null);

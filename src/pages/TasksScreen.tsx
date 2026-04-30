@@ -24,12 +24,16 @@ export default function TasksScreen() {
       const tasksRef = collection(db, 'tasks');
       const q = query(
          tasksRef, 
-         where('venture', '==', userData.venture),
-         orderBy('createdAt', 'desc')
+         where('venture', '==', userData.venture)
       );
 
       const unsub = onSnapshot(q, (snap) => {
          const t = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+         t.sort((a: any, b: any) => {
+            const dateA = a.createdAt?.toMillis?.() || 0;
+            const dateB = b.createdAt?.toMillis?.() || 0;
+            return dateB - dateA;
+         });
          setTasks(t);
          setLoading(false);
       });

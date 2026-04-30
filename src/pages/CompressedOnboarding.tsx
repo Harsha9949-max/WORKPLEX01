@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { ChevronLeft, Zap, Target, Globe } from 'lucide-react';
+import { ChevronLeft, Zap, Target, Globe, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Logo } from '../components/ui/Logo';
@@ -14,6 +14,7 @@ export default function CompressedOnboarding() {
   const [preferredLanguage, setPreferredLanguage] = useState('en');
   const [venture, setVenture] = useState('');
   const [role, setRole] = useState('');
+  const [referralCodeInput, setReferralCodeInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
 
@@ -24,7 +25,11 @@ export default function CompressedOnboarding() {
   useEffect(() => {
     // Keep user here if they haven't picked venture/role
     if (!loading && userData?.venture && userData?.role && !showWelcome) {
-      navigate('/home');
+      if (userData?.role === 'Reseller') {
+        navigate('/reseller/dashboard');
+      } else {
+        navigate('/home');
+      }
     }
   }, [userData, loading, navigate, showWelcome]);
 
@@ -51,18 +56,18 @@ export default function CompressedOnboarding() {
   const getRolesByVenture = (v: string) => {
     switch(v) {
       case 'BuyRix': return [
-        { id: 'Marketer', name: 'Marketer', icon: '📈', desc: 'Promote products and earn commissions' },
-        { id: 'Content Creator', name: 'Content Creator', icon: '🎥', desc: 'Create videos, write reviews' },
-        { id: 'Reseller', name: 'Reseller', icon: '🛍️', desc: 'Sell catalog items directly' }
+        { id: 'Marketer', name: 'Marketer', icon: '📈', desc: 'Promote products and earn commissions', disabled: true },
+        { id: 'Content Creator', name: 'Content Creator', icon: '🎥', desc: 'Create videos, write reviews', disabled: true },
+        { id: 'Reseller', name: 'Reseller', icon: '🛍️', desc: 'Sell catalog items directly', disabled: false }
       ];
       case 'Vyuma': return [
-        { id: 'Marketer', name: 'Marketer', icon: '📈', desc: 'Promote content and earn' },
-        { id: 'Content Creator', name: 'Content Creator', icon: '🎥', desc: 'Create videos, write reviews' },
-        { id: 'Reseller', name: 'Reseller', icon: '🛍️', desc: 'Merch sales' }
+        { id: 'Marketer', name: 'Marketer', icon: '📈', desc: 'Promote content and earn', disabled: true },
+        { id: 'Content Creator', name: 'Content Creator', icon: '🎥', desc: 'Create videos, write reviews', disabled: true },
+        { id: 'Reseller', name: 'Reseller', icon: '🛍️', desc: 'Merch sales', disabled: false }
       ];
       case 'Growplex': return [
-        { id: 'Promoter', name: 'Promoter', icon: '📢', desc: 'Promote B2B services' },
-        { id: 'Content Creator', name: 'Content Creator', icon: '🎥', desc: 'Create marketing materials' }
+        { id: 'Promoter', name: 'Promoter', icon: '📢', desc: 'Promote B2B services', disabled: true },
+        { id: 'Content Creator', name: 'Content Creator', icon: '🎥', desc: 'Create marketing materials', disabled: true }
       ];
       default: return [];
     }
@@ -89,13 +94,28 @@ export default function CompressedOnboarding() {
 
     setIsSubmitting(true);
     try {
+      let referredById = null;
+      if (referralCodeInput) {
+          const q = query(collection(db, 'users'), where('referralCode', '==', referralCodeInput.toUpperCase().trim()), limit(1));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+              referredById = snap.docs[0].id;
+          } else {
+              toast.error("Invalid Referral Code. Proceeding without it.");
+          }
+      }
+
+      const generatedCode = userData?.referralCode || Math.random().toString(36).substring(2, 8).toUpperCase();
+
       const userRef = doc(db, 'users', currentUser.uid);
       await setDoc(userRef, {
         preferredLanguage,
         venture,
         role,
         kycDeferred: true,
-        profileCompletion: 20
+        profileCompletion: 20,
+        referralCode: generatedCode,
+        ...(referredById ? { referredBy: referredById } : {})
       }, { merge: true });
       
       setShowWelcome(true);
@@ -117,9 +137,9 @@ export default function CompressedOnboarding() {
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#111111] border border-[#E8B84B]/30 rounded-3xl p-8 max-w-sm w-full space-y-6 text-center flex flex-col items-center">
           <Logo variant="vertical" size="xl" />
           <p className="text-gray-400">Your welcome incentive has been credited to your pending wallet.</p>
-          <p className="text-xs text-[#E8B84B] font-bold mt-2">Complete your first task to unlock your incentive + earn more!</p>
-          <button onClick={() => navigate('/wallet')} className="w-full bg-[#E8B84B] text-black font-black uppercase py-4 rounded-xl mt-6 hover:scale-105 transition-transform min-h-[48px]">
-            View My Wallet
+          <p className="text-xs text-[#E8B84B] font-bold mt-2">Complete your shop setup to unlock your incentive + earn more!</p>
+          <button onClick={() => navigate(role === 'Reseller' ? '/reseller/dashboard' : '/wallet')} className="w-full bg-[#E8B84B] text-black font-black uppercase py-4 rounded-xl mt-6 hover:scale-105 transition-transform min-h-[48px]">
+            Continue to Dashboard
           </button>
         </motion.div>
       </div>
@@ -280,25 +300,51 @@ export default function CompressedOnboarding() {
                   <Zap className="text-[#E8B84B]" size={24} />
                 </div>
                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Select Your Role</h2>
-                <p className="text-gray-400 text-sm">Pick your role in {venture}.</p>
+                <p className="text-gray-400 text-sm">Only Reseller role is available at the moment. More coming soon!</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {currentRoles.map(r => (
                   <button
                     key={r.id}
-                    onClick={() => setRole(r.id)}
-                    className={`p-4 rounded-2xl border min-h-[100px] text-left flex flex-col transition-all ${
+                    disabled={r.disabled}
+                    onClick={() => {
+                        if (r.disabled) {
+                            toast('Role launching soon! Stay tuned.', { icon: '🚀' });
+                            return;
+                        }
+                        setRole(r.id);
+                    }}
+                    className={`p-4 rounded-2xl border min-h-[100px] relative text-left flex flex-col transition-all ${
+                      r.disabled ? 'opacity-70 bg-[#111] border-white/5 cursor-not-allowed grayscale' :
                       role === r.id 
                         ? 'bg-[#E8B84B]/10 border-[#E8B84B]' 
                         : 'bg-[#111] border-white/5 hover:border-white/20'
                     }`}
                   >
+                    {r.disabled && (
+                      <div className="absolute top-2 right-2 bg-[#F59E0B] text-black text-[9px] font-black uppercase px-2 py-1 rounded-full z-10 w-fit whitespace-nowrap">
+                        Coming Soon
+                      </div>
+                    )}
                     <span className="text-2xl mb-2">{r.icon}</span>
                     <span className="text-white font-black text-lg mb-1">{r.name}</span>
                     <span className="text-gray-500 text-xs">{r.desc}</span>
                   </button>
                 ))}
+              </div>
+
+              <div className="mt-8 border-t border-[#2A2A2A] pt-6">
+                <label className="text-[10px] font-black uppercase tracking-widest text-[#E8B84B] ml-2 block mb-2 flex items-center gap-2">
+                  <Users size={14} /> Referral Code (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={referralCodeInput}
+                  onChange={(e) => setReferralCodeInput(e.target.value.toUpperCase())}
+                  placeholder="Enter 6-digit code"
+                  className="w-full bg-[#1A1A1A] border-none rounded-xl text-white px-4 py-4 focus:ring-2 focus:ring-[#E8B84B] uppercase tracking-widest font-black"
+                />
               </div>
 
               <div className="mt-8 space-y-4">
@@ -319,3 +365,4 @@ export default function CompressedOnboarding() {
     </div>
   );
 }
+

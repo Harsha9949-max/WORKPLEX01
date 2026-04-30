@@ -19,12 +19,17 @@ export default function ResellerOrders() {
     if (!currentUser) return;
     const q = query(
       collection(db, 'partnerOrders'),
-      where('resellerId', '==', currentUser.uid),
-      orderBy('createdAt', 'desc')
+      where('resellerId', '==', currentUser.uid)
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const ordersData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      ordersData.sort((a: any, b: any) => {
+        const dateA = a.createdAt?.toMillis?.() || 0;
+        const dateB = b.createdAt?.toMillis?.() || 0;
+        return dateB - dateA;
+      });
+      setOrders(ordersData);
     }, (error) => handleFirestoreError(error, OperationType.LIST, 'partnerOrders'));
 
     return () => unsub();

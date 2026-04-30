@@ -28,22 +28,32 @@ export function useTeamData() {
     // 2. Referrals
     const refQ = query(
       collection(db, 'referrals'),
-      where('referrerId', '==', currentUser.uid),
-      orderBy('referredAt', 'desc')
+      where('referrerId', '==', currentUser.uid)
     );
     const refUnsub = onSnapshot(refQ, (snapshot) => {
-      setReferrals(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      let data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      data.sort((a: any, b: any) => {
+        const dateA = a.referredAt?.toMillis?.() || 0;
+        const dateB = b.referredAt?.toMillis?.() || 0;
+        return dateB - dateA;
+      });
+      setReferrals(data);
     });
 
     // 3. Commission Logs
     const logQ = query(
       collection(db, 'commissionLogs'),
-      where('workerId', '==', currentUser.uid),
-      orderBy('timestamp', 'desc'),
-      limit(20)
+      where('workerId', '==', currentUser.uid)
     );
     const logUnsub = onSnapshot(logQ, (snapshot) => {
-      setCommissionLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      let data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      data.sort((a: any, b: any) => {
+        const dateA = a.timestamp?.toMillis?.() || 0;
+        const dateB = b.timestamp?.toMillis?.() || 0;
+        return dateB - dateA;
+      });
+      data = data.slice(0, 20);
+      setCommissionLogs(data);
       setLoading(false);
     });
 

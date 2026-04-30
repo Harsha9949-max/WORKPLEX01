@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, ClipboardList, Wallet, User, Tag, ShieldAlert, Palette } from 'lucide-react';
+import { Home, ClipboardList, Wallet, User, Tag, ShieldAlert, Palette, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 
@@ -46,7 +46,7 @@ export default function BottomNav() {
      tabs = [
        { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
        { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
-       { path: '/coupon', icon: Tag, label: 'Coupon', badge: null },
+       { path: '/leaderboard', icon: Trophy, label: 'Rank', badge: null }, // Replaced Coupon with Rank
        { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
        { path: '/profile', icon: User, label: 'Profile', badge: hasNewBadge ? 'purple' : null }
      ];

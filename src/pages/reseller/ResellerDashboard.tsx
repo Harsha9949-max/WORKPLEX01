@@ -4,6 +4,7 @@ import {
   ShoppingBag, CheckCircle, Package, Share2, Plus, PenTool, ExternalLink,
   ChevronRight, TrendingUp, Search
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { collection, query, where, orderBy, limit, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -13,6 +14,7 @@ import toast from 'react-hot-toast';
 
 export default function ResellerDashboard() {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [shop, setShop] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -40,13 +42,18 @@ export default function ResellerDashboard() {
     // 2. Listen to Orders
     const ordersQuery = query(
       collection(db, 'partnerOrders'),
-      where('resellerId', '==', currentUser.uid),
-      orderBy('createdAt', 'desc'),
-      limit(5)
+      where('resellerId', '==', currentUser.uid)
     );
 
     const unsubOrders = onSnapshot(ordersQuery, (snap) => {
-      const activeOrders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let activeOrders = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      activeOrders.sort((a: any, b: any) => {
+        const dateA = a.createdAt?.toMillis?.() || 0;
+        const dateB = b.createdAt?.toMillis?.() || 0;
+        return dateB - dateA;
+      });
+      // limit to 5 manually
+      activeOrders = activeOrders.slice(0, 5);
       setOrders(activeOrders);
       
       let totOrders = 0;
@@ -86,19 +93,20 @@ export default function ResellerDashboard() {
     // Check completion
     const hasLogoOrBanner = !!(shop?.logo || shop?.branding?.logo || shop?.branding?.bannerImage);
     const hasMin5Products = products.length >= 5;
+    const hasSetMargins = products.some((p: any) => p.partnerMargin && p.partnerMargin > 0);
     const hasSharedLink = !!shop.hasSharedLink;
 
-    if (hasLogoOrBanner && hasMin5Products && hasSharedLink) {
+    if (hasLogoOrBanner && hasMin5Products && hasSetMargins && hasSharedLink) {
       import('firebase/firestore').then(({ updateDoc }) => {
         updateDoc(doc(db, 'partnerShops', currentUser.uid), {
           onboardingComplete: true,
           isActive: true
         }).then(() => {
           toast.success('Onboarding complete! Your shop is now live.', { id: 'onboarding-complete' });
-        }).catch(console.error);
+        }).catch((e) => handleFirestoreError(e, OperationType.UPDATE, 'partnerShops'));
       });
     }
-  }, [shop, products.length, currentUser]);
+  }, [shop, products, currentUser]);
 
   const copyShopLink = async () => {
     if (!shop?.shopSlug) return;
@@ -114,7 +122,7 @@ export default function ResellerDashboard() {
           hasSharedLink: true
         });
       } catch (err) {
-        console.error('Failed to update shared status', err);
+        handleFirestoreError(err, OperationType.UPDATE, 'partnerShops');
       }
     }
   };
@@ -195,7 +203,7 @@ export default function ResellerDashboard() {
               true, 
               !!(shop?.logo || shop?.branding?.logo || shop?.branding?.bannerImage), 
               products.length >= 5, 
-              products.length > 0, 
+              products.some((p: any) => p.partnerMargin && p.partnerMargin > 0), 
               !!shop?.hasSharedLink
             ].filter(Boolean).length}/5 Complete</span>
           </div>
@@ -204,7 +212,7 @@ export default function ResellerDashboard() {
               true, 
               !!(shop?.logo || shop?.branding?.logo || shop?.branding?.bannerImage), 
               products.length >= 5, 
-              products.length > 0, 
+              products.some((p: any) => p.partnerMargin && p.partnerMargin > 0), 
               !!shop?.hasSharedLink
             ].filter(Boolean).length / 5) * 100}%` }} />
           </div>
@@ -212,9 +220,9 @@ export default function ResellerDashboard() {
           <div className="space-y-4">
             {[
               { label: 'Shop created', done: true, action: null },
-              { label: 'Add profile photo + banner', done: !!(shop?.logo || shop?.branding?.logo || shop?.branding?.bannerImage), action: () => window.location.href = '/reseller/settings' },
-              { label: 'Select products (min 5)', done: products.length >= 5, action: () => window.location.href = '/reseller/products' },
-              { label: 'Set your margins', done: products.length > 0, action: () => window.location.href = '/reseller/products' },
+              { label: 'Add profile photo + banner', done: !!(shop?.logo || shop?.branding?.logo || shop?.branding?.bannerImage), action: () => navigate('/reseller/my-shop') },
+              { label: 'Select products (min 5)', done: products.length >= 5, action: () => navigate('/reseller/products') },
+              { label: 'Set your margins', done: products.some((p: any) => p.partnerMargin && p.partnerMargin > 0), action: () => navigate('/reseller/products') },
               { label: 'Share your shop link', done: !!shop?.hasSharedLink, action: copyShopLink }
             ].map((step, idx) => (
               <div key={idx} className="flex items-center justify-between">
