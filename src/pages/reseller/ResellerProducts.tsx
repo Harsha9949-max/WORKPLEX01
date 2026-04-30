@@ -108,7 +108,7 @@ export default function ResellerProducts() {
   }, [showCatalogModal, shop?.venture, userData?.venture]);
 
   const handleAddProduct = async (catalogProd: any, sellingPrice: number) => {
-    if (!currentUser || !shop) return;
+    if (!currentUser) return;
     const currentVenture = shop?.venture || userData?.venture || 'BuyRix';
     try {
       const docRef = doc(db, `partnerProducts/${currentUser.uid}/products`, catalogProd.id);
@@ -133,8 +133,8 @@ export default function ResellerProducts() {
   };
 
   const handleUpdatePrice = async (prodId: string, newPrice: number, basePrice: number) => {
-    if (newPrice < basePrice) {
-      toast.error(`Selling price must be at least Rs. ${basePrice}`);
+    if (newPrice <= 0) {
+      toast.error('Selling price must be greater than 0');
       return;
     }
     if (!currentUser) return;
@@ -216,7 +216,6 @@ export default function ResellerProducts() {
                 <tr>
                   <th className="px-6 py-4">Product</th>
                   <th className="px-6 py-4">Category</th>
-                  <th className="px-6 py-4 text-gray-500">HVRS Base</th>
                   <th className="px-6 py-4">Your Price</th>
                   <th className="px-6 py-4">Your Margin</th>
                   <th className="px-6 py-4">Status</th>
@@ -233,9 +232,6 @@ export default function ResellerProducts() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-400 capitalize">{prod.category}</td>
-                    <td className="px-6 py-4 text-gray-500 line-through decoration-gray-500/50">
-                      {formatCurrency(prod.hvrsBasePrice)}
-                    </td>
                     <td className="px-6 py-4">
                       {editingPriceId === prod.id ? (
                         <div className="flex items-center gap-2">
@@ -347,12 +343,8 @@ export default function ResellerProducts() {
                           <h3 className="font-bold text-white mb-2 line-clamp-1">{p.name}</h3>
                           <div className="flex justify-between items-end mb-4">
                             <div>
-                              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Base Price</p>
-                              <p className="text-lg font-black text-gray-300">{formatCurrency(p.hvrsBasePrice)}</p>
-                            </div>
-                            <div className="text-right">
                               <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sug. Retail</p>
-                              <p className="text-sm font-bold text-gray-400">{formatCurrency(p.suggestedRetailPrice)}</p>
+                              <p className="text-lg font-black text-[#E8B84B]">{formatCurrency(p.suggestedRetailPrice)}</p>
                             </div>
                           </div>
                           <div className="mt-auto">
@@ -425,13 +417,13 @@ function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, pr
         </button>
         <button 
           onClick={() => {
-            if (price < product.hvrsBasePrice) {
-              toast.error(`Price must be above Rs. ${product.hvrsBasePrice}`);
+            if (price <= 0) {
+              toast.error('Price must be greater than 0');
               return;
             }
             onAdd(product, price);
           }}
-          disabled={price < product.hvrsBasePrice}
+          disabled={price <= 0}
           className="flex-1 py-1.5 bg-[#E8B84B] text-black rounded text-xs font-bold hover:bg-[#E8B84B]/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Confirm Add
