@@ -5,21 +5,22 @@ import * as admin from "firebase-admin";
 const app = express();
 app.use(express.json());
 
-// Initialize Firebase Admin if Service Account is provided
-if (!admin.apps.length) {
+// Lazy Firebase Admin Initialization
+const initFirebaseAdmin = () => {
+  if (admin.apps.length > 0) return true;
   try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       });
-    } else {
-      admin.initializeApp(); // Attempt default app credentials in GCP environment
+      return true;
     }
   } catch (err) {
-    console.error("Firebase Admin initialization error:", err);
+    console.error("Firebase Admin lazy initialization error:", err);
   }
-}
+  return false;
+};
 
 // Map simulating a simple DB for OTPs
 const otpStore = new Map<string, { otp: string, expiresAt: number }>();
@@ -30,15 +31,20 @@ const getResend = () => {
   return new Resend(key);
 }
 
-app.delete("/api/admin/delete-user/:uid", async (req, res) => {
+const router = express.Router();
+
+router.delete("/admin/delete-user/:uid", async (req, res) => {
   try {
     const { uid } = req.params;
     if (!uid) return res.status(400).json({ error: "UID is required" });
 
     // Try to delete from Firebase Auth
     try {
-      if (admin.apps.length > 0) {
+      const isInitialized = initFirebaseAdmin();
+      if (isInitialized) {
         await admin.auth().deleteUser(uid);
+      } else {
+        console.warn("Firebase Admin not initialized, skipping Auth user deletion");
       }
     } catch (authErr: any) {
       console.error("Failed to delete auth user, they may not exist or credentials missing:", authErr);
@@ -52,7 +58,7 @@ app.delete("/api/admin/delete-user/:uid", async (req, res) => {
   }
 });
 
-app.post("/api/auth/send-otp", async (req, res) => {
+router.post("/auth/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
@@ -103,7 +109,7 @@ app.post("/api/auth/send-otp", async (req, res) => {
   }
 });
 
-app.post("/api/auth/verify-otp", async (req, res) => {
+router.post("/auth/verify-otp", async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) {
@@ -131,5 +137,12 @@ app.post("/api/auth/verify-otp", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+router.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
+app.use("/api", router);
+app.use("/", router);
 
 export default app;

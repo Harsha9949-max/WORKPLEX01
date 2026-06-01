@@ -55,6 +55,7 @@ export default function HomeDashboard() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(true);
+  const [showMysteryFab, setShowMysteryFab] = useState(false);
 
   // Venture config
   const ventureColors: Record<string, string> = {

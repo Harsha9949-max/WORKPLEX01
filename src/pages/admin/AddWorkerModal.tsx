@@ -4,6 +4,7 @@ import { X, UserPlus, Phone, Briefcase } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '../../lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 
 // In a real implementation this would use a Firebase Cloud Function to create Auth user without logging in.
 // For demo purposes, we will just create the Firestore document.

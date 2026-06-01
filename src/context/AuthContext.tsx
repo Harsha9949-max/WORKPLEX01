@@ -58,6 +58,18 @@ export interface UserData {
   totalLeadCount?: number;
   managerCommissionThisMonth?: number;
   teamCommissionToday?: number;
+  referralCode?: string;
+  leaderboardRank?: number;
+  shopSlug?: string;
+  totalSales?: number;
+  branding?: {
+    shopName?: string;
+    logoUrl?: string;
+    primaryColor?: string;
+    tagline?: string;
+    instagramHandle?: string;
+    whatsappNumber?: string;
+  };
   teamEarningsThisMonth?: number;
   totalTeamCommission?: number;
   contentStats?: {

@@ -5,6 +5,7 @@ import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/f
 import { db } from '../lib/firebase';
 import { formatCurrency } from '../utils/format';
 import { useAuth } from '../context/AuthContext';
+import { handleFirestoreError, OperationType } from '../utils/errorHandlers';
 
 export default function LeaderboardScreen() {
   const { userData, currentUser } = useAuth();

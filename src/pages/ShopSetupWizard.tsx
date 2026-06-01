@@ -19,6 +19,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { handleFirestoreError, OperationType } from '../utils/errorHandlers';
 
 const CATEGORIES = ['Fashion', 'Electronics', 'Home & Kitchen', 'Beauty', 'Gadgets', 'Kits'];
 
