@@ -192,8 +192,30 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       toast.success('Email verified successfully!');
       
       // Email verified, create account.
-      const cred = await createUserWithEmailAndPassword(auth, signupData.email, signupData.password);
-      await handleAuthSuccess({ ...cred.user, displayName: signupData.name }, 'email', signupData.phone);
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, signupData.email, signupData.password);
+        await handleAuthSuccess({ ...cred.user, displayName: signupData.name }, 'email', signupData.phone);
+      } catch (authError: any) {
+        if (authError.code === 'auth/email-already-in-use') {
+          // The user exists in Auth but may be deleted in backend, or existing user trying to sign up again.
+          try {
+            const checkCred = await signInWithEmailAndPassword(auth, signupData.email, signupData.password);
+            // Valid password!
+            const docSnap = await getDoc(doc(db, 'users', checkCred.user.uid));
+            if (!docSnap.exists()) {
+               // Missing in backend (admin deleted), recreate their data!
+               await handleAuthSuccess({ ...checkCred.user, displayName: signupData.name }, 'email', signupData.phone);
+            } else {
+               toast.error('Account already exists! We will log you in.');
+               await handleAuthSuccess(checkCred.user, 'email');
+            }
+          } catch(signInErr) {
+            throw new Error("An account with this email already exists but the password doesn't match. If you forgot your password, please reset it.");
+          }
+        } else {
+          throw authError; // Re-throw other auth errors
+        }
+      }
       
     } catch (error: any) {
       setErrorPopup(mapFirebaseError(error) || error.message);

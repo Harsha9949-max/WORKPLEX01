@@ -97,11 +97,16 @@ export default function WorkerManagement() {
     }
   };
 
-  const deleteUser = async (workerId: string) => {
+  const deleteUser = async (workerId: string, phone?: string) => {
     if (!window.confirm("Are you sure you want to permanently delete this worker? This action cannot be undone.")) return;
     
     try {
+      // Trigger backend for full data/auth removal
+      await fetch(`/api/admin/delete-user/${workerId}`, { method: 'DELETE' });
       await deleteDoc(doc(db, 'users', workerId));
+      if (phone) {
+        await deleteDoc(doc(db, 'phoneDirectory', phone));
+      }
       toast.success("Worker deleted successfully");
       setSelectedWorker(null);
       fetchWorkers();
@@ -474,7 +479,7 @@ export default function WorkerManagement() {
                     {selectedWorker.status === 'suspended' ? 'ACTIVATE WORKER' : 'BAN WORKER'}
                   </button>
                   <button 
-                    onClick={() => deleteUser(selectedWorker.id)}
+                    onClick={() => deleteUser(selectedWorker.id, selectedWorker.phone)}
                     className="flex-1 border border-red-500/20 bg-red-500/10 text-red-500 py-3 md:py-4 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-red-500/20 transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Trash2 size={14} /> DELETE ACCOUNT

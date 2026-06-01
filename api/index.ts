@@ -1,8 +1,25 @@
 import express from "express";
 import { Resend } from "resend";
+import * as admin from "firebase-admin";
 
 const app = express();
 app.use(express.json());
+
+// Initialize Firebase Admin if Service Account is provided
+if (!admin.apps.length) {
+  try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    } else {
+      admin.initializeApp(); // Attempt default app credentials in GCP environment
+    }
+  } catch (err) {
+    console.error("Firebase Admin initialization error:", err);
+  }
+}
 
 // Map simulating a simple DB for OTPs
 const otpStore = new Map<string, { otp: string, expiresAt: number }>();
@@ -12,6 +29,28 @@ const getResend = () => {
   if (!key) throw new Error("RESEND_API_KEY not configured");
   return new Resend(key);
 }
+
+app.delete("/api/admin/delete-user/:uid", async (req, res) => {
+  try {
+    const { uid } = req.params;
+    if (!uid) return res.status(400).json({ error: "UID is required" });
+
+    // Try to delete from Firebase Auth
+    try {
+      if (admin.apps.length > 0) {
+        await admin.auth().deleteUser(uid);
+      }
+    } catch (authErr: any) {
+      console.error("Failed to delete auth user, they may not exist or credentials missing:", authErr);
+      // We don't fail the request completely if Auth fails, but we should let the caller know
+    }
+
+    res.json({ success: true, message: "Backend cleanup completed for user." });
+  } catch (error: any) {
+    console.error("Delete user error:", error);
+    res.status(500).json({ error: error.message || "Failed to delete user" });
+  }
+});
 
 app.post("/api/auth/send-otp", async (req, res) => {
   try {

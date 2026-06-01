@@ -10,7 +10,7 @@
     },
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.ts"
+      "destination": "/api"
     },
     {
       "source": "/((?!assets/).*)",
