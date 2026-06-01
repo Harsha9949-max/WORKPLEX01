@@ -15,6 +15,10 @@ const initFirebaseAdmin = () => {
         credential: admin.credential.cert(serviceAccount)
       });
       return true;
+    } else {
+      // Fallback for container environments like Cloud Run (uses Application Default Credentials automatically)
+      admin.initializeApp();
+      return true;
     }
   } catch (err) {
     console.error("Firebase Admin lazy initialization error:", err);

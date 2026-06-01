@@ -33,7 +33,8 @@ import {
   Zap,
   Trash2,
   Save,
-  Edit
+  Edit,
+  RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '../../utils/format';
@@ -269,15 +270,26 @@ export default function WorkerManagement() {
         </div>
         
         <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
-          <div className="relative w-full md:w-auto">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-            <input 
-              type="text"
-              placeholder="Search by name/phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full md:w-64 bg-[#111111] border border-[#2A2A2A] text-white pl-12 pr-4 py-2.5 rounded-xl text-xs font-bold focus:border-[#E8B84B] transition-colors"
-            />
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:flex-initial">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+              <input 
+                type="text"
+                placeholder="Search by name/phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full md:w-64 bg-[#111111] border border-[#2A2A2A] text-white pl-12 pr-4 py-2.5 rounded-xl text-xs font-bold focus:border-[#E8B84B] transition-colors"
+              />
+            </div>
+            <button
+              onClick={fetchWorkers}
+              disabled={loading}
+              className="p-2.5 bg-[#111111] border border-[#2A2A2A] rounded-xl hover:text-white hover:border-[#E8B84B] transition-all flex items-center justify-center text-gray-500 hover:scale-[1.05] active:scale-95 disabled:opacity-50 min-h-[40px] px-3 gap-1.5"
+              title="Synchronize and pull latest data"
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin text-[#E8B84B]" : ""} />
+              <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Sync</span>
+            </button>
           </div>
           <div className="flex flex-wrap bg-[#111111] border border-[#2A2A2A] rounded-xl p-1 gap-1">
             {ventures.map(v => (

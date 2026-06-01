@@ -1,7 +1,10 @@
 export function mapFirebaseError(error: any): string {
   const code = typeof error === 'string' ? error : error?.code || error?.message || 'unknown';
 
-  if (code.includes('auth/email-already-in-use') || code.includes('auth/phone-number-already-exists')) {
+  if (code.includes('auth/email-already-in-use')) {
+    return 'This email address is already associated with another account. Please login or reset your password.';
+  }
+  if (code.includes('auth/phone-number-already-exists')) {
     return 'This mobile number is already associated with another account.';
   }
   if (code.includes('auth/too-many-requests')) {
