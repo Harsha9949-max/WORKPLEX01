@@ -66,6 +66,7 @@ import WithdrawalManagement from './pages/admin/WithdrawalManagement';
 import SubAdminCreation from './pages/admin/SubAdminCreation';
 import FraudAlerts from './pages/admin/FraudAlerts';
 import AnnouncementBroadcaster from './pages/admin/AnnouncementBroadcaster';
+import MainPageCMS from './pages/admin/MainPageCMS';
 import AdminPartnerOrders from './pages/admin/AdminPartnerOrders';
 import SubAdminPanel from './pages/admin/SubAdminPanel';
 import ManagerTeamPanel from './pages/manager/ManagerTeamPanel';
@@ -87,6 +88,12 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (!currentUser) return <Navigate to="/join" />;
   
   return <>{children}</>;
+}
+
+function ConditionalFooter() {
+  const { pathname } = useLocation();
+  if (pathname !== '/') return null;
+  return <Footer />;
 }
 
 function AppContent() {
@@ -148,6 +155,7 @@ function AppContent() {
         {/* Phase 7 Admin Panel */}
         <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
           <Route index element={<AdminDashboard />} />
+          <Route path="cms" element={<MainPageCMS />} />
           <Route path="partner-orders" element={<AdminPartnerOrders />} />
           <Route path="workers" element={<WorkerManagement />} />
           <Route path="tasks" element={<TaskManagement />} />
@@ -185,7 +193,7 @@ function AppContent() {
         <Route path="/security" element={<SecurityPolicy />} />
         <Route path="/contact" element={<ContactPage />} />
       </Routes>
-      <Footer />
+      <ConditionalFooter />
       <AIChatbotWidget />
       <PromotionCelebration 
         isOpen={showPromotion} 

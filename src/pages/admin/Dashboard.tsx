@@ -69,7 +69,7 @@ export default function Dashboard() {
           Approve Withdrawals
         </button>
         <button className="bg-[#1A1A1A] border border-[#2A2A2A] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#2A2A2A] transition-colors">
-          Create Task
+          Create Mission
         </button>
         <button className="bg-[#1A1A1A] border border-[#2A2A2A] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#2A2A2A] transition-colors">
           Send Announcement

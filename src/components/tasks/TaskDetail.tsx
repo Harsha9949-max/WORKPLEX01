@@ -130,8 +130,8 @@ export default function TaskDetail() {
     }
   };
 
-  if (loading) return <div className="p-4 text-white min-h-screen bg-[#0A0A0A] flex justify-center items-center">Loading task...</div>;
-  if (!task) return <div className="p-4 text-white min-h-screen bg-[#0A0A0A] flex justify-center items-center">Task not found</div>;
+  if (loading) return <div className="p-4 text-white min-h-screen bg-[#0A0A0A] flex justify-center items-center">Loading mission...</div>;
+  if (!task) return <div className="p-4 text-white min-h-screen bg-[#0A0A0A] flex justify-center items-center">Mission not found</div>;
 
   const deadline = task.expiresAt instanceof Timestamp ? task.expiresAt.toDate() : (task.deadline || new Date(Date.now() + 86400000));
   const timeDiff = deadline.getTime() - Date.now();
@@ -162,7 +162,7 @@ export default function TaskDetail() {
          <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center bg-black/80">
             <div className="text-center animate-bounce">
                <div className="text-6xl mb-4">🎉</div>
-               <h2 className="text-[#E8B84B] font-black text-2xl uppercase tracking-widest">Task Submitted!</h2>
+               <h2 className="text-[#E8B84B] font-black text-2xl uppercase tracking-widest">Mission Submitted!</h2>
             </div>
          </div>
       )}

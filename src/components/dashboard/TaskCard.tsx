@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Clock, Check, X, ArrowRight } from 'lucide-react';
 import { formatCurrency } from '../../utils/format';
 
-interface Task {
+interface Mission {
   id: string;
   title: string;
   venture: string;

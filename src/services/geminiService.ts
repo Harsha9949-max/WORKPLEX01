@@ -26,8 +26,8 @@ export const geminiService = {
       const response = await getAIClient().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: `Worker stats:
-- Pending Tasks: ${stats.pendingTasksCount}
-- Average Task Earning: Rs.${stats.avgEarning}
+- pending missions: ${stats.pendingTasksCount}
+- Average Mission Earning: Rs.${stats.avgEarning}
 - Completion Rate: ${stats.completionRate}%
 
 Predict today's potential extra earning if they complete these tasks. 

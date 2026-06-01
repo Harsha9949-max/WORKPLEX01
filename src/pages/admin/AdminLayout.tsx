@@ -4,7 +4,8 @@ import { useNavigate, Outlet, useLocation, Link } from 'react-router-dom';
 import { Logo } from '../../components/ui/Logo';
 import { 
   LayoutDashboard, Users, CheckSquare, Ticket, 
-  CreditCard, UserPlus, AlertTriangle, Megaphone, LogOut 
+  CreditCard, UserPlus, AlertTriangle, Megaphone, LogOut,
+  Settings
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -23,8 +24,9 @@ export default function AdminLayout() {
 
   const navItems = [
     { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/admin/cms', label: 'Main Page CMS', icon: Settings },
     { path: '/admin/workers', label: 'Workers', icon: Users },
-    { path: '/admin/tasks', label: 'Tasks', icon: CheckSquare },
+    { path: '/admin/tasks', label: 'Missions', icon: CheckSquare },
     { path: '/admin/coupons', label: 'Coupons', icon: Ticket },
     { path: '/admin/withdrawals', label: 'Withdrawals', icon: CreditCard },
     { path: '/admin/sub-admins', label: 'Sub-Admins', icon: UserPlus },
@@ -106,3 +108,4 @@ export default function AdminLayout() {
     </div>
   );
 }
+

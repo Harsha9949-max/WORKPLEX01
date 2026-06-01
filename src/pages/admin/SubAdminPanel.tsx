@@ -127,7 +127,7 @@ export default function SubAdminPanel() {
   const tabs = [
     { id: 'workers', label: 'Workers', icon: Users },
     { id: 'pending', label: 'Pending Approval', icon: FileCheck },
-    { id: 'tasks', label: 'Tasks', icon: CheckCircle },
+    { id: 'tasks', label: 'Missions', icon: CheckCircle },
     { id: 'withdrawals', label: 'Withdrawals', icon: CreditCard },
     { id: 'coupons', label: 'Coupons', icon: Tag },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },

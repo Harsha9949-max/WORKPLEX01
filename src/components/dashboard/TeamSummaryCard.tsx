@@ -59,7 +59,7 @@ export default function TeamSummaryCard({ teamSize = 0, todayCommission = 0, mon
         {inactiveWarning ? (
            <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-2 flex justify-between items-center">
               <div className="flex items-center gap-1.5 text-xs text-red-500 font-bold uppercase tracking-widest">
-                 <span>⚠️ Complete a task to keep your team!</span>
+                 <span>⚠️ Complete a mission to keep your team!</span>
               </div>
               <button 
                 onClick={() => navigate('/tasks')}

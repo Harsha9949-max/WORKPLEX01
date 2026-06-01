@@ -35,7 +35,7 @@ export default function InactiveWarningOverlay({ onClose, daysRemaining }: Props
 
         <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Leadership at Risk</h2>
         <p className="text-sm text-gray-400 font-medium mb-6">
-          You haven't completed any tasks in 30 days. To keep your <span className="text-[#E8B84B]">Lead Marketer</span> status and team commissions, you must complete a task soon.
+          You haven't completed any missions in 30 days. To keep your <span className="text-[#E8B84B]">Lead Marketer</span> status and team commissions, you must complete a mission soon.
         </p>
 
         <div className="bg-[#1A1A1A] border border-[#2A2A2A] w-full rounded-2xl p-5 mb-8 flex flex-col items-center">
@@ -56,7 +56,7 @@ export default function InactiveWarningOverlay({ onClose, daysRemaining }: Props
              className="w-full bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl shadow-[0_0_20px_rgba(232,184,75,0.3)] hover:bg-[#E8B84B]/90 transition flex items-center justify-center gap-2"
            >
              <RefreshCw size={18} />
-             Complete Task Now
+             Complete Mission Now
            </button>
            <button 
              onClick={onClose}

@@ -12,7 +12,7 @@ export function useTasks() {
     if (!currentUser || !userData) return;
 
     const tasksRef = collection(db, 'tasks');
-    // Query for tasks assigned to user or 'all'
+    // Query for missions assigned to user or 'all'
     const q = query(
       tasksRef,
       where('assignedTo', 'in', [[currentUser.uid], 'all'])

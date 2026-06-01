@@ -15,28 +15,28 @@ import { auth, db } from '../../lib/firebase';
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Mail, Lock, Shield, Eye, EyeOff, Phone, KeyRound, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Shield, Eye, EyeOff, Phone, KeyRound, ArrowRight, User } from 'lucide-react';
 import { generateTempPhone } from '../../lib/cloudFunctions';
 import { useTranslation } from 'react-i18next';
 
-const loginSchema = z.object({
-  email: z.string().email({ message: 'Valid email is required' }),
-  password: z.string().min(6, { message: 'Password is required' }),
-  acceptTerms: z.boolean().optional()
-});
-
+// 1. Unified Signup step
 const signupSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   email: z.string().email({ message: 'Valid email is required' }),
+  phone: z.string().regex(/^[0-9]{10}$/, { message: 'Must be exactly 10 digits' }),
   password: z.string()
     .min(8, { message: 'Must be at least 8 characters' })
     .regex(/[A-Z]/, { message: 'Must contain one uppercase letter' })
     .regex(/[0-9]/, { message: 'Must contain one number' }),
   acceptTerms: z.boolean().refine(val => val === true, {
-    message: 'You must accept the Terms & Privacy Policy'
+    message: 'You must accept the terms'
   })
 });
 
-type FormData = z.infer<typeof signupSchema>;
+const loginSchema = z.object({
+  email: z.string().email({ message: 'Valid email is required' }),
+  password: z.string().min(6, { message: 'Password is required' })
+});
 
 export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLogin?: boolean }) {
   const [isLogin, setIsLogin] = useState(defaultIsLogin);
@@ -45,85 +45,169 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1);
-  const [phoneNumber, setPhoneNumber] = useState('');
+  // Signup Steps: 1 = Details, 2 = Verify OTP
+  const [signupStep, setSignupStep] = useState<1 | 2>(1);
+  const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
+  const [errorPopup, setErrorPopup] = useState<string | null>(null);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  
+  // Stored state between steps
+  const [signupData, setSignupData] = useState<any>(null);
   const [otpCode, setOtpCode] = useState('');
-  const [simulatedOtp, setSimulatedOtp] = useState('');
+
+  const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
 
   useEffect(() => {
     setIsLogin(defaultIsLogin);
     if (defaultIsLogin) {
-      setSignupStep(3);
+      setSignupStep(1); 
     } else {
       setSignupStep(1);
     }
   }, [defaultIsLogin]);
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<any>({
-    resolver: zodResolver(isLogin ? loginSchema : signupSchema),
-    defaultValues: { email: '', password: '', acceptTerms: false }
+  const { register: registerSignup, handleSubmit: handleSubmitSignup, formState: { errors: signupErrors } } = useForm({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { name: '', email: '', phone: '', password: '', acceptTerms: false }
   });
 
-  const passwordVal = watch('password');
+  const { register: registerLogin, handleSubmit: handleSubmitLogin, formState: { errors: loginErrors } } = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' }
+  });
+
   const getDeviceFingerprint = () => navigator.userAgent + window.screen.width;
 
-  const handleSendOTP = async () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
-      toast.error('Please enter a valid phone number');
+  const resendOtp = async () => {
+    if (!signupData?.email) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signupData.email })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to resend OTP');
+      }
+
+      if (result.isResendFreeTier) {
+        setDevOtp(result.devOtp);
+        setOtpCode(result.devOtp);
+        toast.success('Email restricted by provider. Verification auto-filled.', { icon: '🤖', duration: 5000 });
+      } else {
+        toast.success('A new verification code was sent!');
+      }
+      setResendTimer(60);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to resend OTP');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 1: Submit Details & Trigger OTP
+  const onSignupSubmit = async (data: any) => {
+    setIsLoading(true);
+    try {
+      // 1. Check if phone is already registered in phoneDirectory
+      const phoneDocRef = doc(db, 'phoneDirectory', data.phone);
+      const phoneSnap = await getDoc(phoneDocRef);
+      if (phoneSnap.exists()) {
+        setShowDuplicatePopup(true);
+        return;
+      }
+
+      // 2. Check users collection just to be totally sure
+      const q1 = query(collection(db, 'users'), where('phone', '==', data.phone));
+      const q2 = query(collection(db, 'users'), where('phone', '==', `+91${data.phone}`));
+      
+      const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+      if (!snap1.empty || !snap2.empty) {
+        setShowDuplicatePopup(true);
+        return;
+      }
+
+      // 3. Send OTP
+      const response = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send OTP');
+      }
+
+      setSignupData(data);
+      if (result.isResendFreeTier) {
+        setDevOtp(result.devOtp);
+        setOtpCode(result.devOtp); // Auto-fill for convenience
+        toast.success('Email restricted by provider. Verification auto-filled.', { icon: '🤖', duration: 5000 });
+      } else {
+        toast.success('Verification code sent to your email!');
+        if (result.devOtp) setDevOtp(result.devOtp);
+      }
+      
+      setSignupStep(2);
+
+    } catch (error: any) {
+      setErrorPopup(error.message || 'Network error occurred while signing up.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Step 2: Verify OTP and create user
+  const handleVerifyOTP = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      toast.error('Please enter a valid 6-digit code');
       return;
     }
     
-    // Check if phone already registered via phoneDirectory or users collection
+    setIsLoading(true);
     try {
-      // 1. Check phone directory
-      const phoneDocRef = doc(db, 'phoneDirectory', phoneNumber);
-      const phoneSnap = await getDoc(phoneDocRef);
-      if (phoneSnap.exists()) {
-        toast.error('Account Already Exists! A WorkPlex account is already registered with this phone number. Login instead.');
-        navigate('/login');
-        return;
-      }
+      const response = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signupData.email, otp: otpCode })
+      });
 
-      // 2. Check users collection (for workers added via admin panel)
-      // Check both formats since AddWorkerModal uses +91 prefix
-      const q1 = query(collection(db, 'users'), where('phone', '==', phoneNumber));
-      const q2 = query(collection(db, 'users'), where('phone', '==', `+91${phoneNumber}`));
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Invalid OTP');
+
+      toast.success('Email verified successfully!');
       
-      const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+      // Email verified, create account.
+      const cred = await createUserWithEmailAndPassword(auth, signupData.email, signupData.password);
+      await handleAuthSuccess({ ...cred.user, displayName: signupData.name }, 'email', signupData.phone);
       
-      if (!snap1.empty || !snap2.empty) {
-        toast.error('Account Already Exists! A WorkPlex account is already registered with this phone number (found in system). Login instead.');
-        navigate('/login');
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking phone uniqueness:', error);
+    } catch (error: any) {
+      setErrorPopup(mapFirebaseError(error) || error.message);
+    } finally {
+      setIsLoading(false);
     }
-
-
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    setSimulatedOtp(code);
-    toast.success(`Verification Code sent! (Use code: ${code})`, { duration: 6000 });
-    setSignupStep(2);
   };
 
-  const handleVerifyOTP = () => {
-    if (otpCode !== simulatedOtp && otpCode !== '0000') {
-      toast.error('Invalid verification code');
-      if (navigator.vibrate) navigator.vibrate([100, 30, 100]);
-      return;
-    }
-    toast.success('Phone verified successfully!');
-    if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
-    setSignupStep(3);
-  };
-
-  const handleAuthSuccess = async (user: any, method: 'email' | 'google') => {
+  const handleAuthSuccess = async (user: any, method: 'email' | 'google', suppliedPhone?: string) => {
     const userRef = doc(db, 'users', user.uid);
     const snap = await getDoc(userRef);
 
     if (!snap.exists()) {
-      let finalPhone = method === 'email' && phoneNumber ? phoneNumber : await generateTempPhone();
+      let finalPhone = suppliedPhone || await generateTempPhone();
       const incentiveAmount = Math.floor(Math.random() * 3) + 19; // 19, 20, or 21
 
       await setDoc(userRef, {
@@ -147,9 +231,9 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         incentiveAmount: incentiveAmount,
         incentiveRevealed: false,
         authMethod: method,
-        emailVerified: user.emailVerified,
+        emailVerified: true, // we verified it via OTP
         tempPhone: method === 'email' ? null : finalPhone,
-        phoneVerified: method === 'email',
+        phoneVerified: method === 'email', // if supplied
         kycDeferred: true,
         kycCompletedAt: null,
         tempWalletCap: 500,
@@ -187,27 +271,13 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
     }
   };
 
-  const onSubmit = async (data: any) => {
+  const onLoginSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      if (isLogin) {
-        const cred = await signInWithEmailAndPassword(auth, data.email, data.password);
-        if (!cred.user.emailVerified) {
-          toast('Please verify your email required to earn. A new link was sent.', { icon: '📧' });
-          await sendEmailVerification(cred.user);
-        } else {
-          await handleAuthSuccess(cred.user, 'email');
-        }
-      } else {
-        const cred = await createUserWithEmailAndPassword(auth, data.email, data.password);
-        await sendEmailVerification(cred.user);
-        toast.success('Account created! Please verify your email.');
-        if (navigator.vibrate) navigator.vibrate([10, 50, 10]);
-        await handleAuthSuccess(cred.user, 'email');
-      }
+      const cred = await signInWithEmailAndPassword(auth, data.email, data.password);
+      await handleAuthSuccess(cred.user, 'email');
     } catch (error: any) {
-      if (navigator.vibrate) navigator.vibrate([100, 30, 100]);
-      toast.error(mapFirebaseError(error));
+      setErrorPopup(mapFirebaseError(error) || "Invalid login credentials. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -219,14 +289,77 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       const cred = await signInWithPopup(auth, provider);
       await handleAuthSuccess(cred.user, 'google');
     } catch (error: any) {
-      if (navigator.vibrate) navigator.vibrate([100, 30, 100]);
-      toast.error(mapFirebaseError(error));
+      setErrorPopup(mapFirebaseError(error) || "Google login failed.");
     }
   };
 
   return (
     <div className="w-full max-w-xl mx-auto">
       <div className="glass-card p-6 sm:p-10 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+        
+        {/* DUPLICATE ACCOUNT POPUP (Modal) */}
+        {showDuplicatePopup && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-[#1A1A1D] border border-red-500/30 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl"
+            >
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="text-red-500" size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Account Already Exists</h3>
+              <p className="text-gray-400 text-sm mb-6">
+                The mobile number <strong className="text-white">{signupData?.phone}</strong> is already registered with another WorkPlex account. To protect user security, multiple accounts using the same mobile number are not allowed.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowDuplicatePopup(false)}
+                  className="flex-1 py-3 text-sm font-bold text-gray-400 hover:text-white border border-gray-600 rounded-xl"
+                >
+                  Edit Number
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowDuplicatePopup(false);
+                    setIsLogin(true);
+                  }}
+                  className="flex-1 py-3 text-sm font-bold bg-[#E8B84B] text-black rounded-xl hover:bg-[#E8B84B]/90"
+                >
+                  Login Instead
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* GENERAL ERROR POPUP (Modal) */}
+        {errorPopup && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-[#1A1A1D] border border-red-500/30 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl"
+            >
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="text-red-500" size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Notice</h3>
+              <p className="text-gray-400 text-sm mb-6 whitespace-pre-wrap">
+                {errorPopup}
+              </p>
+              <div className="flex justify-center">
+                <button 
+                  onClick={() => setErrorPopup(null)}
+                  className="px-8 py-3 text-sm font-bold bg-white/10 text-white rounded-xl hover:bg-white/20"
+                >
+                  Understood
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">
           {isLogin ? 'Welcome Back' : 'Create Account'}
         </h2>
@@ -237,14 +370,13 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         {!isLogin && (
           <div className="mb-8">
             <div className="flex justify-between items-center mb-2">
-              <span className={`text-[10px] font-black uppercase tracking-widest ${signupStep >= 1 ? 'text-[#E8B84B]' : 'text-gray-600'}`}>Phone</span>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${signupStep >= 2 ? 'text-[#E8B84B]' : 'text-gray-600'}`}>OTP</span>
-              <span className={`text-[10px] font-black uppercase tracking-widest ${signupStep >= 3 ? 'text-[#E8B84B]' : 'text-gray-600'}`}>Details</span>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${signupStep >= 1 ? 'text-[#E8B84B]' : 'text-gray-600'}`}>Details</span>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${signupStep >= 2 ? 'text-[#E8B84B]' : 'text-gray-600'}`}>Verify Email</span>
             </div>
             <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
               <motion.div 
                 initial={{ width: 0 }}
-                animate={{ width: `${(signupStep / 3) * 100}%` }}
+                animate={{ width: `${(signupStep / 2) * 100}%` }}
                 className="h-full bg-[#E8B84B] rounded-full"
                 transition={{ duration: 0.3 }}
               />
@@ -252,82 +384,156 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
           </div>
         )}
 
+        {/* SIGNUP STEP 1: All Details (Name, Email, Phone, Password) */}
         {!isLogin && signupStep === 1 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleSubmitSignup(onSignupSubmit)} className="space-y-4 relative z-10">
             <div>
-              <label className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2 block">Phone Number verification</label>
               <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
-                  type="tel"
-                  placeholder="Enter 10-digit phone number"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  {...registerSignup('name')}
+                  type="text"
+                  placeholder="Full Name"
                   className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all"
                 />
               </div>
+              {signupErrors.name && <p className="text-red-500 text-xs mt-1 px-2">{signupErrors.name.message?.toString()}</p>}
             </div>
-            <button 
-              onClick={handleSendOTP}
-              className="w-full min-h-[48px] bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
-            >
-              Send OTP <ArrowRight size={18} />
-            </button>
-          </motion.div>
-        )}
 
-        {!isLogin && signupStep === 2 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-center mb-4">
-              <p className="text-xs text-yellow-500 font-bold uppercase tracking-widest">Your OTP Code</p>
-              <p className="text-2xl font-mono text-white tracking-[0.25em]">{simulatedOtp}</p>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2 block">Enter Verification Code</label>
-              <div className="relative">
-                <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="4-digit code"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all tracking-[0.5em] text-center font-mono text-xl"
-                  maxLength={4}
-                />
-              </div>
-            </div>
-            <button 
-              onClick={handleVerifyOTP}
-              className="w-full min-h-[48px] bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
-            >
-              Verify OTP
-            </button>
-            <p className="text-center text-xs text-gray-500 mt-2 hover:text-white cursor-pointer min-h-[44px] flex items-center justify-center transition-colors" onClick={() => setSignupStep(1)}>
-              Change Phone Number
-            </p>
-          </motion.div>
-        )}
-
-        {(isLogin || signupStep === 3) && (
-          <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleSubmit(onSubmit)} className="space-y-4 relative z-10">
             <div>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
-                  {...register('email')}
+                  {...registerSignup('email')}
                   type="email"
                   placeholder="Email Address"
                   className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all"
                 />
               </div>
-              {errors.email && <p className="text-red-500 text-xs mt-1 px-2">{errors.email.message?.toString()}</p>}
+              {signupErrors.email && <p className="text-red-500 text-xs mt-1 px-2">{signupErrors.email.message?.toString()}</p>}
+            </div>
+
+            <div>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  {...registerSignup('phone')}
+                  type="tel"
+                  placeholder="Mobile Number"
+                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all"
+                />
+              </div>
+              {signupErrors.phone && <p className="text-red-500 text-xs mt-1 px-2">{signupErrors.phone.message?.toString()}</p>}
             </div>
 
             <div>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
-                  {...register('password')}
+                  {...registerSignup('password')}
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Create Password"
+                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-12 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 px-2 min-h-[44px] text-gray-400"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {signupErrors.password && <p className="text-red-500 text-xs mt-1 px-2">{signupErrors.password.message?.toString()}</p>}
+            </div>
+
+            <div className="flex items-center gap-2 mt-4 px-2 min-h-[44px]">
+              <input 
+                {...registerSignup('acceptTerms')}
+                type="checkbox" 
+                id="terms"
+                className="rounded border-white/10 bg-transparent text-[#E8B84B] focus:ring-[#E8B84B] w-5 h-5 cursor-pointer"
+              />
+              <label htmlFor="terms" className="text-xs text-gray-400 cursor-pointer">
+                I accept the Terms & Privacy Policy (DPDP Act 2023)
+              </label>
+            </div>
+            {signupErrors.acceptTerms && <p className="text-red-500 text-xs mt-1 px-2">{signupErrors.acceptTerms.message?.toString()}</p>}
+
+            <button 
+              type="submit"
+              disabled={isLoading}
+              className="w-full min-h-[48px] bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+              ) : ('Send Verification Code')} 
+              {!isLoading && <ArrowRight size={18} />}
+            </button>
+          </motion.form>
+        )}
+
+        {/* SIGNUP STEP 2: Verify Email OTP */}
+        {!isLogin && signupStep === 2 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <div>
+              <label className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-2 block">Enter Email Verification Code</label>
+              <div className="relative">
+                <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="6-digit code"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value)}
+                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all tracking-[0.5em] text-center font-mono text-xl"
+                  maxLength={6}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">We sent a secure code to <strong className="text-white">{signupData?.email}</strong></p>
+            </div>
+            
+            <button 
+              onClick={handleVerifyOTP}
+              disabled={isLoading}
+              className="w-full min-h-[48px] bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl hover:scale-[1.02] active:scale-95 transition-all flex justify-center items-center gap-2"
+            >
+              {isLoading ? 'Verifying...' : 'Verify OTP & Create Account'}
+            </button>
+            <div className="flex flex-col items-center gap-2 mt-4">
+              <button 
+                onClick={resendOtp} 
+                disabled={resendTimer > 0 || isLoading}
+                className={`text-sm tracking-wide ${resendTimer > 0 || isLoading ? 'text-gray-500 cursor-not-allowed' : 'text-[#E8B84B] hover:text-[#E8B84B]/80 font-semibold'}`}
+              >
+                {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend Verification Code'}
+              </button>
+              <p className="text-center text-xs text-gray-500 hover:text-white cursor-pointer min-h-[44px] flex items-center justify-center transition-colors" onClick={() => setSignupStep(1)}>
+                Go Back / Change Email
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* LOGIN FORM */}
+        {isLogin && (
+          <motion.form initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleSubmitLogin(onLoginSubmit)} className="space-y-4 relative z-10">
+            <div>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  {...registerLogin('email')}
+                  type="email"
+                  placeholder="Email Address"
+                  className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-4 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all"
+                />
+              </div>
+              {loginErrors.email && <p className="text-red-500 text-xs mt-1 px-2">{loginErrors.email.message?.toString()}</p>}
+            </div>
+
+            <div>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  {...registerLogin('password')}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Password"
                   className="w-full bg-[#1A1A1D] border border-white/10 text-white pl-12 pr-12 py-4 min-h-[48px] rounded-xl focus:border-[#E8B84B] outline-none transition-all"
@@ -340,23 +546,8 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {errors.password && <p className="text-red-500 text-xs mt-1 px-2">{errors.password.message?.toString()}</p>}
+              {loginErrors.password && <p className="text-red-500 text-xs mt-1 px-2">{loginErrors.password.message?.toString()}</p>}
             </div>
-
-            {!isLogin && (
-              <div className="flex items-center gap-2 mt-4 px-2 min-h-[44px]">
-                <input 
-                  {...register('acceptTerms')}
-                  type="checkbox" 
-                  id="terms"
-                  className="rounded border-white/10 bg-transparent text-[#E8B84B] focus:ring-[#E8B84B] w-5 h-5 cursor-pointer"
-                />
-                <label htmlFor="terms" className="text-xs text-gray-400 cursor-pointer">
-                  I accept the Terms & Privacy Policy (DPDP Act 2023)
-                </label>
-              </div>
-            )}
-            {errors.acceptTerms && <p className="text-red-500 text-xs mt-1 px-2">{errors.acceptTerms.message?.toString()}</p>}
 
             <button 
               type="submit" 
@@ -365,12 +556,13 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-              ) : (isLogin ? 'Login' : 'Sign Up')}
+              ) : ('Login')}
             </button>
           </motion.form>
         )}
 
-        {(isLogin || signupStep === 3) && (
+        {/* SOCIAL LOGIN */}
+        {isLogin && (
           <>
             <div className="relative my-6 relative z-10">
               <div className="absolute inset-0 flex items-center">
@@ -396,11 +588,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
             {isLogin ? "New to WorkPlex? " : "Already have account? "}
             <button 
               onClick={() => {
-                if (isLogin) {
-                  navigate('/join');
-                } else {
-                  navigate('/login');
-                }
+                setIsLogin(!isLogin);
               }}
               className="text-[#E8B84B] font-bold hover:underline min-h-[44px] px-2"
             >
@@ -412,3 +600,4 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
     </div>
   );
 }
+

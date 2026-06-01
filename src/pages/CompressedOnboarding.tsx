@@ -248,7 +248,7 @@ export default function CompressedOnboarding() {
                   <Target className="text-[#E8B84B]" size={24} />
                 </div>
                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Select Venture</h2>
-                <p className="text-gray-400 text-sm">Choose your primary focus area to match tasks exactly to your interests.</p>
+                <p className="text-gray-400 text-sm">Choose your primary focus area to match missions exactly to your interests.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

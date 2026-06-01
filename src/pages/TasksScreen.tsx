@@ -72,13 +72,13 @@ export default function TasksScreen() {
          {/* LIST */}
          <div className="p-4 space-y-4">
             {loading ? (
-               <div className="text-center py-10 text-gray-500">Loading tasks...</div>
+               <div className="text-center py-10 text-gray-500">Loading missions...</div>
             ) : filteredTasks.length === 0 ? (
                <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-8 text-center flex flex-col items-center">
                   <div className="w-16 h-16 bg-[#1A1A1A] rounded-full flex items-center justify-center mb-4">
                      <ClipboardCheck size={32} className="text-gray-600" />
                   </div>
-                  <h3 className="text-lg font-black text-white mb-2">No {activeTab} tasks</h3>
+                  <h3 className="text-lg font-black text-white mb-2">No {activeTab} missions</h3>
                   <p className="text-xs text-gray-500">Check back later for more missions.</p>
                </div>
             ) : (
@@ -118,7 +118,7 @@ export default function TasksScreen() {
                                  : 'bg-[#E8B84B] text-black shadow-[0_0_15px_rgba(232,184,75,0.2)] hover:bg-[#E8B84B]/90'
                               }`}
                            >
-                              {task.status === 'completed' ? 'View Details' : 'Start Task →'}
+                              {task.status === 'completed' ? 'View Details' : 'Start Mission →'}
                            </button>
                         </div>
                      </motion.div>

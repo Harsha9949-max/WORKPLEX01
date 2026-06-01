@@ -71,7 +71,7 @@ export default function ContentPortfolio() {
                <div className="col-span-full py-16 flex flex-col items-center justify-center text-center">
                   <Camera size={48} className="text-pink-500 mb-4 opacity-50" />
                   <p className="text-white font-bold text-lg mb-1">No content found</p>
-                  <p className="text-sm text-gray-500">Complete tasks to build your portfolio!</p>
+                  <p className="text-sm text-gray-500">Complete missions to build your portfolio!</p>
                </div>
             )}
          </div>

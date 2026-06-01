@@ -25,7 +25,7 @@ export default function SubAdminAnalytics({ venture }: { venture: string }) {
             {[
                { label: 'Total Workers', value: '0' },
                { label: 'Active This Week', value: '0', color: 'text-[#10B981]' },
-               { label: 'Tasks Completed', value: '0' },
+               { label: 'Missions Completed', value: '0' },
                { label: 'Paid This Month', value: 'Rs.0', color: 'text-[#F59E0B]' },
             ].map((stat, i) => (
                <div key={i} className="bg-[#111111] border border-[#2A2A2A] p-4 rounded-2xl flex flex-col justify-center">

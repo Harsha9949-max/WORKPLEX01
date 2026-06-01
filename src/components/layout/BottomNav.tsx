@@ -21,7 +21,7 @@ export default function BottomNav() {
   if (userData?.role === 'Sub-Admin') {
      tabs = [
        { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
-       { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
+       { path: '/tasks', icon: ClipboardList, label: 'Missions', badge: hasPendingTasks ? 'red' : null },
        { path: '/coupon', icon: Tag, label: 'Coupon', badge: null },
        { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
        { path: '/sub-admin', icon: ShieldAlert, label: 'Admin', badge: null }
@@ -29,7 +29,7 @@ export default function BottomNav() {
   } else if (userData?.role === 'Manager') {
      tabs = [
        { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
-       { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
+       { path: '/tasks', icon: ClipboardList, label: 'Missions', badge: hasPendingTasks ? 'red' : null },
        { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
        { path: '/manager/team', icon: User, label: 'Team', badge: null }, // Reusing User icon like Profile/Team
        { path: '/profile', icon: User, label: 'Profile', badge: hasNewBadge ? 'purple' : null }
@@ -37,7 +37,7 @@ export default function BottomNav() {
   } else if (userData?.role === 'Content Creator') {
      tabs = [
        { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
-       { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
+       { path: '/tasks', icon: ClipboardList, label: 'Missions', badge: hasPendingTasks ? 'red' : null },
        { path: '/studio', icon: Palette, label: 'Studio', badge: null },
        { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
        { path: '/profile', icon: User, label: 'Profile', badge: hasNewBadge ? 'purple' : null }
@@ -45,7 +45,7 @@ export default function BottomNav() {
   } else {
      tabs = [
        { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
-       { path: '/tasks', icon: ClipboardList, label: 'Tasks', badge: hasPendingTasks ? 'red' : null },
+       { path: '/tasks', icon: ClipboardList, label: 'Missions', badge: hasPendingTasks ? 'red' : null },
        { path: '/leaderboard', icon: Trophy, label: 'Rank', badge: null }, // Replaced Coupon with Rank
        { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
        { path: '/profile', icon: User, label: 'Profile', badge: hasNewBadge ? 'purple' : null }

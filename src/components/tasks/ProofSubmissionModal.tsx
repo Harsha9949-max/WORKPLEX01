@@ -81,7 +81,7 @@ export default function ProofSubmissionModal() {
     <div className="min-h-screen bg-[#0A0A0A] text-white p-6 flex flex-col gap-6">
       <div className="space-y-1">
         <h2 className="text-2xl font-black tracking-tight">Submit Your Proof</h2>
-        <p className="text-gray-500 text-sm font-medium">Ensure your proof is clear and relevant to the task.</p>
+        <p className="text-gray-500 text-sm font-medium">Ensure your proof is clear and relevant to the mission.</p>
       </div>
 
       <div className="space-y-4">

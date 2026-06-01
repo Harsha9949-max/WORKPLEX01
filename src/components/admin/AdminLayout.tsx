@@ -32,7 +32,7 @@ export default function AdminLayout() {
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { name: 'Partner Orders', path: '/admin/partner-orders', icon: Briefcase },
     { name: 'Workers', path: '/admin/workers', icon: Users },
-    { name: 'Tasks', path: '/admin/tasks', icon: CheckSquare },
+    { name: 'Missions', path: '/admin/tasks', icon: CheckSquare },
     { name: 'Coupons', path: '/admin/coupons', icon: Ticket },
     { name: 'Withdrawals', path: '/admin/withdrawals', icon: CreditCard },
     { name: 'Catalog', path: '/admin/catalog', icon: Briefcase },

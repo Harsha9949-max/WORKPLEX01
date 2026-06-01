@@ -51,13 +51,13 @@ export default function TasksScreen() {
 
   const handleSkip = (e: React.MouseEvent, taskId: string) => {
     e.stopPropagation();
-    toast('Task hidden. You can find it later if needed.', { icon: '⏭️' });
+    toast('Mission hidden. You can find it later if needed.', { icon: '⏭️' });
   };
 
   if (tasksLoading || subsLoading) return (
     <div className="p-4 text-white flex flex-col items-center justify-center min-h-[50vh]">
       <Loader2 className="w-8 h-8 text-[#E8B84B] animate-spin mb-4" />
-      <span className="text-gray-400 font-bold uppercase tracking-widest text-xs">Loading Tasks</span>
+      <span className="text-gray-400 font-bold uppercase tracking-widest text-xs">Loading Missions</span>
     </div>
   );
 
@@ -66,7 +66,7 @@ export default function TasksScreen() {
       {/* HEADER */}
       <div className="flex items-start justify-between mb-6 pt-2">
          <div>
-            <h1 className="text-[22px] font-bold text-white leading-tight">This Week's Tasks</h1>
+            <h1 className="text-[22px] font-bold text-white leading-tight">This Week's Missions</h1>
             <p className="text-[13px] text-gray-400 mt-1">{weekLabel}</p>
          </div>
          <button className="w-10 h-10 border border-[#2A2A2A] bg-[#111111] rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition">
@@ -129,8 +129,8 @@ export default function TasksScreen() {
                   <div className="w-16 h-16 bg-[#1A1A1A] rounded-full flex justify-center items-center mb-4">
                      <ClipboardCheck size={32} className="text-gray-500" />
                   </div>
-                  <p className="text-white font-bold text-lg mb-1">No tasks found</p>
-                  <p className="text-sm text-gray-500 max-w-[200px]">You don't have any {activeTab.toLowerCase()} tasks right now.</p>
+                  <p className="text-white font-bold text-lg mb-1">No missions found</p>
+                  <p className="text-sm text-gray-500 max-w-[200px]">You don't have any {activeTab.toLowerCase()} missions right now.</p>
                </motion.div>
             )}
          </AnimatePresence>

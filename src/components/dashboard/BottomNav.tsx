@@ -5,7 +5,7 @@ import { Home, ListTodo, Wallet, User, Trophy } from 'lucide-react';
 export default function BottomNav() {
   const navItems = [
     { icon: Home, label: 'Home', path: '/home' },
-    { icon: ListTodo, label: 'Tasks', path: '/tasks' },
+    { icon: ListTodo, label: 'Missions', path: '/tasks' },
     { icon: Trophy, label: 'Rank', path: '/leaderboard' },
     { icon: Wallet, label: 'Wallet', path: '/wallet' },
     { icon: User, label: 'Profile', path: '/profile' }

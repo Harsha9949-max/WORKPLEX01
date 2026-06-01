@@ -30,7 +30,7 @@ export default function SkeletonLoader() {
       {/* Predictor Skeleton */}
       <Skeleton className="w-full h-24" />
 
-      {/* Tasks Skeleton */}
+      {/* Missions Skeleton */}
       <div className="space-y-4">
         <div className="flex justify-between">
           <Skeleton className="w-32 h-6" />

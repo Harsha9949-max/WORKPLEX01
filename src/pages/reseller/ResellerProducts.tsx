@@ -110,6 +110,7 @@ export default function ResellerProducts() {
   const handleAddProduct = async (catalogProd: any, sellingPrice: number) => {
     if (!currentUser) return;
     const currentVenture = shop?.venture || userData?.venture || 'BuyRix';
+    const basePriceForMargin = catalogProd.suggestedRetailPrice || catalogProd.hvrsBasePrice;
     try {
       const docRef = doc(db, `partnerProducts/${currentUser.uid}/products`, catalogProd.id);
       await setDoc(docRef, {
@@ -117,8 +118,9 @@ export default function ResellerProducts() {
         name: catalogProd.name,
         images: catalogProd.images || [],
         hvrsBasePrice: catalogProd.hvrsBasePrice,
+        suggestedRetailPrice: catalogProd.suggestedRetailPrice || catalogProd.hvrsBasePrice,
         partnerSellingPrice: sellingPrice,
-        partnerMargin: sellingPrice - catalogProd.hvrsBasePrice,
+        partnerMargin: sellingPrice - basePriceForMargin,
         category: catalogProd.category || 'General',
         description: catalogProd.description || '',
         isActive: true,
@@ -241,13 +243,17 @@ export default function ResellerProducts() {
                             value={tempPrice}
                             onChange={(e) => setTempPrice(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleUpdatePrice(prod.id, Number(tempPrice), prod.hvrsBasePrice);
+                              const baseMarginPrice = prod.suggestedRetailPrice || prod.hvrsBasePrice;
+                              if (e.key === 'Enter') handleUpdatePrice(prod.id, Number(tempPrice), baseMarginPrice);
                               if (e.key === 'Escape') setEditingPriceId(null);
                             }}
                             autoFocus
                             className="w-20 bg-[#1A1A1A] border border-[#00C9A7] text-white px-2 py-1 rounded outline-none"
                           />
-                          <button onClick={() => handleUpdatePrice(prod.id, Number(tempPrice), prod.hvrsBasePrice)} className="text-[#00C9A7] hover:text-[#00C9A7]/80">
+                          <button onClick={() => {
+                            const baseMarginPrice = prod.suggestedRetailPrice || prod.hvrsBasePrice;
+                            handleUpdatePrice(prod.id, Number(tempPrice), baseMarginPrice);
+                          }} className="text-[#00C9A7] hover:text-[#00C9A7]/80">
                             <Check size={16} />
                           </button>
                           <button onClick={() => setEditingPriceId(null)} className="text-gray-500 hover:text-white">
@@ -262,7 +268,7 @@ export default function ResellerProducts() {
                       )}
                     </td>
                     <td className="px-6 py-4 font-bold text-[#10B981]">
-                      {formatCurrency(editingPriceId === prod.id ? (Number(tempPrice) - prod.hvrsBasePrice) : prod.partnerMargin)}
+                      {formatCurrency(editingPriceId === prod.id ? (Number(tempPrice) - (prod.suggestedRetailPrice || prod.hvrsBasePrice)) : prod.partnerMargin)}
                     </td>
                     <td className="px-6 py-4">
                       <button 
@@ -377,20 +383,21 @@ export default function ResellerProducts() {
 
 function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, price: number) => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [price, setPrice] = useState(product.suggestedRetailPrice || product.hvrsBasePrice * 1.5);
+  const baseForMargin = product.suggestedRetailPrice || product.hvrsBasePrice;
+  const [price, setPrice] = useState(baseForMargin + 100);
 
   if (!isOpen) {
     return (
       <button 
         onClick={() => setIsOpen(true)}
-        className="w-full py-2 bg-[#E8B84B] text-black rounded text-sm font-bold shadow hover:bg-[#E8B84B]/90 transition-colors"
+        className="w-full py-2 bg-[#E8B84B] text-black rounded text-sm flex items-center justify-center font-bold shadow hover:bg-[#E8B84B]/90 transition-colors"
       >
         Add to My Shop
       </button>
     );
   }
 
-  const margin = price - product.hvrsBasePrice;
+  const margin = price - baseForMargin;
 
   return (
     <div className="bg-[#1A1A1A] p-3 rounded border border-[#00C9A7]">
@@ -406,7 +413,7 @@ function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, pr
         />
       </div>
       <p className="text-xs text-gray-400 mb-3">
-        You'll earn: <span className={`font-bold ${margin > 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>Rs. {margin}</span>
+        You'll earn: <span className={`font-bold ${margin >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>Rs. {margin}</span>
       </p>
       <div className="flex gap-2">
         <button 
@@ -417,13 +424,13 @@ function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, pr
         </button>
         <button 
           onClick={() => {
-            if (price <= 0) {
-              toast.error('Price must be greater than 0');
+            if (price < baseForMargin) {
+              toast.error(`Price must be at least Rs. ${baseForMargin}`);
               return;
             }
             onAdd(product, price);
           }}
-          disabled={price <= 0}
+          disabled={price < baseForMargin}
           className="flex-1 py-1.5 bg-[#E8B84B] text-black rounded text-xs font-bold hover:bg-[#E8B84B]/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Confirm Add

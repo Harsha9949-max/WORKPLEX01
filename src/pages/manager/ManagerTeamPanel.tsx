@@ -111,7 +111,7 @@ export default function ManagerTeamPanel() {
 
                      <div className="flex gap-2">
                         <button className="flex-1 text-xs bg-[#1A1A1A] font-bold text-gray-300 uppercase px-4 py-3 rounded-xl hover:bg-[#2A2A2A] transition">View Team</button>
-                        <button className="flex-1 text-xs bg-[#7C3AED]/20 text-[#7C3AED] border border-[#7C3AED]/30 font-black uppercase px-4 py-3 rounded-xl hover:bg-[#7C3AED]/30 transition">Create Task</button>
+                        <button className="flex-1 text-xs bg-[#7C3AED]/20 text-[#7C3AED] border border-[#7C3AED]/30 font-black uppercase px-4 py-3 rounded-xl hover:bg-[#7C3AED]/30 transition">Create Mission</button>
                      </div>
                   </div>
                ))}
@@ -140,7 +140,7 @@ export default function ManagerTeamPanel() {
                         <tr>
                            <th className="px-4 py-3">Date</th>
                            <th className="px-4 py-3">Lead / Worker</th>
-                           <th className="px-4 py-3">Task Amt</th>
+                           <th className="px-4 py-3">Mission Amt</th>
                            <th className="px-4 py-3 text-[#F59E0B]">Your 3%</th>
                            <th className="px-4 py-3">Status</th>
                         </tr>

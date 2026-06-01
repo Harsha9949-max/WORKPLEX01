@@ -131,15 +131,15 @@ export async function fetchAIPrediction(uid: string, pendingTasks: number, avgEa
       if (ageHours < 6) return data.prediction;
    }
    
-   const prediction = `Complete ${pendingTasks} more tasks -> earn Rs.${(pendingTasks * avgEarning * completionRate).toFixed(0)} extra today!`;
+   const prediction = `Complete ${pendingTasks} more missions -> earn Rs.${(pendingTasks * avgEarning * completionRate).toFixed(0)} extra today!`;
    return prediction;
 }
 
 export async function generateMysteryTask(uid: string, role: string, venture: string) {
-   // Simulated callable function for Mystery task
+   // Simulated callable function for Mystery Mission
    const newTask = {
       title: 'Mystery Challenge: Flash Promo!',
-      description: `Create 1 mystery marketing task for ${role} in ${venture}. High urgency. Post a flash promo link on your stories immediately.`,
+      description: `Create 1 mystery marketing mission for ${role} in ${venture}. High urgency. Post a flash promo link on your stories immediately.`,
       reward: 75,
       type: 'mystery',
       venture: venture,
@@ -183,7 +183,7 @@ export async function checkLeadInactivity() {
 }
 
 export async function distributeTeamCommission(workerId: string, earnAmount: number) {
-   // Simulated team commission distribution on task complete
+   // Simulated team commission distribution on mission complete
    const workerSnap = await getDoc(doc(db, 'users', workerId));
    if (!workerSnap.exists()) return;
    

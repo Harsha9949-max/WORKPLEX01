@@ -62,7 +62,7 @@ export default function MysteryTaskModal({ isOpen, onClose, onAccept }: Props) {
               <Gift size={40} className="text-white" />
             </motion.div>
 
-            <h2 className="text-3xl font-black text-white text-center mb-2 tracking-tighter uppercase">Mystery Task!</h2>
+            <h2 className="text-3xl font-black text-white text-center mb-2 tracking-tighter uppercase">Mystery Mission!</h2>
             <p className="text-purple-400 font-bold text-center mb-8 uppercase tracking-widest text-sm">Limited Time High Reward</p>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 text-center space-y-4">
@@ -93,7 +93,7 @@ export default function MysteryTaskModal({ isOpen, onClose, onAccept }: Props) {
                 onClick={onAccept}
                 className="flex-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-black py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
               >
-                Accept Task <ArrowRight size={20} />
+                Accept Mission <ArrowRight size={20} />
               </button>
             </div>
           </motion.div>

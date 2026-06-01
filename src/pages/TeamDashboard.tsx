@@ -207,7 +207,7 @@ export default function TeamDashboard() {
                         <div className="grid grid-cols-3 gap-2 mb-4">
                            <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-2 text-center">
                               <span className="text-white font-black text-sm block">{member.tasksCompleted || 0}</span>
-                              <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Tasks Done</span>
+                              <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Missions Done</span>
                            </div>
                            <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-2 text-center">
                               <span className="text-white font-black text-sm block">{formatCurrency(member.totalEarnings || 0)}</span>

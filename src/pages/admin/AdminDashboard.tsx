@@ -246,7 +246,7 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-[#E8B84B]/10 text-[#E8B84B] rounded-lg"><Zap size={16} /></div>
-                  <span className="text-xs font-bold text-gray-300">New Viral Task</span>
+                  <span className="text-xs font-bold text-gray-300">New Viral Mission</span>
                 </div>
                 <ArrowUpRight size={14} className="text-gray-600 group-hover:text-white transition-colors" />
               </button>
@@ -276,7 +276,7 @@ export default function AdminDashboard() {
           <div className="bg-[#E8B84B] p-8 rounded-[40px] text-black">
             <h3 className="text-lg font-black uppercase tracking-tighter mb-2">Master Rule</h3>
             <p className="text-[10px] font-bold uppercase opacity-80 leading-relaxed mb-6">
-              "NEVER approve a withdrawal above ₹5,000 without manual verification of task proofs & device fingerprint consistency."
+              "NEVER approve a withdrawal above ₹5,000 without manual verification of mission proofs & device fingerprint consistency."
             </p>
             <div className="p-4 bg-black/10 rounded-2xl text-[8px] font-black uppercase tracking-widest border border-black/5">
               Current Safety Index: 98.2%

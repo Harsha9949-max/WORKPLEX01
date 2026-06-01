@@ -109,7 +109,7 @@ export default function HomeDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // Mystery Task Trigger
+  // Mystery Mission Trigger
   useEffect(() => {
     if (!authLoading && Math.random() < 0.15) {
       const timer = setTimeout(() => setShowMysteryFab(true), 3000);
@@ -270,7 +270,7 @@ export default function HomeDashboard() {
               <div className="bg-[#E8B84B] h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min((streak / 7) * 100, 100)}%` }}></div>
            </div>
            <p className="text-[11px] font-bold text-gray-400 text-center uppercase tracking-widest">
-              {streak > 0 ? 'Today\'s task done! ✅' : 'Complete a task today to keep your streak!'}
+              {streak > 0 ? 'Today\'s mission done! ✅' : 'Complete a mission today to keep your streak!'}
            </p>
         </section>
 
@@ -435,7 +435,7 @@ export default function HomeDashboard() {
                  </div>
                  <div>
                     <h4 className="text-[#E8B84B] font-black text-[13px] uppercase tracking-widest mb-1">AI Earnings Predictor</h4>
-                    <p className="text-sm text-white font-medium leading-snug">Complete more tasks → earn extra today</p>
+                    <p className="text-sm text-white font-medium leading-snug">Complete more missions → earn extra today</p>
                     <p className="text-[10px] text-gray-400 mt-1">Based on your performance</p>
                  </div>
               </div>
@@ -459,8 +459,8 @@ export default function HomeDashboard() {
            ) : tasks.length === 0 ? (
               <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl p-8 flex flex-col items-center justify-center text-center">
                  <ClipboardCheck size={40} className="text-[#E8B84B]/50 mb-3" />
-                 <p className="text-white font-bold">No tasks today &mdash; check back soon!</p>
-                 <p className="text-xs text-gray-500 mt-1">New tasks drop every Monday</p>
+                 <p className="text-white font-bold">No missions today &mdash; check back soon!</p>
+                 <p className="text-xs text-gray-500 mt-1">New missions drop every Monday</p>
               </div>
            ) : (
               <div className="space-y-3">

@@ -61,7 +61,7 @@ export default function MysteryBonusModal({ isOpen, onClose, onAccept }: Props) 
               <Gift className="w-10 h-10 text-black" />
             </motion.div>
 
-            <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">Mystery Task!</h2>
+            <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">Mystery Mission!</h2>
             <p className="text-gray-400 text-sm mb-8">Complete in 2 hours → <span className="text-[#E8B84B] font-bold">Rs.75 instant bonus</span></p>
 
             <div className="bg-black/40 rounded-2xl py-4 mb-8 border border-white/5">

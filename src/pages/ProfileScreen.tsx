@@ -62,7 +62,7 @@ export default function ProfileScreen() {
   };
 
   const chartData = [
-    { name: 'Direct Tasks', value: userData.totalEarned || 0, color: '#10B981' },
+    { name: 'Direct Missions', value: userData.totalEarned || 0, color: '#10B981' },
     { name: 'Team Comm.', value: userData.teamEarnings || 0, color: '#3B82F6' },
     { name: 'Bonuses', value: userData.wallets?.bonus || 0, color: '#8B5CF6' },
   ];
@@ -185,7 +185,7 @@ export default function ProfileScreen() {
         <h3 className="text-xs font-black text-[#E8B84B] uppercase tracking-widest mb-1 flex items-center gap-2">
             Invite & Earn
         </h3>
-        <p className="text-sm font-medium text-gray-400 mb-4">Build your team and earn commissions on their tasks!</p>
+        <p className="text-sm font-medium text-gray-400 mb-4">Build your team and earn commissions on their missions!</p>
         
         <div className="flex items-center justify-between mb-4 bg-[#0A0A0A] border border-[#2A2A2A] p-4 rounded-xl">
            <div>
@@ -316,7 +316,7 @@ export default function ProfileScreen() {
           <div className="w-10 h-10 bg-[#00C9A7]/10 rounded-xl flex items-center justify-center mb-2">
             <Award className="text-[#00C9A7]" size={20} />
           </div>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Tasks Done</p>
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Missions Done</p>
           <p className="text-lg font-black">{userData.tasksCompleted || 0}</p>
         </div>
       </div>

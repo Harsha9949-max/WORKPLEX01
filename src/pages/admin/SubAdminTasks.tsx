@@ -9,7 +9,7 @@ export default function SubAdminTasks({ venture, subAdminId }: { venture: string
    const [tasks, setTasks] = useState<any[]>([]);
    const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
    
-   // Create Task Form State
+   // Create Mission Form State
    const [title, setTitle] = useState('');
    const [description, setDescription] = useState('');
    const [amount, setAmount] = useState('30');
@@ -43,12 +43,12 @@ export default function SubAdminTasks({ venture, subAdminId }: { venture: string
             proofType,
             targetRoles: venture === 'Growplex' ? ['Promoter', 'Content Creator'] : ['Marketer', 'Content Creator', 'Reseller']
          });
-         toast.success('Task created successfully!');
+         toast.success('Mission created successfully!');
          setIsCreateTaskOpen(false);
          setTitle('');
          setDescription('');
       } catch (err) {
-         toast.error('Failed to create task');
+         toast.error('Failed to Create Mission');
       }
    };
 
@@ -56,20 +56,20 @@ export default function SubAdminTasks({ venture, subAdminId }: { venture: string
       <div className="space-y-6">
          <div className="flex justify-between items-center bg-[#111111] p-4 rounded-2xl border border-[#2A2A2A]">
             <div>
-               <h2 className="text-xl font-black text-white uppercase tracking-tight">Task Management</h2>
-               <p className="text-xs text-gray-400 font-medium">{venture} tasks only</p>
+               <h2 className="text-xl font-black text-white uppercase tracking-tight">Mission Management</h2>
+               <p className="text-xs text-gray-400 font-medium">{venture} missions only</p>
             </div>
             <button onClick={() => setIsCreateTaskOpen(true)} className="bg-[#F59E0B] text-black text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-lg hover:bg-[#F59E0B]/90 transition shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-               + Create Task
+               + Create Mission
             </button>
          </div>
 
          {isCreateTaskOpen && (
             <div className="bg-[#111111] border border-[#2A2A2A] p-6 rounded-2xl mb-6">
-               <h3 className="text-lg font-bold text-white mb-4">Create Task for {venture}</h3>
+               <h3 className="text-lg font-bold text-white mb-4">Create Mission for {venture}</h3>
                <form onSubmit={handleCreateTask} className="space-y-4">
                   <div>
-                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Task Title</label>
+                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Mission Title</label>
                      <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl px-4 py-3 focus:outline-none focus:border-[#F59E0B]" required />
                   </div>
                   <div>
@@ -96,7 +96,7 @@ export default function SubAdminTasks({ venture, subAdminId }: { venture: string
                   </div>
                   <div className="flex gap-3 justify-end pt-4">
                      <button type="button" onClick={() => setIsCreateTaskOpen(false)} className="px-6 py-3 rounded-xl border border-[#2A2A2A] text-gray-400 font-bold uppercase transition hover:text-white">Cancel</button>
-                     <button type="submit" className="px-6 py-3 rounded-xl bg-[#F59E0B] text-black font-black uppercase transition hover:bg-[#F59E0B]/90">Create Task</button>
+                     <button type="submit" className="px-6 py-3 rounded-xl bg-[#F59E0B] text-black font-black uppercase transition hover:bg-[#F59E0B]/90">Create Mission</button>
                   </div>
                </form>
             </div>
@@ -144,7 +144,7 @@ export default function SubAdminTasks({ venture, subAdminId }: { venture: string
                      ))}
                      {tasks.length === 0 && (
                         <tr>
-                           <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No tasks found.</td>
+                           <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No missions found.</td>
                         </tr>
                      )}
                   </tbody>

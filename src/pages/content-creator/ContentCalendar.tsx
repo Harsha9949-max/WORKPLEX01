@@ -56,7 +56,7 @@ export default function ContentCalendar({ venture }: { venture: string }) {
                      </>
                   ) : (
                      <div className="h-24 flex items-center justify-center text-gray-600 text-xs font-bold uppercase">
-                        No Task
+                        No Mission
                      </div>
                   )}
                </div>
@@ -139,7 +139,7 @@ export default function ContentCalendar({ venture }: { venture: string }) {
                      </div>
 
                      <button className="w-full bg-pink-500 text-white font-black uppercase tracking-widest py-4 rounded-xl hover:bg-pink-600 transition shadow-[0_0_20px_rgba(236,72,153,0.3)]">
-                        Start Task Execution
+                        Start Mission Execution
                      </button>
                   </div>
                </div>

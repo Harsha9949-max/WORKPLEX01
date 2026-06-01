@@ -20,7 +20,7 @@ export const useMarketerData = (uid?: string) => {
     return () => unsubUser();
   }, [uid]);
 
-  // Tasks listener (this week)
+  // Missions listener (this week)
   useEffect(() => {
     if (!uid) return;
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });

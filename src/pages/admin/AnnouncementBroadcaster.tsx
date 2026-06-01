@@ -170,7 +170,7 @@ export default function AnnouncementBroadcaster() {
               <div className="flex items-start gap-4">
                 <div className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-black text-gray-500 flex-shrink-0">1</div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase leading-relaxed mt-1">
-                  Keep announcements actionable. Tell workers exactly what task or payout update to check.
+                  Keep announcements actionable. Tell workers exactly what mission or payout update to check.
                 </p>
               </div>
               <div className="flex items-start gap-4">

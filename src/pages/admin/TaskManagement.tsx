@@ -40,8 +40,8 @@ import { formatCurrency } from '../../utils/format';
 import { format } from 'date-fns';
 
 /**
- * Task Management Page.
- * Handles task creation and submission approvals.
+ * Mission Management Page.
+ * Handles mission creation and submission approvals.
  */
 export default function TaskManagement() {
   const [activeTab, setActiveTab] = useState<'create' | 'review'>('review');
@@ -156,8 +156,8 @@ export default function TaskManagement() {
 
       // Create an announcement
       await addDoc(collection(db, 'announcements'), {
-          title: `New tasks available!`,
-          content: `New tasks are available for ${taskForm.venture} this week!`,
+          title: `New Missions Available!`,
+          content: `New missions are available for ${taskForm.venture} this week!`,
           targetAudience: 'By Venture',
           targetVenture: taskForm.venture,
           type: 'info',
@@ -166,7 +166,7 @@ export default function TaskManagement() {
           authorName: 'System'
       });
 
-      toast.success('Weekly Task Batch broadcasted! 🚀');
+      toast.success('Weekly Mission Batch broadcasted! 🚀');
       setTaskForm({
         venture: 'BuyRix',
         targetRoles: [],
@@ -175,13 +175,13 @@ export default function TaskManagement() {
       });
       setActiveTab('review');
     } catch (error) {
-      toast.error('Failed to create tasks');
+      toast.error('Failed to Create Missions');
     }
   };
 
   const addTaskToBatch = () => {
     if (taskForm.tasks.length >= 7) {
-      toast.error('Maximum 7 tasks per week');
+      toast.error('Maximum 7 missions per week');
       return;
     }
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -235,7 +235,7 @@ export default function TaskManagement() {
         reviewedAt: serverTimestamp()
       });
 
-      // 2. Credit worker's earned wallet & trigger first task logic
+      // 2. Credit worker's earned wallet & trigger first mission logic
       await updateDoc(userRef, extraUpdate);
 
       toast.success(`Approval successful! ₹${submission.earningAmount} credited to ${submission.workerName}`);
@@ -329,7 +329,7 @@ export default function TaskManagement() {
               activeTab === 'create' ? 'bg-[#E8B84B] text-black shadow-lg shadow-[#E8B84B]/20' : 'text-gray-500 hover:text-white'
             }`}
           >
-            <Plus size={14} /> New Task
+            <Plus size={14} /> New Mission
           </button>
         </div>
       </div>
@@ -342,8 +342,8 @@ export default function TaskManagement() {
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-[#2A2A2A] pb-6">
             <div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tighter">Create Weekly Task Batch</h2>
-              <p className="text-gray-500 text-xs mt-1">Assign tasks for specific days of the week</p>
+              <h2 className="text-xl font-black text-white uppercase tracking-tighter">Create Weekly Mission Batch</h2>
+              <p className="text-gray-500 text-xs mt-1">Assign missions for specific days of the week</p>
             </div>
             <div className="flex items-center gap-4 bg-[#1A1A1A] p-2 rounded-2xl border border-[#2A2A2A]">
                <button onClick={() => handleWeekChange(-1)} className="p-2 hover:bg-[#2A2A2A] rounded-xl"><Plus className="rotate-45" size={16} /></button>
@@ -396,8 +396,8 @@ export default function TaskManagement() {
 
             <div className="space-y-4">
                <div className="flex justify-between items-center">
-                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Weekly Tasks ({taskForm.tasks.length}/7)</label>
-                 <button type="button" onClick={addTaskToBatch} className="text-xs font-bold text-[#E8B84B] flex items-center gap-1"><Plus size={14} /> Add Task</button>
+                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Weekly Missions ({taskForm.tasks.length}/7)</label>
+                 <button type="button" onClick={addTaskToBatch} className="text-xs font-bold text-[#E8B84B] flex items-center gap-1"><Plus size={14} /> Add Mission</button>
                </div>
                
                {taskForm.tasks.map((taskItem, idx) => (
@@ -405,7 +405,7 @@ export default function TaskManagement() {
                      <button type="button" onClick={() => removeTaskFromBatch(idx)} className="absolute top-4 right-4 text-gray-500 hover:text-red-500"><X size={16} /></button>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">Task Title</label>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">Mission Title</label>
                           <input type="text" value={taskItem.title} onChange={e => updateTaskInBatch(idx, 'title', e.target.value)} required className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none" />
                         </div>
                         <div>
@@ -433,7 +433,7 @@ export default function TaskManagement() {
                ))}
                {taskForm.tasks.length === 0 && (
                  <div className="text-center py-10 border border-dashed border-[#2A2A2A] rounded-2xl text-gray-500 text-sm">
-                    No tasks added. Click "Add Task" to start building this week's batch.
+                    No missions added. Click "Add Mission" to start building this week's batch.
                  </div>
                )}
             </div>
@@ -450,7 +450,7 @@ export default function TaskManagement() {
                 type="submit"
                 className="bg-[#E8B84B] text-black px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-2xl shadow-[#E8B84B]/20"
               >
-                Publish Week's Tasks
+                Publish Week's Missions
               </button>
             </div>
           </form>
@@ -465,7 +465,7 @@ export default function TaskManagement() {
                 <Check size={40} />
               </div>
               <h3 className="text-xl font-black text-white uppercase tracking-tighter">Queue is Clear</h3>
-              <p className="text-gray-500 text-sm mt-1">No pending task submissions for review.</p>
+              <p className="text-gray-500 text-sm mt-1">No pending mission submissions for review.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
@@ -558,7 +558,7 @@ export default function TaskManagement() {
             >
               <h3 className="text-xl font-black text-[#EF4444] uppercase tracking-tighter mb-4">Rejection Protocol</h3>
               <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-                Task submission for <span className="text-white font-black underline">{selectedSubmission.taskTitle}</span> is being discarded. Please specify the invalidity reason.
+                Mission submission for <span className="text-white font-black underline">{selectedSubmission.taskTitle}</span> is being discarded. Please specify the invalidity reason.
               </p>
               
               <div className="space-y-4">
@@ -566,7 +566,7 @@ export default function TaskManagement() {
                   rows={3}
                   value={rejectionReason}
                   onChange={e => setRejectionReason(e.target.value)}
-                  placeholder="e.g. Broken link, Blurry screenshot, Wrong task performed..."
+                  placeholder="e.g. Broken link, Blurry screenshot, Wrong mission performed..."
                   className="w-full bg-black border border-[#2A2A2A] text-white px-5 py-4 rounded-2xl text-xs font-bold focus:border-[#EF4444] outline-none resize-none"
                 />
                 

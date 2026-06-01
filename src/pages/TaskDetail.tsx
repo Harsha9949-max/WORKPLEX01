@@ -40,7 +40,7 @@ export default function TaskDetail() {
     setIsSubmitting(true);
     try {
       // Dummy submission logic handling.
-      // E.g., updating the task or a subcollection
+      // E.g., updating the mission or a subcollection
       await setDoc(doc(db, `tasks/${taskId}/submissions`, currentUser!.uid), {
         workerId: currentUser!.uid,
         workerName: userData?.name,
@@ -49,9 +49,9 @@ export default function TaskDetail() {
         status: 'pending_review',
         submittedAt: new Date()
       });
-      // Optionally update task status locally
+      // Optionally update mission status locally
       setTask({ ...task, status: 'completed' }); // optimistic UI
-      toast.success('Task submitted successfully!');
+      toast.success('Mission submitted successfully!');
       setTimeout(() => navigate('/tasks'), 1500);
     } catch (error) {
       toast.error('Submission failed. Please try again.');
@@ -60,8 +60,8 @@ export default function TaskDetail() {
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center">Loading task...</div>;
-  if (!task) return <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center">Task not found</div>;
+  if (loading) return <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center">Loading mission...</div>;
+  if (!task) return <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center">Mission not found</div>;
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] font-sans pb-28 text-white max-w-2xl mx-auto">
@@ -74,7 +74,7 @@ export default function TaskDetail() {
       </div>
 
       <div className="p-4 space-y-6">
-        {/* Task Hero */}
+        {/* Mission Hero */}
         <div className="bg-gradient-to-br from-[#1A1A1A] to-[#111111] border border-[#2A2A2A] rounded-2xl p-5 shadow-lg relative overflow-hidden">
           <div className="flex justify-between items-start mb-4">
              <div>
@@ -155,7 +155,7 @@ export default function TaskDetail() {
         ) : (
            <div className="bg-[#00C9A7]/10 border border-[#00C9A7]/30 rounded-2xl p-5 text-center flex flex-col items-center">
               <CheckCircle size={32} className="text-[#00C9A7] mb-2" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-white mb-1">Task Completed</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-white mb-1">Mission Completed</h3>
               <p className="text-xs text-[#00C9A7]/80">Proof submitted successfully. Awaiting approval or reward credited.</p>
            </div>
         )}

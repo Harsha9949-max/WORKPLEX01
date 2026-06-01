@@ -82,7 +82,7 @@ export default function LevelUpCelebration({ isOpen, onClose, newLevel }: Props)
               <div className="flex items-center justify-between">
                 <div className="text-left">
                   <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">New Perks</p>
-                  <p className="text-sm text-white font-bold">Higher Task Limits</p>
+                  <p className="text-sm text-white font-bold">Higher Mission Limits</p>
                 </div>
                 <div className="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500">
                   <Star size={20} fill="currentColor" />

@@ -76,7 +76,7 @@ const getContentTypeIcon = (cType?: string) => {
 };
 
 export default function TaskCard({ task, status = 'pending', onClick, onSkip }: Props) {
-  // If task has expiresAt or deadline
+  // If mission has expiresAt or deadline
   const deadline = task.expiresAt instanceof Timestamp ? task.expiresAt.toDate() : (task.deadline || new Date(Date.now() + 86400000));
   const isPending = status === 'pending';
   const [showBrief, setShowBrief] = useState(false);
@@ -153,7 +153,7 @@ export default function TaskCard({ task, status = 'pending', onClick, onSkip }: 
               onClick={(e) => { e.stopPropagation(); onClick(); }}
               className="flex-1 bg-[#E8B84B] text-black font-black uppercase tracking-widest text-xs py-3 rounded-lg shadow-[0_0_15px_rgba(232,184,75,0.2)] hover:bg-[#E8B84B]/90 transition"
             >
-              Start Task
+              Start Mission
             </button>
             {onSkip && (
               <button 

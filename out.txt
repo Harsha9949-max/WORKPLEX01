@@ -1,0 +1,122 @@
+src/components/ai/AIPredictorBanner.tsx:8:  pendingTasksCount: number;
+src/components/ai/AIPredictorBanner.tsx:13:export default function AIPredictorBanner({ pendingTasksCount, avgEarning, completionRate }: Props) {
+src/components/ai/AIPredictorBanner.tsx:20:        pendingTasksCount,
+src/components/ai/AIPredictorBanner.tsx:27:    if (pendingTasksCount > 0) {
+src/components/ai/AIPredictorBanner.tsx:30:  }, [pendingTasksCount]);
+src/components/dashboard/MysteryBonusModal.tsx:79:                Accept Task
+src/components/dashboard/TaskCard.tsx:15:  task: Task;
+src/components/dashboard/TaskCard.tsx:21:export default function TaskCard({ task, onAccept, onSkip }: Props) {
+src/components/gamification/MysteryTaskModal.tsx:12:export default function MysteryTaskModal({ isOpen, onClose, onAccept }: Props) {
+src/components/ui/SkeletonComponents.tsx:9:export const SkeletonTaskCard = () => (
+src/components/layout/BottomNav.tsx:8:const hasPendingTasks = true;
+src/components/layout/BottomNav.tsx:24:       { path: '/tasks', icon: ClipboardList, label: 'Missions', badge: hasPendingTasks ? 'red' : null },
+src/components/layout/BottomNav.tsx:32:       { path: '/tasks', icon: ClipboardList, label: 'Missions', badge: hasPendingTasks ? 'red' : null },
+src/components/layout/BottomNav.tsx:40:       { path: '/tasks', icon: ClipboardList, label: 'Missions', badge: hasPendingTasks ? 'red' : null },
+src/components/layout/BottomNav.tsx:48:       { path: '/tasks', icon: ClipboardList, label: 'Missions', badge: hasPendingTasks ? 'red' : null },
+src/components/tasks/TasksScreen.tsx:3:import { useTasks } from '../../hooks/useTasks';
+src/components/tasks/TasksScreen.tsx:5:import TaskCard from './TaskCard';
+src/components/tasks/TasksScreen.tsx:13:export default function TasksScreen() {
+src/components/tasks/TasksScreen.tsx:14:  const { tasks, loading: tasksLoading } = useTasks();
+src/components/tasks/TasksScreen.tsx:20:  const processedTasks = useMemo(() => {
+src/components/tasks/TasksScreen.tsx:37:    const c = { All: processedTasks.length, Pending: 0, Submitted: 0, Approved: 0, Rejected: 0 };
+src/components/tasks/TasksScreen.tsx:38:    processedTasks.forEach(t => {
+src/components/tasks/TasksScreen.tsx:45:  }, [processedTasks]);
+src/components/tasks/TasksScreen.tsx:47:  const filteredTasks = useMemo(() => {
+src/components/tasks/TasksScreen.tsx:48:    if (activeTab === 'All') return processedTasks;
+src/components/tasks/TasksScreen.tsx:49:    return processedTasks.filter(t => t.status.toLowerCase() === activeTab.toLowerCase());
+src/components/tasks/TasksScreen.tsx:50:  }, [processedTasks, activeTab]);
+src/components/tasks/TasksScreen.tsx:105:            {filteredTasks.length > 0 ? (
+src/components/tasks/TasksScreen.tsx:106:               filteredTasks.map(task => (
+src/components/tasks/TasksScreen.tsx:115:                     <TaskCard 
+src/components/tasks/TaskCard.tsx:78:export default function TaskCard({ task, status = 'pending', onClick, onSkip }: Props) {
+src/components/tasks/TaskDetail.tsx:13:export default function TaskDetail() {
+src/components/tasks/TaskDetail.tsx:18:  const [task, setTask] = useState<any>(null);
+src/components/tasks/TaskDetail.tsx:33:         setTask({ id: docSnap.id, ...docSnap.data() });
+src/components/tasks/TaskDetail.tsx:178:           {task.venture || 'WorkPlex'} Task
+src/components/auth/EmailFirstAuth.tsx:229:        firstTaskDone: false,
+src/pages/LandingPage.tsx:328:                Simple Tasks.<br />
+src/pages/admin/SubAdminPanel.tsx:11:import SubAdminTasks from './SubAdminTasks';
+src/pages/admin/SubAdminPanel.tsx:219:           return <SubAdminTasks venture={userData.venture || ''} subAdminId={currentUser?.uid || ''} />;
+src/pages/admin/TaskManagement.tsx:46:export default function TaskManagement() {
+src/pages/admin/TaskManagement.tsx:54:  const [taskForm, setTaskForm] = useState({
+src/pages/admin/TaskManagement.tsx:129:  const handleCreateTask = async (e: React.FormEvent) => {
+src/pages/admin/TaskManagement.tsx:170:      setTaskForm({
+src/pages/admin/TaskManagement.tsx:182:  const addTaskToBatch = () => {
+src/pages/admin/TaskManagement.tsx:188:    setTaskForm({
+src/pages/admin/TaskManagement.tsx:200:  const updateTaskInBatch = (index: number, field: string, value: any) => {
+src/pages/admin/TaskManagement.tsx:201:     const newTasks = [...taskForm.tasks];
+src/pages/admin/TaskManagement.tsx:202:     newTasks[index] = { ...newTasks[index], [field]: value };
+src/pages/admin/TaskManagement.tsx:203:     setTaskForm({ ...taskForm, tasks: newTasks });
+src/pages/admin/TaskManagement.tsx:206:  const removeTaskFromBatch = (index: number) => {
+src/pages/admin/TaskManagement.tsx:207:     setTaskForm({ ...taskForm, tasks: taskForm.tasks.filter((_, i) => i !== index) });
+src/pages/admin/TaskManagement.tsx:218:      if (userData && !userData.firstTaskDone) {
+src/pages/admin/TaskManagement.tsx:221:          firstTaskDone: true,
+src/pages/admin/TaskManagement.tsx:242:      if (userData && !userData.firstTaskDone) {
+src/pages/admin/TaskManagement.tsx:332:            <Plus size={14} /> New Task
+src/pages/admin/TaskManagement.tsx:355:          <form onSubmit={handleCreateTask} className="space-y-8">
+src/pages/admin/TaskManagement.tsx:363:                    setTaskForm({...taskForm, venture: newVenture, targetRoles: []});
+src/pages/admin/TaskManagement.tsx:382:                        setTaskForm({...taskForm, targetRoles: updated});
+src/pages/admin/TaskManagement.tsx:400:                 <button type="button" onClick={addTaskToBatch} className="text-xs font-bold text-[#E8B84B] flex items-center gap-1"><Plus size={14} /> Add Mission</button>
+src/pages/admin/TaskManagement.tsx:405:                     <button type="button" onClick={() => removeTaskFromBatch(idx)} className="absolute top-4 right-4 text-gray-500 hover:text-red-500"><X size={16} /></button>
+src/pages/admin/TaskManagement.tsx:409:                          <input type="text" value={taskItem.title} onChange={e => updateTaskInBatch(idx, 'title', e.target.value)} required className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none" />
+src/pages/admin/TaskManagement.tsx:413:                          <select value={taskItem.dayAssigned} onChange={e => updateTaskInBatch(idx, 'dayAssigned', e.target.value)} className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none">
+src/pages/admin/TaskManagement.tsx:419:                          <input type="number" value={taskItem.earningAmount} onChange={e => updateTaskInBatch(idx, 'earningAmount', parseFloat(e.target.value))} required className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none" />
+src/pages/admin/TaskManagement.tsx:423:                          <select value={taskItem.proofType} onChange={e => updateTaskInBatch(idx, 'proofType', e.target.value)} className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none">
+src/pages/admin/TaskManagement.tsx:430:                        <textarea rows={2} value={taskItem.description} onChange={e => updateTaskInBatch(idx, 'description', e.target.value)} required className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none resize-none" />
+src/pages/admin/TaskManagement.tsx:453:                Publish Week's Tasks
+src/pages/admin/SubAdminTasks.tsx:7:export default function SubAdminTasks({ venture, subAdminId }: { venture: string, subAdminId: string }) {
+src/pages/admin/SubAdminTasks.tsx:9:   const [tasks, setTasks] = useState<any[]>([]);
+src/pages/admin/SubAdminTasks.tsx:10:   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+src/pages/admin/SubAdminTasks.tsx:24:         setTasks(taskList);
+src/pages/admin/SubAdminTasks.tsx:29:   const handleCreateTask = async (e: React.FormEvent) => {
+src/pages/admin/SubAdminTasks.tsx:47:         setIsCreateTaskOpen(false);
+src/pages/admin/SubAdminTasks.tsx:62:            <button onClick={() => setIsCreateTaskOpen(true)} className="bg-[#F59E0B] text-black text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-lg hover:bg-[#F59E0B]/90 transition shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+src/pages/admin/SubAdminTasks.tsx:67:         {isCreateTaskOpen && (
+src/pages/admin/SubAdminTasks.tsx:70:               <form onSubmit={handleCreateTask} className="space-y-4">
+src/pages/admin/SubAdminTasks.tsx:98:                     <button type="button" onClick={() => setIsCreateTaskOpen(false)} className="px-6 py-3 rounded-xl border border-[#2A2A2A] text-gray-400 font-bold uppercase transition hover:text-white">Cancel</button>
+src/pages/admin/AddWorkerModal.tsx:61:         firstTaskDone: false,
+src/pages/HomeDashboard.tsx:55:  const [tasks, setTasks] = useState<any[]>([]);
+src/pages/HomeDashboard.tsx:57:  const [loadingTasks, setLoadingTasks] = useState(true);
+src/pages/HomeDashboard.tsx:79:  // Listen to Tasks
+src/pages/HomeDashboard.tsx:93:      setTasks(taskList);
+src/pages/HomeDashboard.tsx:94:      setLoadingTasks(false);
+src/pages/HomeDashboard.tsx:455:           {loadingTasks ? (
+src/pages/TasksScreen.tsx:10:export default function TasksScreen() {
+src/pages/TasksScreen.tsx:12:   const [tasks, setTasks] = useState<any[]>([]);
+src/pages/TasksScreen.tsx:37:         setTasks(t);
+src/pages/TasksScreen.tsx:43:   const filteredTasks = tasks.filter(t => {
+src/pages/TasksScreen.tsx:76:            ) : filteredTasks.length === 0 ? (
+src/pages/TasksScreen.tsx:86:                  {filteredTasks.map(task => (
+src/pages/TaskDetail.tsx:11:export default function TaskDetail() {
+src/pages/TaskDetail.tsx:16:  const [task, setTask] = useState<any>(null);
+src/pages/TaskDetail.tsx:24:    const fetchTask = async () => {
+src/pages/TaskDetail.tsx:28:        setTask({ id: snap.id, ...snap.data() });
+src/pages/TaskDetail.tsx:32:    fetchTask();
+src/pages/TaskDetail.tsx:53:      setTask({ ...task, status: 'completed' }); // optimistic UI
+src/hooks/admin/useImageUpload.ts:32:        const uploadTask = uploadBytesResumable(storageRef, file);
+src/hooks/admin/useImageUpload.ts:34:        uploadTask.on('state_changed', 
+src/hooks/admin/useImageUpload.ts:53:              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+src/hooks/useMarketerData.ts:8:  const [tasks, setTasks] = useState<any[]>([]);
+src/hooks/useMarketerData.ts:27:    const unsubTasks = onSnapshot(
+src/hooks/useMarketerData.ts:45:        setTasks(docs);
+src/hooks/useMarketerData.ts:48:    return () => unsubTasks();
+src/hooks/useTasks.ts:6:export function useTasks() {
+src/hooks/useTasks.ts:8:  const [tasks, setTasks] = useState<any[]>([]);
+src/hooks/useTasks.ts:23:      setTasks(taskList);
+src/lib/cloudFunctions.ts:124:export async function fetchAIPrediction(uid: string, pendingTasks: number, avgEarning: number, completionRate: number) {
+src/lib/cloudFunctions.ts:134:   const prediction = `Complete ${pendingTasks} more missions -> earn Rs.${(pendingTasks * avgEarning * completionRate).toFixed(0)} extra today!`;
+src/lib/cloudFunctions.ts:138:export async function generateMysteryTask(uid: string, role: string, venture: string) {
+src/lib/cloudFunctions.ts:140:   const newTask = {
+src/lib/cloudFunctions.ts:150:   return newTask;
+src/docs/schema_and_replacements.md:43:- **Welcome Text**: References to specific unverified amounts replaced with **"Join & Earn upto ₹500 in your first week"** and **"First Task Completion Incentive"**.
+src/App.tsx:38:import TasksScreen from './pages/TasksScreen';
+src/App.tsx:39:import TaskDetail from './pages/TaskDetail';
+src/App.tsx:63:import TaskManagement from './pages/admin/TaskManagement';
+src/App.tsx:133:          <Route path="/tasks" element={<TasksScreen />} />
+src/App.tsx:134:          <Route path="/tasks/:taskId" element={<TaskDetail />} />
+src/App.tsx:153:          <Route path="tasks" element={<TaskManagement />} />
+src/constants/gamification.ts:33:  { id: 'night_owl', name: 'Night Owl', description: 'Complete a mission after midnight', icon: Star, category: 'Activity', rarity: 'Common', condition: 'nightTask === true' },
+src/constants/gamification.ts:36:  { id: 'workaholic', name: 'Workaholic', description: 'Complete 10 missions in one day', icon: Rocket, category: 'Activity', rarity: 'Rare', condition: 'dailyTasks >= 10' },
+src/context/AuthContext.tsx:22:  firstTaskDone: boolean;
+src/services/geminiService.ts:21:    pendingTasksCount: number;
+src/services/geminiService.ts:29:- pending missions: ${stats.pendingTasksCount}
