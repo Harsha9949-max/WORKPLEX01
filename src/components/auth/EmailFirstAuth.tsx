@@ -126,8 +126,17 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       const phoneDocRef = doc(db, 'phoneDirectory', data.phone);
       const phoneSnap = await getDoc(phoneDocRef);
       if (phoneSnap.exists()) {
-        setShowDuplicatePopup(true);
-        return;
+        const entryData = phoneSnap.data();
+        if (entryData?.uid) {
+          const uSnap = await getDoc(doc(db, 'users', entryData.uid));
+          if (uSnap.exists()) {
+            const uData = uSnap.data();
+            if (uData?.email !== data.email) {
+              setShowDuplicatePopup(true);
+              return;
+            }
+          }
+        }
       }
 
       // 2. Check users collection just to be totally sure
@@ -135,7 +144,19 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       const q2 = query(collection(db, 'users'), where('phone', '==', `+91${data.phone}`));
       
       const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-      if (!snap1.empty || !snap2.empty) {
+      
+      const checkDuplicateUser = (snap: any) => {
+        if (snap.empty) return false;
+        for (const userDoc of snap.docs) {
+          const userData = userDoc.data();
+          if (userData && userData.email !== data.email) {
+            return true; // Another email is registered with this phone number
+          }
+        }
+        return false;
+      };
+
+      if (checkDuplicateUser(snap1) || checkDuplicateUser(snap2)) {
         setShowDuplicatePopup(true);
         return;
       }

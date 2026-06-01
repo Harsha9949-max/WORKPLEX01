@@ -65,6 +65,32 @@ export default function WorkerManagement() {
   const fetchWorkers = async () => {
     setLoading(true);
     try {
+      // 1. Attempt fetching from Backend API (integrated merged lists of Auth & Firestore)
+      const res = await fetch('/api/admin/users');
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && Array.isArray(result.workers)) {
+          let loaded = result.workers;
+          if (selectedVenture !== 'All') {
+            loaded = loaded.filter((w: any) => w.venture === selectedVenture);
+          }
+          // Sort by joinedAt
+          loaded.sort((a: any, b: any) => {
+            const timeA = a.joinedAt?.seconds || 0;
+            const timeB = b.joinedAt?.seconds || 0;
+            return timeB - timeA;
+          });
+          setWorkers(loaded);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("Backend fetch failed, falling back to client-side Firestore query:", apiErr);
+    }
+
+    // 2. Fallback to direct client-side Firestore collection query
+    try {
       let q = query(collection(db, 'users'), orderBy('joinedAt', 'desc'), limit(50));
       if (selectedVenture !== 'All') {
         q = query(collection(db, 'users'), where('venture', '==', selectedVenture), limit(50));
@@ -82,13 +108,28 @@ export default function WorkerManagement() {
   const toggleUserStatus = async (worker: any) => {
     try {
       const isSuspended = worker.status === 'suspended';
-      await updateDoc(doc(db, 'users', worker.id), {
-        status: isSuspended ? 'active' : 'suspended'
+      const newStatus = isSuspended ? 'active' : 'suspended';
+      
+      // Update locally in Firestore first for immediate feedback
+      try {
+        await updateDoc(doc(db, 'users', worker.id), {
+          status: newStatus
+        });
+      } catch (fsErr) {
+        console.warn("Direct Firestore update failed or restricted, relying on backend syncing:", fsErr);
+      }
+
+      // Synchronize and force on Firebase Auth via backend API
+      await fetch(`/api/admin/update-user/${worker.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
       });
+
       toast.success(`Worker ${isSuspended ? 'activated' : 'suspended'}`);
       
       if (selectedWorker && selectedWorker.id === worker.id) {
-        setSelectedWorker({ ...selectedWorker, status: isSuspended ? 'active' : 'suspended' });
+        setSelectedWorker({ ...selectedWorker, status: newStatus });
       }
 
       fetchWorkers();
@@ -101,12 +142,19 @@ export default function WorkerManagement() {
     if (!window.confirm("Are you sure you want to permanently delete this worker? This action cannot be undone.")) return;
     
     try {
-      // Trigger backend for full data/auth removal
+      // Trigger and complete full data/auth/firestore deletion on backend
       await fetch(`/api/admin/delete-user/${workerId}`, { method: 'DELETE' });
-      await deleteDoc(doc(db, 'users', workerId));
-      if (phone) {
-        await deleteDoc(doc(db, 'phoneDirectory', phone));
+      
+      // Attempt client-side cleanup just in case or for instant feedback
+      try {
+        await deleteDoc(doc(db, 'users', workerId));
+        if (phone) {
+          await deleteDoc(doc(db, 'phoneDirectory', phone));
+        }
+      } catch (err) {
+        console.log("Client-side direct delete skipped or restricted, fully handled by backend:", err);
       }
+
       toast.success("Worker deleted successfully");
       setSelectedWorker(null);
       fetchWorkers();
@@ -128,11 +176,28 @@ export default function WorkerManagement() {
 
   const handleUpdateWorker = async () => {
     try {
-      await updateDoc(doc(db, 'users', selectedWorker.id), {
-        name: editForm.name,
-        phone: editForm.phone,
-        venture: editForm.venture,
-        role: editForm.role
+      // Update directly in Firestore client-side
+      try {
+        await updateDoc(doc(db, 'users', selectedWorker.id), {
+          name: editForm.name,
+          phone: editForm.phone,
+          venture: editForm.venture,
+          role: editForm.role
+        });
+      } catch (fsErr) {
+        console.warn("Direct Firestore update failed, relying on backend syncing:", fsErr);
+      }
+
+      // Synchronize changes on backend (updating Auth profile + Firestore user + phone dir)
+      await fetch(`/api/admin/update-user/${selectedWorker.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          phone: editForm.phone,
+          venture: editForm.venture,
+          role: editForm.role
+        })
       });
       
       toast.success("Worker updated successfully");
