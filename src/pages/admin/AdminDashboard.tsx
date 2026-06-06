@@ -21,11 +21,23 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { collection, query, where, getDocs, onSnapshot, Timestamp } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { collection, query, where, getDocs, onSnapshot, Timestamp, doc, setDoc } from 'firebase/firestore';
+import { db, firebaseConfig } from '../../lib/firebase';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { formatCurrency } from '../../utils/format';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import { format, subDays, startOfDay } from 'date-fns';
+import toast from 'react-hot-toast';
+import { Mail, Sparkles, CheckCircle2, RotateCw } from 'lucide-react';
+
+const getOAuthAuthInstance = () => {
+  const name = 'GoogleOAuthApp';
+  const apps = getApps();
+  const existingApp = apps.find(app => app.name === name);
+  const app = existingApp || initializeApp(firebaseConfig, name);
+  return getAuth(app);
+};
 
 /**
  * Admin Dashboard View.
@@ -41,6 +53,93 @@ export default function AdminDashboard() {
   
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Admin Gmail global settings states
+  const [gmailConfig, setGmailConfig] = useState<any>(null);
+  const [gmailToken, setGmailToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Read global gmail settings
+    const unsubGmail = onSnapshot(doc(db, 'systemConfig', 'gmail'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setGmailConfig(data);
+        if (data.gmailToken) {
+          setGmailToken(data.gmailToken);
+        } else {
+          setGmailToken(null);
+        }
+      } else {
+        setGmailConfig(null);
+        setGmailToken(null);
+      }
+    });
+    return () => unsubGmail();
+  }, []);
+
+  const connectGmail = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      provider.addScope('https://www.googleapis.com/auth/gmail.send');
+      provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+      provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      
+      const toastId = toast.loading('Connecting and authenticating brand Gmail address...');
+      const oauthAuth = getOAuthAuthInstance();
+      const result = await signInWithPopup(oauthAuth, provider);
+      
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (!credential?.accessToken) {
+        throw new Error('Access token was not returned from Google Login');
+      }
+      
+      const token = credential.accessToken;
+      setGmailToken(token);
+      
+      let gmailEmail = result.user.email;
+      const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (profileRes.ok) {
+        const profile = await profileRes.json();
+        gmailEmail = profile.email || result.user.email;
+      }
+      
+      // Save info in global systemConfig
+      await setDoc(doc(db, 'systemConfig', 'gmail'), {
+        gmailEmail: gmailEmail,
+        isGmailLinked: true,
+        gmailToken: token,
+        updatedAt: new Date()
+      }, { merge: true });
+      
+      toast.success(`Successfully connected platform brand email: ${gmailEmail}`, { id: toastId });
+    } catch (e: any) {
+      console.error(e);
+      if (e?.code === 'auth/cancelled-popup-request' || e?.code === 'auth/popup-closed-by-user') {
+        toast.dismiss();
+        toast.error('Gmail connection was closed or cancelled by user.');
+      } else {
+        toast.error(`Gmail connection failed: ${e.message || String(e)}`);
+      }
+    }
+  };
+
+  const disconnectGmail = async () => {
+    try {
+      await setDoc(doc(db, 'systemConfig', 'gmail'), {
+        isGmailLinked: false,
+        gmailEmail: null,
+        gmailToken: null,
+        updatedAt: new Date()
+      }, { merge: true });
+      setGmailToken(null);
+      toast.success('Successfully disconnected Gmail brand dispatch address.');
+    } catch (e) {
+      toast.error('Failed to disconnect Gmail brand address.');
+    }
+  };
 
   useEffect(() => {
     // Real-time listener for pending withdrawals
@@ -271,6 +370,62 @@ export default function AdminDashboard() {
                 <ArrowUpRight size={14} className="text-[#EF4444] group-hover:scale-110 transition-transform" />
               </button>
             </div>
+          </div>
+
+          {/* Global Gmail Transactional Config Card */}
+          <div className="bg-[#111111] border border-[#2A2A2A] p-8 rounded-[40px] space-y-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-6 select-none opacity-20">
+              <Sparkles size={32} className="text-[#E8B84B] animate-pulse" />
+            </div>
+            
+            <div className="flex items-center gap-3 border-b border-[#2A2A2A] pb-4">
+              <div className="p-2 bg-[#E8B84B]/10 text-[#E8B84B] rounded-lg">
+                <Mail size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">Global Brand Email Dispatch</h3>
+                <p className="text-[9px] text-[#E8B84B] font-bold uppercase tracking-wider">System-wide Transactional Mail</p>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              Dispatch free receipts, mission approvals, and secure verification tokens system-wide using Google’s high-deliverability Gmail servers.
+            </p>
+
+            <div className="bg-[#1A1A1A] p-4 rounded-2xl border border-[#2A2A2A] space-y-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-gray-500 font-bold uppercase">Sender Status</span>
+                {gmailConfig?.isGmailLinked ? (
+                  <span className="text-xs text-green-400 font-bold flex items-center gap-1 bg-green-500/10 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                    {gmailConfig.gmailEmail}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400 font-bold flex items-center gap-1 bg-gray-500/10 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                    Offline
+                  </span>
+                )}
+              </div>
+
+              {gmailConfig?.isGmailLinked && (
+                <div className="flex items-center justify-between border-t border-[#2A2A2A]/50 pt-2 text-[10px]">
+                  <span className="text-gray-500 font-bold uppercase">Session Engine</span>
+                  {gmailToken ? (
+                    <span className="text-green-400 font-mono font-bold">active_session_live</span>
+                  ) : (
+                    <span className="text-amber-500 font-mono font-bold">session_sleeping</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={() => window.location.href = '/admin/email-dispatcher'}
+              className="w-full py-3 bg-[#E8B84B] hover:bg-[#d4a63f] text-black font-black text-xs uppercase tracking-wider rounded-2xl transition-all flex items-center justify-center gap-2"
+            >
+              <Mail size={14} /> Open Email Center Dashboard
+            </button>
           </div>
 
           <div className="bg-[#E8B84B] p-8 rounded-[40px] text-black">

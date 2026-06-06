@@ -5,7 +5,7 @@ import { Logo } from '../../components/ui/Logo';
 import { 
   LayoutDashboard, Users, CheckSquare, Ticket, 
   CreditCard, UserPlus, AlertTriangle, Megaphone, LogOut,
-  Settings
+  Settings, Mail
 } from 'lucide-react';
 
 export default function AdminLayout() {
@@ -32,6 +32,7 @@ export default function AdminLayout() {
     { path: '/admin/sub-admins', label: 'Sub-Admins', icon: UserPlus },
     { path: '/admin/fraud-alerts', label: 'Fraud Alerts', icon: AlertTriangle },
     { path: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+    { path: '/admin/email-dispatcher', label: 'Email Dispatcher', icon: Mail },
   ];
 
   return (

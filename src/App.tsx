@@ -59,6 +59,7 @@ import AdminRouteGuard from './components/admin/AdminRouteGuard';
 import AdminLayout from './components/admin/AdminLayout';
 import Footer from './components/layout/Footer';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminEmailDispatcher from './pages/admin/AdminEmailDispatcher';
 import WorkerManagement from './pages/admin/WorkerManagement';
 import TaskManagement from './pages/admin/TaskManagement';
 import CouponManagement from './pages/admin/CouponManagement';
@@ -165,6 +166,7 @@ function AppContent() {
           <Route path="sub-admins" element={<SubAdminCreation />} />
           <Route path="fraud" element={<FraudAlerts />} />
           <Route path="announcements" element={<AnnouncementBroadcaster />} />
+          <Route path="email-dispatcher" element={<AdminEmailDispatcher />} />
         </Route>
         
         {/* Viral Layer Routes */}

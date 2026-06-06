@@ -101,8 +101,14 @@ export default function LandingPage() {
         if (snap.exists()) {
           setCmsData(snap.data());
         }
-      } catch (e) {
-        console.error("Error fetching landing page CMS", e);
+      } catch (e: any) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        const isOffline = errMsg.includes('offline') || errMsg.includes('unavailable') || errMsg.includes('network');
+        if (isOffline) {
+          console.warn("Offline state detected; running landing page with robust client default settings.");
+        } else {
+          console.error("Error fetching landing page CMS", e);
+        }
       }
     };
     fetchCMS();

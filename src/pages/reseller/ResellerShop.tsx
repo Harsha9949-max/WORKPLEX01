@@ -1,12 +1,80 @@
 import React, { useState, useEffect } from 'react';
-import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../lib/firebase';
+import { db, storage, auth, firebaseConfig } from '../../lib/firebase';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuth } from '../../context/AuthContext';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import toast from 'react-hot-toast';
 import { ExternalLink, Copy, Share2, Download, Check, Save, Sparkles, CheckCircle2 } from 'lucide-react';
 import ResellerProducts from './ResellerProducts';
+
+const getOAuthAuthInstance = () => {
+  const name = 'GoogleOAuthApp';
+  const apps = getApps();
+  const existingApp = apps.find(app => app.name === name);
+  const app = existingApp || initializeApp(firebaseConfig, name);
+  return getAuth(app);
+};
+
+// Helper function to convert base64 back to Blob cleanly on client-side
+const base64ToBlob = (base64: string): Blob => {
+  const parts = base64.split(';base64,');
+  const contentType = parts[0].split(':')[1];
+  const raw = window.atob(parts[1]);
+  const rawLength = raw.length;
+  const uInt8Array = new Uint8Array(rawLength);
+  for (let i = 0; i < rawLength; ++i) {
+    uInt8Array[i] = raw.charCodeAt(i);
+  }
+  return new Blob([uInt8Array], { type: contentType });
+};
+
+// Helper function to compress large image files into lightweight base64 values
+const compressImage = (file: File, maxWidth: number, maxHeight: number): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Resize proportional to boundaries
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(e.target?.result as string); // Fallback to raw base64
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        // Compress as jpeg with high-performance 0.75 quality format
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+};
 
 export default function ResellerShop() {
   const { currentUser } = useAuth();
@@ -15,6 +83,170 @@ export default function ResellerShop() {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [initialLoaded, setInitialLoaded] = useState(false);
+
+  // Google Drive asset path states
+  const [driveToken, setDriveToken] = useState<string | null>(null);
+  const [driveLinkedEmail, setDriveLinkedEmail] = useState<string | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+
+  const connectGoogleDrive = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      provider.addScope('https://www.googleapis.com/auth/drive.file');
+      provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+      provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      
+      const toastId = toast.loading('Connecting and authenticating with Google Drive...');
+      const oauthAuth = getOAuthAuthInstance();
+      const result = await signInWithPopup(oauthAuth, provider);
+      
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (!credential?.accessToken) {
+        throw new Error('Access token was not returned from Google Login');
+      }
+      
+      const token = credential.accessToken;
+      setDriveToken(token);
+      
+      const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      let driveEmail = result.user.email;
+      if (profileRes.ok) {
+        const profile = await profileRes.json();
+        driveEmail = profile.email || result.user.email;
+      }
+      
+      setDriveLinkedEmail(driveEmail);
+      
+      await setDoc(doc(db, 'partnerShops', currentUser!.uid), {
+        isGoogleDriveLinked: true,
+        googleDriveEmail: driveEmail
+      }, { merge: true });
+      
+      toast.success(`Successfully connected: ${driveEmail}`, { id: toastId });
+    } catch (e: any) {
+      console.error(e);
+      if (e?.code === 'auth/cancelled-popup-request' || e?.code === 'auth/popup-closed-by-user') {
+        toast.dismiss();
+        toast.error('Google Drive link was closed or cancelled by user.');
+      } else {
+        toast.error(`OAuth link failed: ${e.message || String(e)}`);
+      }
+    }
+  };
+
+  const disconnectGoogleDrive = async () => {
+    try {
+      setDriveToken(null);
+      setDriveLinkedEmail(null);
+      await setDoc(doc(db, 'partnerShops', currentUser!.uid), {
+        isGoogleDriveLinked: false,
+        googleDriveEmail: null
+      }, { merge: true });
+      toast.success('Disconnected Google Drive storage successfully.');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to unlink Google Drive');
+    }
+  };
+
+  const migrateAssetsToGoogleDrive = async () => {
+    if (!driveToken) {
+      toast.error('Please connect Google Drive first to copy files.');
+      return;
+    }
+    
+    setIsMigrating(true);
+    const toastId = toast.loading('Migrating local assets to your Google Drive database...');
+    
+    try {
+      let updatedBranding = { ...branding };
+      let migratedCount = 0;
+      
+      // Check logo
+      if (branding.logo && branding.logo.startsWith('data:image/')) {
+        const logoBlob = base64ToBlob(branding.logo);
+        const metadata = {
+          name: `workplex_logo_${Date.now()}.jpg`,
+          mimeType: logoBlob.type || 'image/jpeg'
+        };
+        const formData = new FormData();
+        formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        formData.append('file', logoBlob);
+        
+        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${driveToken}` },
+          body: formData
+        });
+        
+        if (res.ok) {
+          const fileData = await res.json();
+          await fetch(`https://www.googleapis.com/drive/v3/files/${fileData.id}/permissions`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${driveToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ role: 'reader', type: 'anyone' })
+          });
+          updatedBranding.logo = `https://drive.google.com/thumbnail?sz=w400&id=${fileData.id}`;
+          migratedCount++;
+        }
+      }
+      
+      // Check banner image
+      if (branding.bannerImage && branding.bannerImage.startsWith('data:image/')) {
+        const bannerBlob = base64ToBlob(branding.bannerImage);
+        const metadata = {
+          name: `workplex_banner_${Date.now()}.jpg`,
+          mimeType: bannerBlob.type || 'image/jpeg'
+        };
+        const formData = new FormData();
+        formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        formData.append('file', bannerBlob);
+        
+        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${driveToken}` },
+          body: formData
+        });
+        
+        if (res.ok) {
+          const fileData = await res.json();
+          await fetch(`https://www.googleapis.com/drive/v3/files/${fileData.id}/permissions`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${driveToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ role: 'reader', type: 'anyone' })
+          });
+          updatedBranding.bannerImage = `https://drive.google.com/thumbnail?sz=w1200&id=${fileData.id}`;
+          migratedCount++;
+        }
+      }
+      
+      if (migratedCount > 0) {
+        setBranding(updatedBranding);
+        await setDoc(doc(db, 'partnerShops', currentUser!.uid), {
+          branding: updatedBranding,
+          logo: updatedBranding.logo || ''
+        }, { merge: true });
+        toast.success(`Success! Migrated ${migratedCount} local asset(s) and saved 100% of Firestore storage limits!`, { id: toastId });
+      } else {
+        toast.error('You do not have any local Base64 assets that require migration.', { id: toastId });
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`Migration error: ${e.message || String(e)}`, { id: toastId });
+    } finally {
+      setIsMigrating(false);
+    }
+  };
 
   // Local state for edits
   const [theme, setTheme] = useState({
@@ -64,6 +296,9 @@ export default function ResellerShop() {
       if (doc.exists()) {
         const data = doc.data();
         setShop(data);
+        if (data.googleDriveEmail) {
+          setDriveLinkedEmail(data.googleDriveEmail);
+        }
         if (!initialLoaded) {
           if (data.theme) setTheme(data.theme);
           if (data.branding) setBranding(data.branding);
@@ -72,6 +307,9 @@ export default function ResellerShop() {
           if (data.shopSlug) setLocalShopSlug(data.shopSlug);
           setInitialLoaded(true);
         }
+      } else {
+        setShop({});
+        setInitialLoaded(true);
       }
     }, (e) => handleFirestoreError(e, OperationType.GET, 'partnerShops/{id}'));
     return () => unsub();
@@ -95,13 +333,14 @@ export default function ResellerShop() {
 
     const delayDebounce = setTimeout(async () => {
       try {
-        await updateDoc(doc(db, 'partnerShops', currentUser.uid), {
+        await setDoc(doc(db, 'partnerShops', currentUser.uid), {
           theme,
           branding,
           seo,
           shopName: localShopName.trim(),
-          shopSlug: localShopSlug.trim().toLowerCase().replace(/\s+/g, '-')
-        });
+          shopSlug: localShopSlug.trim().toLowerCase().replace(/\s+/g, '-'),
+          logo: branding.logo || '' // Keep root-level logo perfectly synced
+        }, { merge: true });
         setSaveStatus('saved');
         // Clear status to prevent stale state indicators
         setTimeout(() => setSaveStatus(p => p === 'saved' ? 'idle' : p), 3000);
@@ -127,13 +366,14 @@ export default function ResellerShop() {
     }
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'partnerShops', currentUser.uid), {
+      await setDoc(doc(db, 'partnerShops', currentUser.uid), {
         theme,
         branding,
         seo,
         shopName: localShopName.trim(),
-        shopSlug: localShopSlug.trim().toLowerCase().replace(/\s+/g, '-')
-      });
+        shopSlug: localShopSlug.trim().toLowerCase().replace(/\s+/g, '-'),
+        logo: branding.logo || '' // Keep root-level logo synced
+      }, { merge: true });
       toast.success('Shop settings saved successfully! Your store link is active immediately.');
       setSaveStatus('saved');
     } catch (e) {
@@ -156,13 +396,65 @@ export default function ResellerShop() {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
 
-    if (file.size > 1500000) {
-      toast.error('Image is too large. Please select an image under 1.5MB.');
+    if (file.size > 5000000) { // Support larger source files up to 5MB since we compress client-side
+      toast.error('Image is too large. Please select an image under 5MB.');
       return;
     }
     
-    const toastId = toast.loading(`Uploading ${type}...`);
+    const toastId = toast.loading(`Uploading, compressing and syncing ${type}...`);
     const fieldName = type === 'banner' ? 'bannerImage' : 'logo';
+
+    // If Google Drive token exists, upload straight to Google Drive!
+    if (driveToken) {
+      try {
+        const maxWidth = type === 'logo' ? 400 : 1200;
+        const maxHeight = type === 'logo' ? 400 : 600;
+        const base64Data = await compressImage(file, maxWidth, maxHeight);
+        
+        // Convert to Blob
+        const base64Blob = base64ToBlob(base64Data);
+        
+        const metadata = {
+          name: `workplex_${type}_${Date.now()}.jpg`,
+          mimeType: 'image/jpeg'
+        };
+        
+        const formData = new FormData();
+        formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        formData.append('file', base64Blob);
+        
+        const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${driveToken}` },
+          body: formData
+        });
+        
+        if (!uploadRes.ok) {
+          throw new Error('Google Drive upload response status was non-200');
+        }
+        
+        const fileData = await uploadRes.json();
+        const fileId = fileData.id;
+        
+        // Make public so visitors can see logo/banner on PublicShopPage
+        await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${driveToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ role: 'reader', type: 'anyone' })
+        });
+        
+        const finalUrl = `https://drive.google.com/thumbnail?sz=w${type === 'logo' ? '400' : '1200'}&id=${fileId}`;
+        
+        setBranding(prev => ({ ...prev, [fieldName]: finalUrl }));
+        toast.success(`Uploaded & scaled to Google Drive successfully!`, { id: toastId });
+        return;
+      } catch (driveErr) {
+        console.warn('Google Drive secure upload failed, falling back to standard pathways...', driveErr);
+      }
+    }
 
     try {
       // Try publishing to Storage first
@@ -173,20 +465,17 @@ export default function ResellerShop() {
       toast.success('Uploaded successfully!', { id: toastId });
     } catch (error) {
       console.warn('Storage failed or blocked, loading image as optimized Local base64:', error);
-      // Fallback to base64 synchronously
+      // Fallback to compressed base64 synchronously
       try {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64 = reader.result as string;
-          setBranding(prev => ({ ...prev, [fieldName]: base64 }));
-          toast.success('Uploaded successfully to your profile!', { id: toastId });
-        };
-        reader.onerror = () => {
-          toast.error('Failed to read image file', { id: toastId });
-        };
-        reader.readAsDataURL(file);
+        const maxWidth = type === 'logo' ? 250 : 800;
+        const maxHeight = type === 'logo' ? 250 : 400;
+        const base64 = await compressImage(file, maxWidth, maxHeight);
+        
+        setBranding(prev => ({ ...prev, [fieldName]: base64 }));
+        toast.success('Optimized locally successfully!', { id: toastId });
       } catch (fallbackError) {
-        toast.error('Failed to upload image', { id: toastId });
+        console.error('Image optimization failed:', fallbackError);
+        toast.error('Failed to read and optimize image file', { id: toastId });
       }
     }
   };
@@ -266,6 +555,86 @@ export default function ResellerShop() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-8">
             
+            {/* Google Drive Offloader Config Card */}
+            <div className="bg-[#111111] p-6 rounded-xl border border-[#E8B84B]/20 relative overflow-hidden space-y-4 shadow-xl">
+              <div className="absolute top-0 right-0 p-3 select-none">
+                <Sparkles size={16} className="text-[#E8B84B] animate-pulse" />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-6 bg-[#E8B84B] rounded-full"></div>
+                <h2 className="font-bold text-white uppercase tracking-widest text-xs">Google Drive Asset Offloader</h2>
+              </div>
+              
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                Connect your Google Drive account! WorkPlex will automatically compress, scale, and save all new brand logos and banner backdrops into your personal Google Drive, offloading 100% of Firebase limits.
+              </p>
+
+              <div className="bg-[#1A1A1A] p-4 rounded-lg border border-[#2A2A2A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Storage Link Status</div>
+                  {driveLinkedEmail ? (
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-xs text-white font-bold">{driveLinkedEmail}</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-gray-600" />
+                      <span className="text-xs text-gray-500">Not Synced (Active Firebase Standard Mode)</span>
+                    </div>
+                  )}
+                </div>
+
+                {driveLinkedEmail ? (
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {!driveToken ? (
+                      <button 
+                        onClick={connectGoogleDrive}
+                        className="px-4 py-2 bg-[#E8B84B] text-black font-black text-xs uppercase rounded-lg hover:bg-[#E8B84B]/90 transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle2 size={13} /> Activate Drive Session
+                      </button>
+                    ) : (
+                      <span className="px-3 py-2 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-[10px] font-black uppercase text-center flex items-center justify-center gap-1">
+                        🟢 Synced & Connected
+                      </span>
+                    )}
+                    <button 
+                      onClick={disconnectGoogleDrive}
+                      className="px-3 py-2 border border-red-500/20 text-red-500 hover:bg-red-500/10 hover:text-red-300 rounded-lg text-xs font-bold transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={connectGoogleDrive}
+                    className="px-5 py-2.5 bg-[#E8B84B] text-black font-black text-xs uppercase tracking-wider rounded-lg hover:bg-[#E8B84B]/90 transition-colors flex items-center justify-center gap-2"
+                  >
+                    Sync Google Drive
+                  </button>
+                )}
+              </div>
+
+              {/* Show migration button if local base64 images are detected */}
+              {((branding.logo && branding.logo.startsWith('data:image/')) || (branding.bannerImage && branding.bannerImage.startsWith('data:image/'))) && (
+                <div className="bg-[#E8B84B]/5 border border-[#E8B84B]/20 p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs text-[#E8B84B] font-bold">Local base64 assets found!</p>
+                    <p className="text-[10px] text-gray-400 leading-tight">We detected unoptimized base64 images inside your settings. Copy them to Google Drive to offload limits immediately.</p>
+                  </div>
+                  <button
+                    disabled={isMigrating || !driveToken}
+                    onClick={migrateAssetsToGoogleDrive}
+                    className="shrink-0 px-4 py-2 bg-[#E8B84B]/10 hover:bg-[#E8B84B]/20 text-[#E8B84B] border border-[#E8B84B]/30 disabled:opacity-30 rounded-lg text-[11px] font-black uppercase tracking-wider transition-colors"
+                  >
+                    {isMigrating ? 'Migrating...' : 'Migrate to Drive'}
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Shop Identity Card */}
             <div className="bg-[#111111] p-6 rounded-xl border border-[#2A2A2A] space-y-4">
               <h2 className="font-bold text-[#E8B84B] uppercase tracking-widest text-xs">Shop Identity Settings</h2>

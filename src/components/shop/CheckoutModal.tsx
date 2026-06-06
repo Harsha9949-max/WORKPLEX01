@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CreditCard, Truck, User, Phone, MapPin, ShieldCheck, CheckCircle2, ArrowRight } from 'lucide-react';
+import { X, CreditCard, Truck, User, Phone, MapPin, ShieldCheck, CheckCircle2, ArrowRight, Mail } from 'lucide-react';
 import { db } from '../../lib/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
@@ -22,6 +22,7 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug, rese
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    email: '',
     address: '',
     city: '',
     state: '',
@@ -46,6 +47,7 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug, rese
         customer: {
           name: formData.name,
           phone: formData.phone,
+          email: formData.email.trim(),
           address: formData.address,
           city: formData.city,
           state: formData.state,
@@ -161,6 +163,17 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug, rese
                           className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold focus:border-teal-500 outline-none"
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 flex items-center gap-1.5"><Mail size={12}/> Email Address (Optional for Receipts)</label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                        placeholder="yourname@gmail.com"
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs font-bold focus:border-teal-500 outline-none"
+                      />
                     </div>
 
                     <div className="space-y-2">

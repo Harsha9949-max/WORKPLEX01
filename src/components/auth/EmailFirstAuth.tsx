@@ -334,6 +334,10 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       const cred = await signInWithPopup(auth, provider);
       await handleAuthSuccess(cred.user, 'google');
     } catch (error: any) {
+      if (error?.code === 'auth/cancelled-popup-request' || error?.code === 'auth/popup-closed-by-user') {
+        toast.error("Google sign-in was closed or cancelled.");
+        return;
+      }
       setErrorPopup(mapFirebaseError(error) || "Google login failed.");
     }
   };

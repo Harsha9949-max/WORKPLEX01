@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth, firebaseConfig } from '../../lib/firebase';
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/format';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import toast from 'react-hot-toast';
-import { Search, ChevronRight, X, User, MapPin, Package, Clock, Truck, CheckCircle, AlertCircle } from 'lucide-react';
+import { Search, ChevronRight, X, User, MapPin, Package, Clock, Truck, CheckCircle, AlertCircle, FileSpreadsheet, Sparkles, RefreshCw, ExternalLink, Mail, Send } from 'lucide-react';
+
+const getOAuthAuthInstance = () => {
+  const name = 'GoogleOAuthApp';
+  const apps = getApps();
+  const existingApp = apps.find(app => app.name === name);
+  const app = existingApp || initializeApp(firebaseConfig, name);
+  return getAuth(app);
+};
 
 export default function ResellerOrders() {
   const { currentUser } = useAuth();
@@ -14,6 +24,363 @@ export default function ResellerOrders() {
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  // Google Sheets state variables
+  const [sheetsToken, setSheetsToken] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [partnerShop, setPartnerShop] = useState<any>(null);
+
+  // Global System Gmail state variables
+  const [systemGmail, setSystemGmail] = useState<any>(null);
+  const [systemGmailToken, setSystemGmailToken] = useState<string | null>(null);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  useEffect(() => {
+    const unsubGmail = onSnapshot(doc(db, 'systemConfig', 'gmail'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setSystemGmail(data);
+        if (data.gmailToken) {
+          setSystemGmailToken(data.gmailToken);
+        } else {
+          setSystemGmailToken(null);
+        }
+      } else {
+        setSystemGmail(null);
+        setSystemGmailToken(null);
+      }
+    });
+    return () => unsubGmail();
+  }, []);
+
+  const sendReceiptEmail = async (order: any) => {
+    const activeToken = systemGmailToken;
+    if (!activeToken) {
+      toast.error('Global Gmail service is inactive. Please ask the Super Admin to activate the mail session on the Control Center.');
+      return;
+    }
+    
+    const customerEmail = order.customer?.email;
+    if (!customerEmail) {
+      toast.error('This customer did not provide an email address during checkout.');
+      return;
+    }
+    
+    setIsSendingEmail(true);
+    const toastId = toast.loading(`Sending purchase receipt email to ${customerEmail}...`);
+    
+    try {
+      const itemsHtml = order.items?.map((item: any) => `
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #eee; font-family: sans-serif; font-size: 14px;">
+            <strong>${item.productName}</strong>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center; font-family: sans-serif; font-size: 14px;">
+            ${item.quantity}
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right; font-family: sans-serif; font-size: 14px; font-weight: bold;">
+            Rs. ${item.sellingPrice * item.quantity}
+          </td>
+        </tr>
+      `).join('') || '';
+
+      const subject = `Order Receipt #${order.orderId} - Thank you for your purchase!`;
+      const htmlBody = `
+        <div style="max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e2e8f0; border-radius: 16px; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; background-color: #ffffff;">
+          <div style="text-align: center; border-bottom: 2px solid #E8B84B; padding-bottom: 20px;">
+            <h1 style="color: #0f172a; font-size: 24px; margin: 0 0 8px 0; font-weight: 800; text-transform: uppercase; letter-spacing: -0.025em;">${partnerShop?.shopName || 'WorkPlex Partner Store'}</h1>
+            <p style="color: #64748b; font-size: 13px; margin: 0; font-weight: 500;">Your Trusted Sourcing & Reselling Partner</p>
+          </div>
+          
+          <div style="padding: 24px 0;">
+            <p style="font-size: 16px; margin-top: 0; color: #0f172a;">Hi <strong>${order.customer?.name}</strong>,</p>
+            <p style="font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 24px;">
+              Thank you for ordering with us! Your Cash on Delivery (COD) order has been successfully logged and processed. Here is your official store purchase receipt:
+            </p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #f1f5f9; padding: 20px; border-radius: 12px; margin: 24px 0;">
+              <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                <tr>
+                  <td style="color: #64748b; padding-bottom: 8px; font-weight: 600; width: 120px;">Order ID:</td>
+                  <td style="color: #0f172a; text-align: right; padding-bottom: 8px; font-mono: yes; font-weight: 700;">${order.orderId}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; padding-bottom: 8px; font-weight: 600;">Date & Time:</td>
+                  <td style="color: #0f172a; text-align: right; padding-bottom: 8px; font-weight: 600;">${order.createdAt?.toDate?.()?.toLocaleString() || new Date().toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-weight: 600;">Payment Mode:</td>
+                  <td style="color: #0f172a; text-align: right; font-weight: 600;">Cash on Delivery (COD)</td>
+                </tr>
+              </table>
+            </div>
+
+            <h3 style="font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-top: 32px; margin-bottom: 16px;">Order Items</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+              <thead>
+                <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                  <th style="padding: 12px; text-align: left; font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase;">Product Name</th>
+                  <th style="padding: 12px; text-align: center; font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; width: 60px;">Qty</th>
+                  <th style="padding: 12px; text-align: right; font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; width: 100px;">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHtml}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="2" style="padding: 20px 12px; font-weight: 800; font-size: 16px; color: #0f172a;">Total Payable Amount:</td>
+                  <td style="padding: 20px 12px; font-weight: 900; font-size: 18px; text-align: right; color: #d97706;">Rs. ${order.totalAmount}</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <h3 style="font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #334155; margin-top: 32px; margin-bottom: 12px;">Shipping Address:</h3>
+            <p style="font-size: 13px; color: #475569; background-color: #f8fafc; border-left: 4px solid #cbd5e1; padding: 16px; border-radius: 8px; line-height: 1.5; margin: 0 0 24px 0;">
+              <strong>Recipient:</strong> ${order.customer?.name || 'N/A'}<br/>
+              <strong>Address:</strong> ${order.customer?.address || 'N/A'}, ${order.customer?.city || 'N/A'}, ${order.customer?.state || 'N/A'} - ${order.customer?.pincode || 'N/A'}<br/>
+              <strong>Phone:</strong> ${order.customer?.phone || 'N/A'}
+            </p>
+
+            <div style="background-color: #fef3c7; border: 1px solid #fde68a; padding: 16px; border-radius: 12px;">
+              <h4 style="margin: 0 0 6px 0; color: #b45309; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.025em;">💡 Store Policies:</h4>
+              <p style="margin: 0; font-size: 12px; color: #78350f; line-height: 1.5; font-weight: 500;">
+                ${partnerShop?.policies?.returnPolicy || '7 Days Standard return policy applies.'}<br/>
+                ${partnerShop?.policies?.shippingPolicy || 'Ships in 3-5 business days.'}
+              </p>
+            </div>
+          </div>
+
+          <div style="text-align: center; border-top: 1px solid #e2e8f0; padding-top: 24px; font-size: 11px; color: #94a3b8; font-weight: 500; margin-top: 40px; line-height: 1.5;">
+            <p style="margin: 0 0 4px 0;">Sent via WorkPlex Secure Client Services on behalf of ${partnerShop?.shopName || 'WorkPlex Partner'}</p>
+            <p style="margin: 0;">This is a system transaction confirmation email. For support, please reply directly or get in touch with our helpdesk.</p>
+          </div>
+        </div>
+      `;
+
+      // MIME assembly
+      const emailContent = [
+        `To: ${customerEmail}`,
+        'Content-Type: text/html; charset=utf-8',
+        'MIME-Version: 1.0',
+        `Subject: ${subject}`,
+        '',
+        htmlBody
+      ].join('\r\n');
+
+      const encodedMime = btoa(unescape(encodeURIComponent(emailContent)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+      const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${activeToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ raw: encodedMime })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gmail API returned status ${response.status}`);
+      }
+
+      toast.success(`Success! Transactional customer receipt sent to ${customerEmail}!`, { id: toastId });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Gmail Send error: ${err.message || String(err)}`, { id: toastId });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsubShop = onSnapshot(doc(db, 'partnerShops', currentUser.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        setPartnerShop(docSnap.data());
+      }
+    });
+    return () => unsubShop();
+  }, [currentUser]);
+
+  const connectGoogleSheets = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      provider.addScope('https://www.googleapis.com/auth/spreadsheets');
+      provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+      provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+      
+      const toastId = toast.loading('Connecting and authenticating with Google Sheets...');
+      const oauthAuth = getOAuthAuthInstance();
+      const result = await signInWithPopup(oauthAuth, provider);
+      
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (!credential?.accessToken) {
+        throw new Error('Access token was not returned from Google Login');
+      }
+      
+      const token = credential.accessToken;
+      setSheetsToken(token);
+      
+      let sheetsEmail = result.user.email;
+      const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (profileRes.ok) {
+        const profile = await profileRes.json();
+        sheetsEmail = profile.email || result.user.email;
+      }
+      
+      // Save info in partnerShops
+      await setDoc(doc(db, 'partnerShops', currentUser!.uid), {
+        googleSheetsEmail: sheetsEmail,
+        isGoogleSheetsLinked: true
+      }, { merge: true });
+      
+      toast.success(`Successfully connected with Google Sheets: ${sheetsEmail}`, { id: toastId });
+    } catch (e: any) {
+      console.error(e);
+      if (e?.code === 'auth/cancelled-popup-request' || e?.code === 'auth/popup-closed-by-user') {
+        toast.dismiss();
+        toast.error('Google Sheets link was closed or cancelled by user.');
+      } else {
+        toast.error(`Google Sheets connection failed: ${e.message || String(e)}`);
+      }
+    }
+  };
+
+  const createOrdersSpreadsheet = async () => {
+    if (!sheetsToken) {
+      toast.error('Google Sheets session is inactive. Please connect to activate.');
+      return;
+    }
+    
+    const toastId = toast.loading('Initializing new Orders Log Google Spreadsheet...');
+    try {
+      const payload = {
+        properties: {
+          title: `WorkPlex Store Orders Log - ${partnerShop?.shopName || 'Partner Store'}`
+        }
+      };
+      
+      const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${sheetsToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Google Sheets API responded with status ${res.status}`);
+      }
+      
+      const sheetData = await res.json();
+      const spreadsheetId = sheetData.spreadsheetId;
+      
+      // Format headers
+      const headers = [
+        "Order ID", "Date", "Customer Name", "Phone", "Full Address", "Items & Quantity", "Total Price", "Earnings / Margin", "Payment Mode", "Order Status"
+      ];
+      
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:append?valueInputOption=USER_ENTERED`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${sheetsToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ values: [headers] })
+      });
+      
+      // Update partnerShop document
+      await setDoc(doc(db, 'partnerShops', currentUser!.uid), {
+        googleSheetsId: spreadsheetId,
+        googleSheetsTitle: `WorkPlex Store Orders Log - ${partnerShop?.shopName || 'Partner Store'}`
+      }, { merge: true });
+      
+      toast.success('Spreadsheet initialized successfully! Syncing current records...', { id: toastId });
+      
+      // Instantly sync the current orders
+      await syncOrdersToSheet(spreadsheetId, sheetsToken);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`Failed to create spreadsheet: ${e.message || String(e)}`, { id: toastId });
+    }
+  };
+
+  const syncOrdersToSheet = async (customId?: string, customToken?: string) => {
+    const spreadsheetId = customId || partnerShop?.googleSheetsId;
+    const activeToken = customToken || sheetsToken;
+    
+    if (!spreadsheetId) {
+      toast.error('No connected orders spreadsheet found.');
+      return;
+    }
+    if (!activeToken) {
+      toast.error('Google Sheets session is inactive or has expired. Connect with Google Sheets first.');
+      return;
+    }
+    
+    setIsSyncing(true);
+    const toastId = toast.loading('Syncing and uploading orders to Google Sheets...');
+    
+    try {
+      // Clear sheet contents after head row to avoid stacking duplicates
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A2:Z5000:clear`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${activeToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Convert orders array into row batches
+      const rows = orders.map((order: any) => {
+        const orderDate = order.createdAt?.toDate?.()?.toLocaleString() || new Date().toLocaleString();
+        const itemsText = order.items?.map((item: any) => `${item.productName} (x${item.quantity || 1})`).join(', ') || 'N/A';
+        const addressText = `${order.customer?.address || ''}, ${order.customer?.city || ''}, ${order.customer?.state || ''} - ${order.customer?.pincode || ''}`;
+        
+        return [
+          order.orderId || 'N/A',
+          orderDate,
+          order.customer?.name || 'N/A',
+          order.customer?.phone || 'N/A',
+          addressText,
+          itemsText,
+          String(order.totalAmount || 0),
+          String(order.totalMargin || 0),
+          order.paymentMode || 'COD',
+          order.status || 'new'
+        ];
+      });
+      
+      if (rows.length > 0) {
+        const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A2:append?valueInputOption=USER_ENTERED`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${activeToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ values: rows })
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Sheets Append API returned status ${res.status}`);
+        }
+      }
+      
+      toast.success(`Success! Connected Log synchronized ${rows.length} store sales orders to Google Sheets!`, { id: toastId });
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`Sync error: ${e.message || String(e)}`, { id: toastId });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -89,6 +456,166 @@ export default function ResellerOrders() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-[#111111] border border-[#2A2A2A] text-white pl-9 pr-4 py-2 rounded-lg text-sm focus:border-[#E8B84B] outline-none"
           />
+        </div>
+      </div>
+
+      {/* Google Sheets Real-time Synchronization Panel */}
+      <div className="bg-[#111111] p-6 rounded-xl border border-[#E8B84B]/20 relative overflow-hidden space-y-4 shadow-xl">
+        <div className="absolute top-0 right-0 p-3 select-none">
+          <Sparkles size={16} className="text-[#E8B84B] animate-pulse" />
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <FileSpreadsheet className="text-[#E8B84B]" size={20} />
+          <h2 className="font-bold text-white uppercase tracking-widest text-xs">Google Sheets Live Synchronization</h2>
+        </div>
+        
+        <p className="text-[11px] text-gray-400 leading-relaxed max-w-3xl">
+          Instantly backup, export, and manage your partner store sales logs directly on Google Sheets. Reduces platform database overhead and synchronizes in one click.
+        </p>
+
+        <div className="bg-[#1A1A1A] p-4 rounded-lg border border-[#2A2A2A] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="text-[9px] text-[#E8B84B] font-bold uppercase tracking-widest">Connection & Sync Status</div>
+            {partnerShop?.isGoogleSheetsLinked ? (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs text-white font-bold">Connected: {partnerShop?.googleSheetsEmail}</span>
+                </div>
+                {partnerShop?.googleSheetsId ? (
+                  <p className="text-[10px] text-gray-500 font-mono italic">
+                    File ID: {partnerShop.googleSheetsId.substring(0, 8)}...
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-[#E8B84B] font-semibold">
+                    ⚠️ Spreadsheet is offline. Initialize one below to establish automated synchronizations!
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-gray-600" />
+                <span className="text-xs text-gray-500">Google Sheets offline (Local Mode Only)</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {!partnerShop?.isGoogleSheetsLinked ? (
+              <button
+                onClick={connectGoogleSheets}
+                className="px-5 py-2.5 bg-[#E8B84B] text-black font-black text-xs uppercase tracking-wider rounded-lg hover:bg-[#E8B84B]/95 hover:shadow-[0_0_15px_rgba(232,184,75,0.25)] transition-all flex items-center justify-center gap-2"
+              >
+                Connect Google Sheets
+              </button>
+            ) : (
+              <>
+                {!sheetsToken ? (
+                  <button
+                    onClick={connectGoogleSheets}
+                    className="px-4 py-2 bg-[#E8B84B] text-black font-black text-xs uppercase rounded-lg hover:bg-[#E8B84B]/90 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    Activate Sheets Session
+                  </button>
+                ) : (
+                  <>
+                    {!partnerShop?.googleSheetsId ? (
+                      <button
+                        onClick={createOrdersSpreadsheet}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-black text-xs uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <FileSpreadsheet size={13} /> Create Log Spreadsheet
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          disabled={isSyncing}
+                          onClick={() => syncOrdersToSheet()}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <RefreshCw size={13} className={isSyncing ? 'animate-spin' : ''} /> {isSyncing ? 'Syncing...' : 'Sync Orders Log'}
+                        </button>
+                        
+                        <a
+                          href={`https://docs.google.com/spreadsheets/d/${partnerShop.googleSheetsId}/edit`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-4 py-2 bg-[#1A1A1A] hover:bg-[#2A2A2A] text-white border border-[#3A3A3A] font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <ExternalLink size={13} /> View spreadsheet
+                        </a>
+                      </>
+                    )}
+                  </>
+                )}
+                
+                <button
+                  onClick={async () => {
+                    try {
+                      await setDoc(doc(db, 'partnerShops', currentUser!.uid), {
+                        isGoogleSheetsLinked: false,
+                        googleSheetsEmail: null,
+                        googleSheetsId: null,
+                        googleSheetsTitle: null
+                      }, { merge: true });
+                      setSheetsToken(null);
+                      toast.success('Disconnected Google Sheets successfully.');
+                    } catch (e) {
+                      toast.error('Failed to disconnect');
+                    }
+                  }}
+                  className="px-3 py-2 border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-lg text-xs font-bold transition-colors"
+                >
+                  Disconnect
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Platform Brand Email Dispatch Notification */}
+      <div className="bg-[#111111] p-6 rounded-xl border border-[#E8B84B]/20 relative overflow-hidden space-y-4 shadow-xl">
+        <div className="absolute top-0 right-0 p-3 select-none">
+          <Sparkles size={16} className="text-[#E8B84B] animate-pulse" />
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Mail className="text-[#E8B84B]" size={20} />
+          <h2 className="font-bold text-white uppercase tracking-widest text-xs">Official Customer Notifications</h2>
+        </div>
+        
+        <p className="text-[11px] text-gray-400 leading-relaxed max-w-3xl">
+          The WorkPlex Super Admin has connected the platform's official high-deliverability Gmail dispatcher to send transactional order confirmations and purchase invoices automatically to your customers on checkout.
+        </p>
+
+        <div className="bg-[#1A1A1A] p-4 rounded-lg border border-[#2A2A2A] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="text-[9px] text-[#E8B84B] font-bold uppercase tracking-widest">Active Dispatch Email</div>
+            {systemGmail?.isGmailLinked ? (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs text-white font-bold">Linked: {systemGmail?.gmailEmail}</span>
+                </div>
+                {systemGmailToken ? (
+                  <span className="inline-block px-2 py-0.5 bg-green-950/40 text-green-400 border border-green-500/10 rounded text-[9px] font-mono italic">
+                    active_session_live
+                  </span>
+                ) : (
+                  <p className="text-[10px] text-amber-500 font-semibold">
+                    ⚠️ Session is sleeping. The Super Admin needs to activate the Gmail session in the Control Center!
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-gray-600" />
+                <span className="text-xs text-gray-500">Google Mail offline (Transactional Emails Suspended)</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -341,6 +868,56 @@ export default function ResellerOrders() {
                      )}
                    </div>
                 )}
+
+                {/* Instant Gmail Transactional Alerts Panel */}
+                <div className="space-y-2">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-[#E8B84B] flex items-center gap-1.5 pt-2">
+                    <Mail size={12} /> Transactional Email Dispatcher
+                  </h3>
+                  <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5 space-y-3">
+                    {systemGmail?.isGmailLinked ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-gray-500 font-bold uppercase">Sender Profile</span>
+                          <span className="text-xs text-green-400 font-bold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> {systemGmail.gmailEmail}
+                          </span>
+                        </div>
+                        
+                        {systemGmailToken ? (
+                          selectedOrder.customer?.email ? (
+                            <button
+                              disabled={isSendingEmail}
+                              onClick={() => sendReceiptEmail(selectedOrder)}
+                              className="w-full py-2.5 bg-[#E8B84B] hover:bg-[#E8B84B]/90 text-black font-black text-xs uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2"
+                            >
+                              <Send size={12} /> {isSendingEmail ? 'Sending...' : 'Email Official Receipt'}
+                            </button>
+                          ) : (
+                            <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg text-amber-500 text-[11px] leading-tight font-medium">
+                              ⚠️ This customer completed a mobile-only checkout and didn't specify an email address.
+                            </div>
+                          )
+                        ) : (
+                          <div className="space-y-2 text-center py-1">
+                            <p className="text-[10px] text-amber-500 font-semibold">
+                              ⚠️ Connection Session Sleeping
+                            </p>
+                            <p className="text-[10px] text-gray-400 leading-tight">
+                              Ask the Super Admin to activate their dispatcher session in the Control Center.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-[11px] text-gray-400 leading-relaxed">
+                          The global transactional email sender is currently offline or disconnected by the platform administrator.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {selectedOrder.status === 'new' && (

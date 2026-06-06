@@ -3,7 +3,7 @@
   "appId": "1:1072862343098:web:fe4e603684cc7096beb783",
   "apiKey": "AIzaSyASZnUOmDio4rVao2LyDj6_k-TTk6CExWA",
   "authDomain": "workplex-hvrs.firebaseapp.com",
-  "firestoreDatabaseId": "(default)",
+  "databaseURL": "https://workplex-hvrs-default-rtdb.firebaseio.com",
   "storageBucket": "workplex-hvrs.firebasestorage.app",
   "messagingSenderId": "1072862343098",
   "measurementId": ""

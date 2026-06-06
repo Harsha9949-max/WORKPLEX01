@@ -15,7 +15,8 @@ import {
   Search,
   Menu,
   X,
-  Briefcase
+  Briefcase,
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -39,6 +40,7 @@ export default function AdminLayout() {
     { name: 'Sub-Admins', path: '/admin/sub-admins', icon: UserPlus },
     { name: 'Fraud Alerts', path: '/admin/fraud', icon: ShieldAlert },
     { name: 'Announcements', path: '/admin/announcements', icon: Megaphone },
+    { name: 'Email Dispatcher', path: '/admin/email-dispatcher', icon: Mail },
   ];
 
   const handleLogout = async () => {

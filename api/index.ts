@@ -1,13 +1,26 @@
 import express from "express";
 import { Resend } from "resend";
-import * as admin from "firebase-admin";
+import * as adminModule from "firebase-admin";
+
+const getAdminInstance = () => {
+  const m = adminModule as any;
+  if (m && (Array.isArray(m.apps) || typeof m.initializeApp === 'function')) return m;
+  if (m && m.default && (Array.isArray(m.default.apps) || typeof m.default.initializeApp === 'function')) return m.default;
+  return m;
+};
+
+const admin = getAdminInstance();
 
 const app = express();
 app.use(express.json());
 
 // Lazy Firebase Admin Initialization
 const initFirebaseAdmin = () => {
-  if (admin.apps.length > 0) return true;
+  if (!admin) return false;
+  
+  const apps = admin.apps;
+  if (apps && apps.length > 0) return true;
+  
   try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -17,11 +30,20 @@ const initFirebaseAdmin = () => {
       return true;
     } else {
       // Fallback for container environments like Cloud Run (uses Application Default Credentials automatically)
-      admin.initializeApp();
+      try {
+        admin.initializeApp();
+        return true;
+      } catch (adcError: any) {
+        // Safe check for local sandbox / preview, avoids breaking but warnings are logged
+        console.warn("Firebase Admin ADC fallback skipped or failed:", adcError.message || String(adcError));
+        return false;
+      }
+    }
+  } catch (err: any) {
+    if (err && err.code === 'app/duplicate-app') {
       return true;
     }
-  } catch (err) {
-    console.error("Firebase Admin lazy initialization error:", err);
+    console.warn("Firebase Admin lazy initialization skipped or failed:", err.message || String(err));
   }
   return false;
 };
@@ -49,6 +71,12 @@ const router = express.Router();
 router.get("/admin/users", async (req, res) => {
   try {
     const isInitialized = initFirebaseAdmin();
+    if (!isInitialized) {
+      return res.status(503).json({ 
+        success: false, 
+        error: "Firebase Admin is not configured. Operates in client-only direct query mode." 
+      });
+    }
     let authUsers: any[] = [];
     let firestoreUsers: any[] = [];
 
@@ -149,6 +177,12 @@ router.post("/admin/update-user/:uid", async (req, res) => {
     if (!uid) return res.status(400).json({ error: "UID is required" });
 
     const isInitialized = initFirebaseAdmin();
+    if (!isInitialized) {
+      return res.status(503).json({ 
+        success: false, 
+        error: "Firebase Admin is not configured. Operates in client-only direct query mode." 
+      });
+    }
     if (isInitialized) {
       // 1. Update Firebase Auth properties (displayName, disabled status)
       try {
@@ -239,9 +273,16 @@ router.delete("/admin/delete-user/:uid", async (req, res) => {
     const { uid } = req.params;
     if (!uid) return res.status(400).json({ error: "UID is required" });
 
+    const isInitialized = initFirebaseAdmin();
+    if (!isInitialized) {
+      return res.status(503).json({ 
+        success: false, 
+        error: "Firebase Admin is not configured. Operates in client-only direct query mode." 
+      });
+    }
+
     // Try to delete from Firebase Auth and Firestore on the backend directly
     try {
-      const isInitialized = initFirebaseAdmin();
       if (isInitialized) {
         // 1. Delete from Firebase Auth
         try {
