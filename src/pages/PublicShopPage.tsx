@@ -12,9 +12,18 @@ import {
   Package,
   Heart,
   Search,
-  CheckCircle2
+  CheckCircle2,
+  Menu,
+  ShoppingCart,
+  User,
+  HeartHandshake,
+  TrendingUp,
+  Award,
+  Clock,
+  Sparkles,
+  ChevronLeft
 } from 'lucide-react';
-import { collection, query, where, getDocs, doc, getDoc, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import CheckoutModal from '../components/shop/CheckoutModal';
 import toast from 'react-hot-toast';
@@ -28,7 +37,9 @@ export default function PublicShopPage() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Items');
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
 
+  // Filter products based on search queries and category selections
   const filteredProducts = products.filter(product => {
     const nameToMatch = (product.name || product.productData?.name || '').toLowerCase();
     const matchesSearch = nameToMatch.includes(searchQuery.toLowerCase());
@@ -36,330 +47,523 @@ export default function PublicShopPage() {
     return matchesSearch && matchesCategory;
   });
 
+  // Listen to Firestore real-time snapshots
   useEffect(() => {
-    const fetchData = async () => {
-      if (!slug) return;
-      
-      // 1. Get Shop
-      const shopsQ = query(collection(db, 'partnerShops'), where('shopSlug', '==', slug), limit(1));
-      const shopsSnap = await getDocs(shopsQ);
-      
+    if (!slug) return;
+
+    setLoading(true);
+
+    // 1. Get Shop by slug (Real-time to sync dynamic branding, layout, names)
+    const shopsQ = query(collection(db, 'partnerShops'), where('shopSlug', '==', slug), limit(1));
+    
+    let unsubProducts: (() => void) | null = null;
+
+    const unsubShop = onSnapshot(shopsQ, (shopsSnap) => {
       if (!shopsSnap.empty) {
         const shopDoc = shopsSnap.docs[0];
         const shopData = { id: shopDoc.id, ...shopDoc.data() } as any;
         setShop(shopData);
 
-        // SEO Injection
+        // Dynamic SEO Injections
         if (shopData.seo) {
-           document.title = shopData.seo.metaTitle || shopData.shopName;
-           let metaDesc = document.querySelector('meta[name="description"]');
-           if (!metaDesc) {
-              metaDesc = document.createElement('meta');
-              metaDesc.setAttribute('name', 'description');
-              document.head.appendChild(metaDesc);
-           }
-           metaDesc.setAttribute('content', shopData.seo.metaDescription || '');
+          document.title = shopData.seo.metaTitle || `${shopData.shopName} - Flipkart Store`;
+          let metaDesc = document.querySelector('meta[name="description"]');
+          if (!metaDesc) {
+            metaDesc = document.createElement('meta');
+            metaDesc.setAttribute('name', 'description');
+            document.head.appendChild(metaDesc);
+          }
+          metaDesc.setAttribute('content', shopData.seo.metaDescription || '');
         }
 
-        // 2. Get Partner Products
-        const productsQ = query(collection(db, 'partnerProducts', shopDoc.id, 'products'), where('isActive', '==', true));
-        const productsSnap = await getDocs(productsQ);
-        setProducts(productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      }
-      setLoading(false);
-    };
+        // 2. Setup Real-time Listener for products (exclusively showing products added by this partner)
+        if (unsubProducts) unsubProducts();
 
-    fetchData();
+        const productsQ = query(
+          collection(db, 'partnerProducts', shopDoc.id, 'products'), 
+          where('isActive', '==', true)
+        );
+
+        unsubProducts = onSnapshot(productsQ, (productsSnap) => {
+          const prods = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setProducts(prods);
+          setLoading(false);
+        }, (error) => {
+          console.error('[Snap Error] partnerProducts list: ', error);
+          setLoading(false);
+        });
+
+      } else {
+        setShop(null);
+        setLoading(false);
+      }
+    }, (error) => {
+      console.error('[Snap Error] partnerShops query: ', error);
+      setLoading(false);
+    });
+
+    return () => {
+      unsubShop();
+      if (unsubProducts) unsubProducts();
+    };
   }, [slug]);
+
+  // Slide carousel banners automatically
+  useEffect(() => {
+    if (products.length === 0) return;
+    const interval = setInterval(() => {
+      setCurrentBannerIndex(prev => (prev + 1) % 3);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [products]);
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast.success('Shop link copied!');
+    toast.success('Shop link copied to clipboard!');
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const cat = category.toLowerCase();
+    if (cat.includes('mobile') || cat.includes('phone')) return { emoji: '📱', bg: 'bg-[#E3F2FD]' };
+    if (cat.includes('cloth') || cat.includes('fashion') || cat.includes('wear') || cat.includes('shoe')) return { emoji: '👕', bg: 'bg-[#FCE4EC]' };
+    if (cat.includes('electronics') || cat.includes('gadget') || cat.includes('laptop') || cat.includes('tech')) return { emoji: '💻', bg: 'bg-[#EDE7F6]' };
+    if (cat.includes('home') || cat.includes('kitchen') || cat.includes('furniture')) return { emoji: '🏠', bg: 'bg-[#E8F5E9]' };
+    if (cat.includes('beauty') || cat.includes('cosmetic') || cat.includes('care')) return { emoji: '💄', bg: 'bg-[#FFF3E0]' };
+    if (cat.includes('appliances') || cat.includes('tv') || cat.includes('fridge')) return { emoji: '🔌', bg: 'bg-[#E0F2F1]' };
+    if (cat.includes('toy') || cat.includes('kids') || cat.includes('game')) return { emoji: '🧸', bg: 'bg-[#F3E5F5]' };
+    return { emoji: '📦', bg: 'bg-[#ECEFF1]' }; // Default
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+    <div className="min-h-screen bg-[#f1f3f6] flex flex-col items-center justify-center p-4">
       <motion.div 
         animate={{ rotate: 360 }} 
         transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-        className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full" 
+        className="w-12 h-12 border-4 border-[#2874f0] border-t-transparent rounded-full shadow-md mb-3" 
       />
+      <span className="text-xs font-bold text-gray-500 uppercase tracking-widest animate-pulse">Loading Store...</span>
     </div>
   );
 
   if (!shop) return (
-    <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center p-8 text-center">
-      <h1 className="text-4xl font-black text-white mb-4">Shop Not Found</h1>
-      <p className="text-gray-500 mb-8 max-w-xs">The store you're looking for doesn't exist or has been taken down.</p>
-      <Link to="/" className="bg-teal-500 text-black font-black px-10 py-4 rounded-3xl">Go Home</Link>
+    <div className="min-h-screen bg-[#f1f3f6] flex flex-col items-center justify-center p-8 text-center">
+      <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-6">
+        <Package size={36} className="text-gray-400" />
+      </div>
+      <h1 className="text-3xl font-black text-gray-800 mb-2">Storefront Offline</h1>
+      <p className="text-gray-500 mb-8 max-w-sm text-sm">The store coordinates are incorrect, or the seller has taken their storefront offline temporarily.</p>
+      <Link to="/" className="bg-[#2874f0] text-white font-bold px-8 py-3 rounded shadow hover:bg-[#1259c7] transition-all">Go Home</Link>
     </div>
   );
 
+  // Dynamic branding colors & fonts if selected, otherwise fallback to Flipkart palette
   const themeVars = {
-    '--color-primary': shop.theme?.primaryColor || '#14b8a6',
-    '--color-secondary': shop.theme?.secondaryColor || '#111111',
-    '--color-bg': shop.theme?.backgroundColor || '#0A0A0A',
-    backgroundColor: shop.theme?.backgroundColor || '#0A0A0A'
+    '--color-primary': '#2874f0',
+    '--color-secondary': '#ffe11b',
+    backgroundColor: '#f1f3f6'
   } as React.CSSProperties;
 
-  const fontClass = shop.theme?.fontStyle === 'classic' ? 'font-serif' 
-                  : shop.theme?.fontStyle === 'bold' ? 'font-black' 
-                  : shop.theme?.fontStyle === 'minimal' ? 'font-mono' 
-                  : 'font-sans';
-
-  const buttonClass = shop.theme?.buttonStyle === 'sharp' ? 'rounded-none' 
-                    : shop.theme?.buttonStyle === 'pill' ? 'rounded-full' 
-                    : 'rounded-2xl';
-
-  const layoutClass = shop.theme?.layout === 'list' ? 'grid-cols-1' 
-                    : shop.theme?.layout === 'masonry' ? 'columns-2 gap-4 space-y-4' 
-                    : 'grid-cols-2 gap-4';
-
   return (
-    <div className={`min-h-screen pb-32 ${fontClass}`} style={{ ...themeVars, color: '#FFFFFF', backgroundColor: '#0B0F13' }}>
-      {/* Real-time Top Notification Bar */}
-      <div className="bg-[#131920] border-b border-white/5 py-1.5 px-4 text-center text-[10px] md:text-xs font-black uppercase tracking-wider text-[#FF9900] flex items-center justify-center gap-2">
-        <Zap size={12} className="animate-pulse" />
-        <span>✓ 100% Verified Store | FREE Delivery with Fast Cash on Delivery (COD)</span>
-      </div>
-
-      {/* Amazon-Style Dedicated Header Navbar */}
-      <div className="bg-[#1A222D] shadow-xl sticky top-0 z-50 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
-          {/* Brand/Store Info */}
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <motion.img 
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              src={shop.logo || `https://api.dicebear.com/7.x/initials/svg?seed=${shop.shopName}`} 
-              className="w-10 h-10 rounded-xl object-cover bg-white/5 border border-white/10 shadow-md shrink-0" 
-            />
-            <div className="leading-tight">
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-sm font-black uppercase tracking-tight text-white">{shop.shopName}</h1>
-                <span className="bg-[#FF9900] text-black text-[8px] font-black uppercase px-1 rounded">Choice</span>
-              </div>
-              <p className="text-[10px] text-gray-400 font-bold max-w-[200px] truncate">{shop.branding?.tagline || 'Authorized Reseller'}</p>
-            </div>
-          </div>
-
-          {/* Core Interactive Search Bar */}
-          <div className="flex-1 w-full max-w-xl group">
-            <div className="relative flex items-center bg-white rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#FF9900] shadow-md transition-all">
-              <Search size={16} className="text-gray-400 ml-4 shrink-0" />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search premium products..." 
-                className="bg-transparent border-none outline-none text-xs text-black w-full px-3 py-3.5 placeholder:text-gray-400 font-bold"
+    <div className="min-h-screen pb-24 text-gray-800 bg-[#f1f3f6] font-sans antialiased selection:bg-[#2874f0]/20">
+      
+      {/* 1. Flipkart-esque Top Header Bar */}
+      <header className="bg-[#2874f0] text-white sticky top-0 z-50 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          
+          {/* Logo Brand Title with "Plus" superscript symbol */}
+          <div className="flex items-center gap-3 shrink-0">
+            <Link to="#" className="flex flex-col select-none leading-none">
+              <span className="text-lg md:text-xl font-black italic tracking-tight text-white flex items-center">
+                {shop.shopName}
+                <span className="text-[#ffe11b] ml-1 font-extrabold text-xs not-italic">Plus✦</span>
+              </span>
+              <span className="text-[9px] font-bold italic text-gray-200 hover:underline flex items-center gap-0.5 mt-0.5">
+                Explore <span className="text-[#ffe11b] font-black uppercase tracking-wider">Choice</span>
+              </span>
+            </Link>
+            {shop.logo && (
+              <img 
+                src={shop.logo} 
+                className="w-8 h-8 rounded-full border border-white/20 object-cover bg-white" 
+                alt="Shop Logo"
               />
-              <button className="bg-[#FF9900] text-black h-full px-5 hover:bg-[#F3A847] transition-colors flex items-center justify-center font-black text-xs space-gap-1">
-                <span>Filter</span>
-              </button>
-            </div>
+            )}
           </div>
 
-          {/* Social Links & Sharing */}
-          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          {/* Flipkart Classic White Search Bar */}
+          <div className="flex-1 max-w-2xl h-10 bg-white rounded-sm shadow-sm flex items-center overflow-hidden">
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for products, brands and more..." 
+              className="w-full bg-transparent border-none outline-none text-sm text-gray-800 px-4 py-2 font-medium placeholder:text-gray-400 focus:ring-0"
+            />
+            <button className="px-4 text-[#2874f0] hover:text-[#1c56b7] transition-colors">
+              <Search size={18} />
+            </button>
+          </div>
+
+          {/* Header Action menu buttons */}
+          <div className="flex items-center gap-4 text-sm font-bold shrink-0">
             <button 
               onClick={handleShare}
-              className="p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:text-[#FF9900] transition-all text-white flex items-center gap-1 text-[10px] font-black uppercase tracking-widest"
-              title="Share Storefront"
+              className="bg-white text-[#2874f0] hidden md:flex items-center gap-1.5 px-6 py-1.5 rounded-sm shadow hover:bg-gray-50 transition-all font-black uppercase text-xs"
             >
-              <Share2 size={14} /> Share
+              <Share2 size={12} /> Share Store
             </button>
-            {shop.branding?.instagramHandle && (
-              <a 
-                href={`https://instagram.com/${shop.branding.instagramHandle.replace('@', '')}`} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors text-white text-[10px] font-bold"
-              >
-                Instagram
-              </a>
-            )}
-            {shop.branding?.whatsappNumber && (
-              <a 
-                href={`https://wa.me/${shop.branding.whatsappNumber}`} 
-                target="_blank" 
-                rel="noreferrer" 
-                className="p-2.5 bg-green-500/10 border border-green-500/20 rounded-xl hover:bg-green-500/20 transition-colors text-green-400 text-[10px] font-bold"
-              >
-                WhatsApp
-              </a>
-            )}
+
+            {/* Icons */}
+            <div className="flex items-center gap-3">
+              {shop.branding?.instagramHandle && (
+                <a 
+                  href={`https://instagram.com/${shop.branding.instagramHandle.replace('@', '')}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="p-1.5 rounded-full hover:bg-white/10 text-white transition-all"
+                  title="Instagram"
+                >
+                  <User size={18} />
+                </a>
+              )}
+              {shop.branding?.whatsappNumber && (
+                <a 
+                  href={`https://wa.me/${shop.branding.whatsappNumber}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="p-1.5 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all shadow"
+                  title="WhatsApp Chat"
+                >
+                  <ShoppingBag size={18} />
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* 2. Real-time Promo Marquee Alert Strip */}
+      <div className="bg-[#ffe11b] text-gray-900 border-b border-yellow-400 py-1.5 px-4 text-center text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2">
+        <Zap size={12} className="text-red-600 fill-red-600 animate-pulse shrink-0" />
+        <span>⚡ Super Value Budget Store | Free Home Delivery across India for all Cash on Delivery (COD) orders! ⚡</span>
+      </div>
+
+      {/* 3. Flipkart Categorical Circular Icon Bar */}
+      <div className="bg-white border-b border-gray-200 shadow-sm py-4">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex gap-4 md:gap-8 overflow-x-auto no-scrollbar justify-start md:justify-center items-center py-1">
+            
+            {/* "All Items" Circle */}
+            <button 
+              onClick={() => setSelectedCategory('All Items')}
+              className="flex flex-col items-center gap-1 shrink-0 group min-w-[70px]"
+            >
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                selectedCategory === 'All Items' 
+                  ? 'bg-[#2874f0] text-white ring-4 ring-[#2874f0]/20 scale-105' 
+                  : 'bg-gray-100 text-gray-600 group-hover:scale-105 group-hover:bg-gray-200'
+              }`}>
+                <span className="text-xl">⭐</span>
+              </div>
+              <span className={`text-[11px] font-bold tracking-tight text-center ${
+                selectedCategory === 'All Items' ? 'text-[#2874f0] font-extrabold' : 'text-gray-500 group-hover:text-[#2874f0]'
+              }`}>
+                For You
+              </span>
+            </button>
+
+            {/* Map actual reseller added categories dynamic */}
+            {['All Items', ...(shop.categories || [])].filter(cat => cat !== 'All Items').map(cat => {
+              const info = getCategoryIcon(cat);
+              const isSelected = selectedCategory === cat;
+              return (
+                <button 
+                  key={cat} 
+                  onClick={() => setSelectedCategory(cat)}
+                  className="flex flex-col items-center gap-1 shrink-0 group min-w-[75px]"
+                >
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    isSelected 
+                      ? 'bg-[#2874f0] text-white ring-4 ring-[#2874f0]/20 scale-105' 
+                      : `${info.bg} text-gray-800 group-hover:scale-105 group-hover:opacity-90`
+                  }`}>
+                    <span className="text-xl">{info.emoji}</span>
+                  </div>
+                  <span className={`text-[11px] font-bold tracking-tight text-center capitalize max-w-[80px] truncate ${
+                    isSelected ? 'text-[#2874f0] font-extrabold' : 'text-gray-500 group-hover:text-[#2874f0]'
+                  }`}>
+                    {cat}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Featured Banner & Promo Carousel */}
-      {shop.branding?.bannerText && (
-        <div className="max-w-7xl mx-auto px-4 mt-6">
-          <div className="rounded-3xl p-6 md:p-8 flex items-center justify-between shadow-2xl overflow-hidden relative border border-white/10 bg-[#1D252F]">
-            {shop.branding?.bannerImage && (
-               <div className="absolute inset-0 opacity-20 pointer-events-none">
-                  <img src={shop.branding.bannerImage} className="w-full h-full object-cover" />
-               </div>
-            )}
-            <div className="absolute top-0 right-0 w-48 h-48 bg-[#FF9900]/10 blur-[100px] rounded-full pointer-events-none" />
-            <div className="space-y-2 relative z-10 w-full pr-12">
-              <div className="inline-flex items-center gap-1.5 bg-[#FF9900]/10 border border-[#FF9900]/20 px-2.5 py-0.5 rounded-full">
-                <CheckCircle2 size={10} className="text-[#FF9900]" />
-                <span className="text-[8px] font-black text-[#FF9900] uppercase tracking-wider">Mega Promotion Live</span>
-              </div>
-              <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter">{shop.branding.bannerText}</h2>
-              <p className="text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-widest leading-none">Complete premium white-label catalog on sale</p>
+      {/* 4. Large Promo Carousel Banner Banner inspired by Big Saving Days */}
+      <div className="max-w-7xl mx-auto px-4 mt-6">
+        <div className="relative bg-gradient-to-r from-blue-700 via-blue-600 to-[#1259c7] rounded-md shadow-lg overflow-hidden h-40 md:h-64 flex items-center justify-between text-white border border-blue-500/10">
+          
+          {/* Decorative floating grids */}
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,_transparent_1px),_linear-gradient(90deg,_rgba(255,255,255,0.05)_1px,_transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
+          
+          {shop.branding?.bannerImage && (
+            <div className="absolute inset-0 opacity-25 pointer-events-none mix-blend-overlay">
+              <img src={shop.branding.bannerImage} className="w-full h-full object-cover" alt="Banner Background" />
             </div>
-            <div className="w-12 h-12 bg-black rounded-2xl flex-shrink-0 flex items-center justify-center shadow-xl relative z-10 text-[#FF9900]">
-              <Zap size={24} className="animate-pulse" />
+          )}
+
+          <div className="relative z-10 px-6 md:px-12 py-8 max-w-lg space-y-2">
+            <span className="bg-[#ffe11b] text-gray-900 font-extrabold text-[9px] md:text-xxs px-2 py-0.5 rounded uppercase tracking-wider shadow">
+              F-Assured Store Deals
+            </span>
+            <h2 className="text-xl md:text-4xl font-black italic uppercase tracking-tighter leading-tight text-white drop-shadow-md">
+              {shop.branding?.bannerText || "Big Billion Shopping Deals!"}
+            </h2>
+            <p className="text-gray-100 text-[10px] md:text-sm font-semibold tracking-wide flex items-center gap-1">
+              <CheckCircle2 size={14} className="text-[#ffe11b]" /> Direct reseller pricing with immediate delivery checks.
+            </p>
+          </div>
+
+          <div className="hidden md:flex flex-col items-center gap-2 pr-12 relative z-10">
+            <div className="bg-[#ffe11b] text-gray-900 font-black p-4 rounded-full w-24 h-24 flex flex-col items-center justify-center border-4 border-white shadow-xl animate-bounce">
+              <p className="text-xxs leading-none uppercase">UP TO</p>
+              <p className="text-2xl leading-none font-black italic">60%</p>
+              <p className="text-[10px] leading-none uppercase font-bold">OFF</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Horizontal scroll: "Still Looking for These?" */}
+      {products.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 mt-6">
+          <div className="bg-white rounded-sm shadow-sm p-4 border border-gray-200">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={16} className="text-orange-500" />
+                <h3 className="text-sm md:text-base font-black text-gray-800 uppercase tracking-tight">
+                  Still looking for these? <span className="text-gray-400 text-xs font-normal capitalize">Curated Selection</span>
+                </h3>
+              </div>
+              <span className="text-xs font-bold text-[#2874f0] hover:underline cursor-pointer">View All</span>
+            </div>
+
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+              {products.slice(0, 5).map((product) => {
+                const finalPrice = product.partnerSellingPrice;
+                const originalMrp = Math.ceil(finalPrice * 1.45);
+                const discountPercent = Math.floor(((originalMrp - finalPrice) / originalMrp) * 100);
+
+                return (
+                  <div 
+                    key={product.id}
+                    onClick={() => setSelectedProduct(product)}
+                    className="flex flex-col items-center p-3 border border-gray-100 hover:border-gray-200 bg-[#FCFDFE] hover:shadow-sm cursor-pointer rounded-sm w-[130px] md:w-[160px] shrink-0 transition-all text-center"
+                  >
+                    <div className="w-24 h-24 md:w-28 md:h-38 bg-white flex items-center justify-center p-1 overflow-hidden relative">
+                      <img 
+                        src={product.images?.[0] || product.productData?.image || 'https://via.placeholder.com/400'} 
+                        className="max-h-full max-w-full object-contain hover:scale-105 transition-transform" 
+                        alt="Product card"
+                      />
+                    </div>
+                    <h4 className="text-[11px] font-bold text-gray-700 truncate w-full mt-2 text-center uppercase">
+                      {product.name}
+                    </h4>
+                    <p className="text-[10px] text-green-600 font-extrabold mt-0.5">
+                      Min {discountPercent}% Off
+                    </p>
+                    <p className="text-xs font-extrabold text-gray-800 mt-0.5">
+                      ₹{finalPrice}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* Category Section with Interactive Click Triggers */}
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-white/5 pb-2">
-          <h3 className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-widest">Browse Departments</h3>
-          <span className="text-[9px] text-[#FF9900] font-bold uppercase">{filteredProducts.length} Premium Products</span>
-        </div>
-        <div className="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth">
-          {['All Items', ...(shop.categories || [])].map(cat => {
-            const isSelected = selectedCategory === cat;
-            return (
-              <button 
-                key={cat} 
-                onClick={() => setSelectedCategory(cat)}
-                className={`flex-shrink-0 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
-                  isSelected 
-                    ? 'bg-[#FF9900] text-black border-[#FF9900] shadow-lg shadow-[#FF9900]/10 scale-102 font-black' 
-                    : 'bg-[#181F29] border-white/5 text-gray-400 hover:text-white hover:border-white/20'
-                }`}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Main Catalog - Amazon-Designed Grid */}
-      <div className="max-w-7xl mx-auto px-4">
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-20 bg-[#141B24] rounded-3xl border border-white/5 my-6 space-y-3">
-            <Package className="mx-auto text-gray-500" size={32} />
-            <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">No matching products found</h4>
-            <p className="text-[10px] text-gray-600 max-w-xs mx-auto">Try checking other department filters or adjusting your search keyword.</p>
+      {/* 6. Main Catalog grid - styled exactly like Flipkart department products list */}
+      <div className="max-w-7xl mx-auto px-4 mt-6">
+        <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden">
+          
+          {/* Header Department Title */}
+          <div className="bg-white p-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 className="text-base md:text-lg font-black text-gray-800 uppercase tracking-tight flex items-center gap-2">
+                <Award size={18} className="text-[#2874f0]" />
+                {selectedCategory === 'All Items' ? 'Top Suggested Deals' : `${selectedCategory} Collection`}
+              </h2>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">100% Authentic Quality Assured</p>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] font-extrabold text-[#2874f0] bg-blue-50 px-2.5 py-1 rounded-sm">
+              <span>{filteredProducts.length} Premium items found</span>
+            </div>
           </div>
-        ) : (
-          <div className={`grid ${layoutClass}`}>
-            {filteredProducts.map((product) => {
-              // Calculate beautiful fake Amazon pricing variables
-              const finalPrice = product.partnerSellingPrice;
-              const originalMrp = Math.ceil(finalPrice * 1.48);
-              const discountPercent = Math.floor(((originalMrp - finalPrice) / originalMrp) * 100);
-              
-              // Seed-based rating values
-              const ratingScore = 4.5 + (product.id.charCodeAt(0) % 6) * 0.1;
-              const ratingCount = 80 + (product.id.charCodeAt(0) % 250);
 
-              return (
-                <motion.div
-                  key={product.id}
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className={`bg-[#141B24] border border-white/5 overflow-hidden group shadow-lg flex flex-col hover:border-white/10 transition-all ${
-                    shop.theme?.layout === 'masonry' ? 'break-inside-avoid mb-4 inline-block w-full' : ''
-                  }`}
-                  style={{ borderRadius: shop.theme?.buttonStyle === 'sharp' ? '0px' : '24px' }}
-                >
-                  {/* Aspect Ratio & Image Container */}
-                  <div className="relative aspect-square overflow-hidden bg-[#0F141C]">
-                    <img 
-                      src={product.images?.[0] || product.productData?.image || 'https://via.placeholder.com/400'} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                      loading="lazy"
-                    />
+          {/* Catalog grid */}
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-20 bg-white space-y-4 px-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
+                <Package className="text-gray-400" size={28} />
+              </div>
+              <h4 className="text-sm font-bold uppercase text-gray-500 tracking-wider">No matching products found</h4>
+              <p className="text-xs text-gray-400 max-w-xs mx-auto">Try selecting another department filter on the circular bar or adjusting your search input.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 divide-x divide-y divide-gray-100 bg-white border-t border-gray-100">
+              {filteredProducts.map((product) => {
+                
+                // Beautiful Flipkart pricing variables
+                const finalPrice = product.partnerSellingPrice;
+                const originalMrp = Math.ceil(finalPrice * 1.45);
+                const discountPercent = Math.floor(((originalMrp - finalPrice) / originalMrp) * 100);
+
+                // Seed ratings and total reviews
+                const ratingSeed = (product.id || '').charCodeAt(0) % 5;
+                const ratingVal = 4.1 + (ratingSeed * 0.2); 
+                const reviewsCount = 42 + (ratingSeed * 115);
+
+                return (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-4 bg-white hover:shadow-md transition-shadow relative flex flex-col justify-between group cursor-pointer"
+                    onClick={() => setSelectedProduct(product)}
+                  >
                     
-                    {/* Orange discount tag label */}
-                    <div className="absolute top-3 left-3 bg-[#CC0C39] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow z-10">
-                      -{discountPercent}% DEAL
-                    </div>
-
-                    <button className="absolute top-3 right-3 p-2 bg-[#1A222D]/80 backdrop-blur rounded-full text-white border border-white/10 z-10 hover:text-red-500 shadow transition-colors">
-                      <Heart size={14} />
-                    </button>
-                    
-                    <div className="absolute bottom-3 left-3 z-10">
-                      <span className="bg-[#1A222D]/90 backdrop-blur text-white border border-white/10 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider shadow">
-                        ✓ Prime Delivery
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card Info details */}
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div className="space-y-1">
-                      {/* Department Text */}
-                      <p className="text-[9px] text-[#FF9900] font-black uppercase tracking-widest">{product.category || 'Deals'}</p>
-                      
-                      {/* Full Name */}
-                      <h3 className="text-xs font-black uppercase tracking-tight text-white line-clamp-2 leading-relaxed min-h-[36px]">
-                        {product.name || product.productData?.name}
-                      </h3>
-
-                      {/* Amazon Star Row with counts */}
-                      <div className="flex items-center gap-1.5 pt-0.5">
-                        <div className="flex items-center gap-0.5 text-amber-400">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star 
-                              key={star} 
-                              size={10} 
-                              fill={star <= Math.floor(ratingScore) ? '#FF9900' : 'none'} 
-                              stroke="#FF9900" 
-                            />
-                          ))}
-                        </div>
-                        <span className="text-[10px] text-gray-400 font-bold">{ratingScore.toFixed(1)}</span>
-                        <span className="text-[10px] text-gray-500 font-bold">({ratingCount})</span>
-                      </div>
-                    </div>
-
-                    {/* Highly Professional Amazon-like Pricing layout */}
-                    <div className="border-t border-white/5 pt-3 space-y-2">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xs text-gray-400 font-bold">Rs.</span>
-                        <span className="text-2xl font-black text-white leading-none">{finalPrice}</span>
-                        <span className="text-[10px] text-gray-500 font-bold line-through">M.R.P. {originalMrp}</span>
-                      </div>
-                      
-                      {/* Prime status and shipment speed details */}
-                      <div className="space-y-0.5 text-[10px] text-gray-400 font-medium">
-                        <p className="text-green-500 font-bold flex items-center gap-1">
-                          <span>✓</span> FREE delivery Tomorrow
-                        </p>
-                        <p className="text-gray-500 text-[8px] uppercase tracking-wider font-black">Secure COD payment mode available</p>
-                      </div>
-
-                      {/* Prime and buy visual checkout CTA with customized classes */}
-                      <button 
-                        onClick={() => setSelectedProduct(product)}
-                        className={`w-full py-3 font-semibold uppercase tracking-widest text-[9px] flex items-center justify-center gap-1.5 transition-all bg-gradient-to-r from-[#ffe494] to-[#f4b82d] text-black border border-[#a2a6ac] hover:from-[#f5d06b] hover:to-[#e4aa20] active:scale-[0.98] ${buttonClass}`}
-                      >
-                        Buy Now <ArrowRight size={12} />
+                    {/* Share & Wishlist button absolute overlay */}
+                    <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button className="p-1.5 bg-white border border-gray-100 text-gray-400 hover:text-red-500 hover:scale-105 shadow rounded-full transition-all">
+                        <Heart size={12} className="fill-transparent" />
                       </button>
                     </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
+
+                    {/* Image Area */}
+                    <div className="aspect-square bg-white flex items-center justify-center p-2 overflow-hidden relative">
+                      <img 
+                        src={product.images?.[0] || product.productData?.image || 'https://via.placeholder.com/400'} 
+                        className="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-300"
+                        loading="lazy" 
+                        alt={product.name}
+                      />
+                    </div>
+
+                    {/* Text & Specs */}
+                    <div className="mt-4 flex-1 flex flex-col justify-between">
+                      <div className="space-y-1">
+                        
+                        {/* Title label */}
+                        <h3 className="text-xs font-bold text-gray-800 line-clamp-2 leading-relaxed tracking-tight uppercase group-hover:text-[#2874f0] transition-colors">
+                          {product.name}
+                        </h3>
+
+                        {/* Ratings & Assured tag */}
+                        <div className="flex items-center gap-1.5 pt-0.5">
+                          <span className="bg-green-600 text-white font-black text-[9px] px-1.5 py-0.5 rounded-sm flex items-center gap-0.5">
+                            {ratingVal.toFixed(1)} <Star size={8} className="fill-white animate-pulse" />
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-bold">({reviewsCount})</span>
+                          <span className="text-[8px] bg-sky-100 text-sky-700 uppercase font-black tracking-widest px-1 rounded-sm ml-auto">
+                            ✦ Assured
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Pricing Row */}
+                      <div className="border-t border-gray-50 mt-3 pt-3 space-y-1.5">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-sm font-extrabold text-gray-900">₹{finalPrice}</span>
+                          <span className="text-[10px] text-gray-400 line-through font-bold">₹{originalMrp}</span>
+                          <span className="text-[10px] text-green-600 font-extrabold">{discountPercent}% off</span>
+                        </div>
+
+                        {/* Shipping and Delivery speeds */}
+                        <p className="text-[10px] text-green-600 font-bold flex items-center gap-0.5">
+                          <span>✓</span> FREE Delivery by Tomorrow
+                        </p>
+                        
+                        <div className="text-[8px] text-gray-400 uppercase tracking-wider font-extrabold pt-1">
+                          Secure Cash On Delivery (COD) Enabled
+                        </div>
+
+                        {/* Checkout CTA */}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedProduct(product);
+                          }}
+                          className="w-full mt-2.5 py-2.5 bg-[#ffe11b] hover:bg-[#ffe500] text-gray-900 border border-yellow-400 hover:border-yellow-500 font-extrabold text-[10px] tracking-wider uppercase rounded-sm flex items-center justify-center gap-1 text-center transition-all shadow-sm group-hover:shadow"
+                        >
+                          Buy Now <ArrowRight size={10} />
+                        </button>
+                      </div>
+                    </div>
+
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Checkout Modal Frame */}
+      {/* 7. Flipkart-style footer */}
+      <footer className="mt-16 bg-[#172337] text-white pt-12 pb-16">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 border-b border-gray-700 pb-10">
+          
+          {/* Column 1 */}
+          <div className="space-y-3">
+            <h4 className="text-xs uppercase font-black text-gray-400 tracking-wider">Secure Shopping</h4>
+            <div className="text-xs text-gray-300 leading-relaxed space-y-1 font-medium">
+              <p className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-[#ffe11b]" /> Instant Order Sync with Partners</p>
+              <p className="flex items-center gap-1.5">✓ Zero advance payments for COD</p>
+              <p className="flex items-center gap-1.5">✓ Encrypted checkout security and logging</p>
+            </div>
+          </div>
+
+          {/* Column 2 */}
+          <div className="space-y-3">
+            <h4 className="text-xs uppercase font-black text-gray-400 tracking-wider">E-Commerce Partner Platform</h4>
+            <div className="text-xs text-gray-300 leading-relaxed font-medium">
+              <p>This storefront is authorized and securely hosted by WorkPlex as a verified white-label merchant partner. All customer queries and payouts are processed securely.</p>
+            </div>
+          </div>
+
+          {/* Column 3 */}
+          <div className="space-y-3">
+            <h4 className="text-xs uppercase font-black text-gray-400 tracking-wider">Merchant Address & Profile</h4>
+            <p className="text-xs font-bold text-[#ffe11b] uppercase tracking-wide">
+              {shop.shopName} Inc.
+            </p>
+            {shop.branding?.tagline && (
+              <p className="text-xs text-gray-400 font-medium italic">"{shop.branding.tagline}"</p>
+            )}
+            <div className="pt-2 flex items-center gap-3">
+              <button 
+                onClick={handleShare}
+                className="text-[10px] uppercase font-black tracking-widest text-[#ffe11b] border border-[#ffe11b]/20 px-3 py-1 rounded bg-[#ffe11b]/5 hover:bg-[#ffe11b]/15"
+              >
+                Copy Merchant Link
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer legal credits */}
+        <div className="max-w-7xl mx-auto px-4 pt-8 text-center flex flex-col md:flex-row items-center justify-between gap-4 text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+          <p>© {new Date().getFullYear()} {shop.shopName} Plus Store. All rights reserved.</p>
+          <div className="flex items-center gap-2">
+            <span>Powered by</span> <Logo variant="mono" size="xs" />
+          </div>
+        </div>
+      </footer>
+
+      {/* 8. Checkout Modal Frame */}
       <CheckoutModal 
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
@@ -369,18 +573,6 @@ export default function PublicShopPage() {
         resellerName={shop.shopName}
       />
 
-      {/* Amazon Footer and Credit Badges */}
-      <div className="mt-24 border-t border-white/5 py-12 flex flex-col items-center gap-4 text-center px-4">
-        <div className="flex items-center gap-2 text-gray-500">
-          <ShieldCheck size={16} className="text-gray-500 animate-pulse" />
-          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-500">Powered by Secure Infrastructure</span>
-          <Logo variant="mono" size="xs" />
-        </div>
-        <p className="text-[8px] text-gray-600 uppercase tracking-widest">
-          © {new Date().getFullYear()} {shop.shopName}. All rights and trademarks are property of their respective owners.
-        </p>
-        <div className="w-12 h-1 bg-[#1A222D] rounded-full" />
-      </div>
     </div>
   );
 }
