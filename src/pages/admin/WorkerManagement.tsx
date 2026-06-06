@@ -15,6 +15,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
+import { disassociatePhoneWithUid } from '../../utils/phoneDirectory';
+import AddWorkerModal from './AddWorkerModal';
 import { 
   Search, 
   Filter, 
@@ -34,7 +36,8 @@ import {
   Trash2,
   Save,
   Edit,
-  RefreshCw
+  RefreshCw,
+  UserPlus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCurrency } from '../../utils/format';
@@ -52,6 +55,9 @@ export default function WorkerManagement() {
   const [selectedWorker, setSelectedWorker] = useState<any>(null);
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
   
+  // Add state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
   // Edit state
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
@@ -61,7 +67,7 @@ export default function WorkerManagement() {
 
   useEffect(() => {
     fetchWorkers();
-  }, [selectedVenture]);
+  }, []);
 
   const fetchWorkers = async () => {
     setLoading(true);
@@ -72,9 +78,6 @@ export default function WorkerManagement() {
         const result = await res.json();
         if (result.success && Array.isArray(result.workers)) {
           let loaded = result.workers;
-          if (selectedVenture !== 'All') {
-            loaded = loaded.filter((w: any) => w.venture === selectedVenture);
-          }
           // Sort by joinedAt
           loaded.sort((a: any, b: any) => {
             const timeA = a.joinedAt?.seconds || 0;
@@ -92,10 +95,7 @@ export default function WorkerManagement() {
 
     // 2. Fallback to direct client-side Firestore collection query
     try {
-      let q = query(collection(db, 'users'), orderBy('joinedAt', 'desc'), limit(50));
-      if (selectedVenture !== 'All') {
-        q = query(collection(db, 'users'), where('venture', '==', selectedVenture), limit(50));
-      }
+      let q = query(collection(db, 'users'), orderBy('joinedAt', 'desc'), limit(150));
 
       const snap = await getDocs(q);
       setWorkers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -150,7 +150,7 @@ export default function WorkerManagement() {
       try {
         await deleteDoc(doc(db, 'users', workerId));
         if (phone) {
-          await deleteDoc(doc(db, 'phoneDirectory', phone));
+          await disassociatePhoneWithUid(db, phone, workerId);
         }
       } catch (err) {
         console.log("Client-side direct delete skipped or restricted, fully handled by backend:", err);
@@ -256,10 +256,18 @@ export default function WorkerManagement() {
     }
   };
 
-  const filteredWorkers = workers.filter(w => 
-    w.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    w.phone?.includes(searchTerm)
-  );
+  const filteredWorkers = workers.filter(w => {
+    if (selectedVenture !== 'All' && w.venture !== selectedVenture) {
+      return false;
+    }
+    const term = searchTerm.toLowerCase().trim();
+    return (
+      !term ||
+      w.name?.toLowerCase().includes(term) || 
+      w.phone?.includes(term) ||
+      w.email?.toLowerCase().includes(term)
+    );
+  });
 
   return (
     <div className="space-y-8 pb-20">
@@ -270,6 +278,13 @@ export default function WorkerManagement() {
         </div>
         
         <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-[#E8B84B] text-black hover:bg-[#E8B84B]/90 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 min-h-[40px]"
+          >
+            <UserPlus size={14} className="stroke-[3px]" />
+            <span>Add Worker</span>
+          </button>
           <div className="flex items-center gap-2 w-full md:w-auto">
             <div className="relative flex-1 md:flex-initial">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
@@ -567,6 +582,14 @@ export default function WorkerManagement() {
           </>
         )}
       </AnimatePresence>
+
+      <AddWorkerModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => {
+          setIsAddModalOpen(false);
+          fetchWorkers();
+        }} 
+      />
     </div>
   );
 }

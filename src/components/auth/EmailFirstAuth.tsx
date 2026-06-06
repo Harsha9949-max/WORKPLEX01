@@ -12,7 +12,8 @@ import {
   sendEmailVerification
 } from 'firebase/auth';
 import { auth, db } from '../../lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
+import { associatePhoneWithUid, checkPhoneDuplicate } from '../../utils/phoneDirectory';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Mail, Lock, Shield, Eye, EyeOff, Phone, KeyRound, ArrowRight, User } from 'lucide-react';
@@ -122,43 +123,18 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
   const onSignupSubmit = async (data: any) => {
     setIsLoading(true);
     try {
-      // 1. Check if phone is already registered in phoneDirectory
-      const phoneDocRef = doc(db, 'phoneDirectory', data.phone);
-      const phoneSnap = await getDoc(phoneDocRef);
-      if (phoneSnap.exists()) {
-        const entryData = phoneSnap.data();
-        if (entryData?.uid) {
-          const uSnap = await getDoc(doc(db, 'users', entryData.uid));
-          if (uSnap.exists()) {
-            const uData = uSnap.data();
-            if (uData?.email !== data.email) {
-              setShowDuplicatePopup(true);
-              return;
-            }
-          }
-        }
-      }
+      // 0. Check if a pre-created worker document with this email already exists
+      const qEmail = query(collection(db, 'users'), where('email', '==', data.email));
+      const emailSnap = await getDocs(qEmail);
+      const isPreCreated = !emailSnap.empty;
 
-      // 2. Check users collection just to be totally sure
-      const q1 = query(collection(db, 'users'), where('phone', '==', data.phone));
-      const q2 = query(collection(db, 'users'), where('phone', '==', `+91${data.phone}`));
-      
-      const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-      
-      const checkDuplicateUser = (snap: any) => {
-        if (snap.empty) return false;
-        for (const userDoc of snap.docs) {
-          const userData = userDoc.data();
-          if (userData && userData.email !== data.email) {
-            return true; // Another email is registered with this phone number
-          }
+      if (!isPreCreated) {
+        // If they are not pre-created workers, validate duplicate phone numbers using helper
+        const isDuplicate = await checkPhoneDuplicate(db, data.phone, data.email);
+        if (isDuplicate) {
+          setShowDuplicatePopup(true);
+          return;
         }
-        return false;
-      };
-
-      if (checkDuplicateUser(snap1) || checkDuplicateUser(snap2)) {
-        setShowDuplicatePopup(true);
-        return;
       }
 
       // 3. Send OTP
@@ -246,8 +222,40 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
   };
 
   const handleAuthSuccess = async (user: any, method: 'email' | 'google', suppliedPhone?: string) => {
-    const userRef = doc(db, 'users', user.uid);
-    const snap = await getDoc(userRef);
+    let userRef = doc(db, 'users', user.uid);
+    let snap = await getDoc(userRef);
+
+    // Sync backend pre-created worker profiles
+    if (!snap.exists() && user.email) {
+      const q = query(collection(db, 'users'), where('email', '==', user.email));
+      const qSnap = await getDocs(q);
+      if (!qSnap.empty) {
+        const oldDoc = qSnap.docs[0];
+        const oldData = oldDoc.data();
+        
+        const mergedData = {
+          ...oldData,
+          name: user.displayName || oldData.name || 'New Worker',
+          email: user.email,
+          phone: suppliedPhone ? `+91${suppliedPhone}` : (oldData.phone || ''),
+          authMethod: method,
+          emailVerified: true,
+          joinedAt: oldData.joinedAt || serverTimestamp(),
+          tempPhone: null,
+          phoneVerified: true
+        };
+
+        await setDoc(userRef, mergedData);
+        await deleteDoc(doc(db, 'users', oldDoc.id));
+        
+        if (mergedData.phone) {
+          await associatePhoneWithUid(db, mergedData.phone, user.uid);
+        }
+
+        snap = await getDoc(userRef);
+        toast.success('Your worker account has been successfully synced and activated!');
+      }
+    }
 
     if (!snap.exists()) {
       let finalPhone = suppliedPhone || await generateTempPhone();
@@ -286,20 +294,14 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
       });
       
       if (finalPhone) {
-        await setDoc(doc(db, 'phoneDirectory', finalPhone), {
-          uid: user.uid,
-          registeredAt: serverTimestamp()
-        });
+        await associatePhoneWithUid(db, finalPhone, user.uid);
       }
       
       navigate('/onboarding');
     } else {
       const userData = snap.data();
       if (userData.phone) {
-        await setDoc(doc(db, 'phoneDirectory', userData.phone), {
-          uid: user.uid,
-          registeredAt: userData.joinedAt || serverTimestamp()
-        }, { merge: true });
+        await associatePhoneWithUid(db, userData.phone, user.uid);
       }
 
       if (user.email === 'marateyh@gmail.com' || user.email === 'hvrsindustriespvtltd@gmail.com') {

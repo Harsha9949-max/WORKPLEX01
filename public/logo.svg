@@ -1,0 +1,11 @@
+<svg viewBox="0 0 450 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .gold-stroke { stroke: #E8B84B; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+    .teal-stroke { stroke: #00C9A7; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+    .text-title { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-weight: 900; font-size: 56px; fill: #FFFFFF; letter-spacing: -2px; }
+    .text-gold { fill: #E8B84B; }
+  </style>
+  <path d="M20 25 L40 75 L50 50 L60 75 L80 25" class="gold-stroke" />
+  <path d="M40 75 L50 50 L60 75" class="teal-stroke" />
+  <text x="110" y="70" class="text-title">WORK<tspan class="text-gold">PLEX</tspan></text>
+</svg>

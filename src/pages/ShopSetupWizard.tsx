@@ -119,9 +119,25 @@ export default function ShopSetupWizard() {
     try {
       let logoUrl = '';
       if (logo) {
-        const logoRef = ref(storage, `shops/${currentUser.uid}/logo`);
-        await uploadBytes(logoRef, logo);
-        logoUrl = await getDownloadURL(logoRef);
+        try {
+          const logoRef = ref(storage, `shops/${currentUser.uid}/logo`);
+          await uploadBytes(logoRef, logo);
+          logoUrl = await getDownloadURL(logoRef);
+        } catch (storageErr) {
+          console.warn('Storage upload error, falling back to optimized local base64:', storageErr);
+          // Promise wrapper to read file as data URL synchronously
+          const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = e => reject(e);
+          });
+          try {
+            logoUrl = await toBase64(logo);
+          } catch (readerErr) {
+            console.error('Base64 reader error:', readerErr);
+          }
+        }
       }
 
       // 1. Create Partner Shop

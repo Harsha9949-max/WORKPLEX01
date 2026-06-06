@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
+import { associatePhoneWithUid, disassociatePhoneWithUid, checkPhoneDuplicate } from '../../utils/phoneDirectory';
 
 export default function ResellerSettings() {
   const { userData, currentUser } = useAuth();
@@ -38,10 +39,36 @@ export default function ResellerSettings() {
 
   const handleSave = async () => {
     if (!currentUser) return;
+    
+    const cleanPhoneInput = profile.phone.replace(/\D/g, '').trim();
+    let finalPhone = profile.phone.trim();
+    
+    if (cleanPhoneInput.length === 10) {
+      finalPhone = `+91${cleanPhoneInput}`;
+    } else if (cleanPhoneInput.length === 12 && cleanPhoneInput.startsWith('91')) {
+      finalPhone = `+${cleanPhoneInput}`;
+    } else if (finalPhone.includes('TEMP')) {
+       // Allow keeping it temporarily
+    } else {
+       toast.error('Please enter a valid 10-digit actual mobile number starting with or without +91');
+       return;
+    }
+
     setSaving(true);
     try {
+      // Duplication check
+      if (finalPhone !== userData?.phone && !finalPhone.includes('TEMP')) {
+        const isDuplicate = await checkPhoneDuplicate(db, finalPhone, currentUser.email || '');
+        if (isDuplicate) {
+          toast.error('This phone number is already registered with another account.');
+          setSaving(false);
+          return;
+        }
+      }
+
       await updateDoc(doc(db, 'users', currentUser.uid), {
          ...profile,
+         phone: finalPhone,
          branding: {
             ...userData?.branding,
             ...storeDetails
@@ -51,6 +78,26 @@ export default function ResellerSettings() {
             policies
          }
       });
+
+      // Update phone directories
+      if (finalPhone !== userData?.phone && !finalPhone.includes('TEMP')) {
+         if (userData?.phone) {
+            await disassociatePhoneWithUid(db, userData.phone, currentUser.uid);
+         }
+         await associatePhoneWithUid(db, finalPhone, currentUser.uid);
+         
+         // Notify database/Auth synchronization backend API
+         try {
+            await fetch(`/api/admin/update-user/${currentUser.uid}`, {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ phone: finalPhone })
+            });
+         } catch (apiErr) {
+            console.warn("Backend phone sync failed:", apiErr);
+         }
+      }
+
       // Try updating partnerShops document too if they have one (assuming uid matches doc id)
       try {
          await updateDoc(doc(db, 'partnerShops', currentUser.uid), {

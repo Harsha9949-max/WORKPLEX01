@@ -58,6 +58,23 @@ export default function TaskManagement() {
     tasks: [] as any[]
   });
 
+  const [scheduleMode, setScheduleMode] = useState<'weekly' | 'custom'>('weekly');
+  const [customStartDate, setCustomStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [customEndDate, setCustomEndDate] = useState(format(new Date(Date.now() + 6 * 86400000), 'yyyy-MM-dd'));
+
+  const handleModeChange = (mode: 'weekly' | 'custom') => {
+    setScheduleMode(mode);
+    // Normalize task dayAssigned/dates for existing tasks in batch
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const updatedTasks = taskForm.tasks.map((t, idx) => ({
+      ...t,
+      dayAssigned: mode === 'weekly' 
+        ? days[idx % 7] 
+        : customStartDate
+    }));
+    setTaskForm(prev => ({ ...prev, tasks: updatedTasks }));
+  };
+
   const getRolesByVenture = (venture: string) => {
     switch (venture) {
       case 'BuyRix': return ['Marketer', 'Content Creator', 'Reseller'];
@@ -138,17 +155,38 @@ export default function TaskManagement() {
     }
 
     try {
+      let weekNum = weekSelectorObj.weekNumber;
+      let startD = weekSelectorObj.monday;
+      let endD = weekSelectorObj.sunday;
+      let assignedW = weekSelectorObj.assignedWeek;
+      let isWeekly = true;
+
+      if (scheduleMode === 'custom') {
+        const parsedStart = new Date(customStartDate);
+        const parsedEnd = new Date(customEndDate);
+        if (parsedStart > parsedEnd) {
+          toast.error('Start Date cannot be after End Date!');
+          return;
+        }
+        startD = parsedStart;
+        endD = parsedEnd;
+        weekNum = getWeekNumber(parsedStart);
+        assignedW = `Custom-${format(parsedStart, 'yyyyMMdd')}-to-${format(parsedEnd, 'yyyyMMdd')}`;
+        isWeekly = false;
+      }
+
       const batchRequests = taskForm.tasks.map((taskItem: any) => {
         return addDoc(collection(db, 'tasks'), {
           ...taskItem,
           venture: taskForm.venture,
           targetRoles: taskForm.targetRoles,
           status: 'active',
-          weekNumber: weekSelectorObj.weekNumber,
-          weekStartDate: Timestamp.fromDate(weekSelectorObj.monday),
-          weekEndDate: Timestamp.fromDate(weekSelectorObj.sunday),
-          assignedWeek: weekSelectorObj.assignedWeek,
-          isWeeklyBatch: true,
+          weekNumber: weekNum,
+          weekStartDate: Timestamp.fromDate(startD),
+          weekEndDate: Timestamp.fromDate(endD),
+          assignedWeek: assignedW,
+          isWeeklyBatch: isWeekly,
+          isCustomRange: !isWeekly,
           createdAt: serverTimestamp()
         });
       });
@@ -157,7 +195,9 @@ export default function TaskManagement() {
       // Create an announcement
       await addDoc(collection(db, 'announcements'), {
           title: `New Missions Available!`,
-          content: `New missions are available for ${taskForm.venture} this week!`,
+          content: isWeekly 
+            ? `New missions are available for ${taskForm.venture} this week!`
+            : `New custom missions are available for ${taskForm.venture} from ${format(startD, 'dd MMM')} to ${format(endD, 'dd MMM')}!`,
           targetAudience: 'By Venture',
           targetVenture: taskForm.venture,
           type: 'info',
@@ -166,7 +206,7 @@ export default function TaskManagement() {
           authorName: 'System'
       });
 
-      toast.success('Weekly Mission Batch broadcasted! 🚀');
+      toast.success(isWeekly ? 'Weekly Mission Batch broadcasted! 🚀' : 'Custom Mission Campaign broadcasted! 🚀');
       setTaskForm({
         venture: 'BuyRix',
         targetRoles: [],
@@ -191,7 +231,7 @@ export default function TaskManagement() {
         title: '',
         description: '',
         earningAmount: '',
-        dayAssigned: days[taskForm.tasks.length % 7],
+        dayAssigned: scheduleMode === 'weekly' ? days[taskForm.tasks.length % 7] : customStartDate,
         proofType: 'Image'
       }]
     });
@@ -340,16 +380,97 @@ export default function TaskManagement() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-[#111111] border border-[#2A2A2A] rounded-[40px] p-6 md:p-10 max-w-4xl"
         >
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-[#2A2A2A] pb-6">
-            <div>
-              <h2 className="text-xl font-black text-white uppercase tracking-tighter">Create Weekly Mission Batch</h2>
-              <p className="text-gray-500 text-xs mt-1">Assign missions for specific days of the week</p>
+          <div className="space-y-6 mb-8 border-b border-[#2A2A2A] pb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-xl font-black text-white uppercase tracking-tighter">
+                  {scheduleMode === 'weekly' ? 'Create Weekly Mission Batch' : 'Create Custom Date Campaign'}
+                </h2>
+                <p className="text-gray-500 text-xs mt-1">
+                  {scheduleMode === 'weekly' 
+                    ? 'Assign missions for specific days of the current week' 
+                    : 'Configure bespoke mission active execution windows'
+                  }
+                </p>
+              </div>
+
+              <div className="flex bg-[#161616] p-1 rounded-xl border border-[#2A2A2A] self-start">
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('weekly')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    scheduleMode === 'weekly' 
+                      ? 'bg-[#E8B84B] text-black shadow-md' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Weekly Calendar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('custom')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    scheduleMode === 'custom' 
+                      ? 'bg-[#E8B84B] text-black shadow-md' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Custom Range
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-4 bg-[#1A1A1A] p-2 rounded-2xl border border-[#2A2A2A]">
-               <button onClick={() => handleWeekChange(-1)} className="p-2 hover:bg-[#2A2A2A] rounded-xl"><Plus className="rotate-45" size={16} /></button>
-               <span className="text-xs font-bold text-white">{weekSelectorObj.label}</span>
-               <button onClick={() => handleWeekChange(1)} className="p-2 hover:bg-[#2A2A2A] rounded-xl"><Plus size={16} /></button>
-            </div>
+
+            <AnimatePresence mode="wait">
+              {scheduleMode === 'weekly' ? (
+                <motion.div
+                  key="weekly-selector"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="flex items-center justify-between bg-[#161616] p-4 rounded-3xl border border-[#2A2A2A] gap-4"
+                >
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Timeframe</span>
+                  <div className="flex items-center gap-4 bg-black px-4 py-2 rounded-2xl border border-[#2A2A2A]">
+                     <button type="button" onClick={() => handleWeekChange(-1)} className="p-1 hover:bg-[#2A2A2A] rounded-lg transition-colors"><Plus className="rotate-45" size={14} /></button>
+                     <span className="text-xs font-bold text-white tracking-tight">{weekSelectorObj.label}</span>
+                     <button type="button" onClick={() => handleWeekChange(1)} className="p-1 hover:bg-[#2A2A2A] rounded-lg transition-colors"><Plus size={14} /></button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="custom-selector"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#161616] p-4 rounded-3xl border border-[#2A2A2A]"
+                >
+                  <div className="space-y-1.5">
+                    <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest block ml-1">Launch date (From)</label>
+                    <input 
+                      type="date" 
+                      value={customStartDate} 
+                      onChange={e => {
+                        setCustomStartDate(e.target.value);
+                        if (new Date(e.target.value) > new Date(customEndDate)) {
+                          setCustomEndDate(e.target.value);
+                        }
+                      }}
+                      className="w-full bg-black border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-[#E8B84B] transition-colors" 
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[8px] font-black text-gray-500 uppercase tracking-widest block ml-1">Expiration date (To)</label>
+                    <input 
+                      type="date" 
+                      value={customEndDate} 
+                      min={customStartDate}
+                      onChange={e => setCustomEndDate(e.target.value)}
+                      className="w-full bg-black border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-xs font-bold outline-none focus:border-[#E8B84B] transition-colors" 
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <form onSubmit={handleCreateTask} className="space-y-8">
@@ -409,10 +530,24 @@ export default function TaskManagement() {
                           <input type="text" value={taskItem.title} onChange={e => updateTaskInBatch(idx, 'title', e.target.value)} required className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none" />
                         </div>
                         <div>
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">Day Assigned</label>
-                          <select value={taskItem.dayAssigned} onChange={e => updateTaskInBatch(idx, 'dayAssigned', e.target.value)} className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none">
-                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
-                          </select>
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">
+                            {scheduleMode === 'weekly' ? 'Day Assigned' : 'Target Date'}
+                          </label>
+                          {scheduleMode === 'weekly' ? (
+                            <select value={taskItem.dayAssigned} onChange={e => updateTaskInBatch(idx, 'dayAssigned', e.target.value)} className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none">
+                              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                          ) : (
+                            <input 
+                              type="date" 
+                              min={customStartDate}
+                              max={customEndDate}
+                              value={taskItem.dayAssigned} 
+                              onChange={e => updateTaskInBatch(idx, 'dayAssigned', e.target.value)} 
+                              required
+                              className="w-full bg-[#111111] border border-[#2A2A2A] text-white px-4 py-2.5 rounded-xl text-sm outline-none focus:border-[#E8B84B] transition-colors"
+                            />
+                          )}
                         </div>
                         <div>
                           <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 mb-1 block">Payout (₹)</label>
@@ -450,7 +585,7 @@ export default function TaskManagement() {
                 type="submit"
                 className="bg-[#E8B84B] text-black px-12 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all shadow-2xl shadow-[#E8B84B]/20"
               >
-                Publish Week's Missions
+                {scheduleMode === 'weekly' ? "Publish Week's Missions" : "Publish Campaign Missions"}
               </button>
             </div>
           </form>

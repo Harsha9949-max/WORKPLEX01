@@ -37,7 +37,23 @@ export default function ResellerShop() {
     keywords: ''
   });
 
-  const shopName = shop?.shopName || 'My Shop';
+  const [localShopName, setLocalShopName] = useState('');
+  const [localShopSlug, setLocalShopSlug] = useState('');
+
+  const shopName = localShopName || shop?.shopName || 'My Shop';
+
+  const slugify = (text: string) => {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-') // replace spaces & special chars with -
+      .replace(/-+/g, '-')         // collapse duplicate dashes
+      .replace(/^-+|-+$/g, '');     // trim leading/trailing dashes
+  };
+
+  const handleShopNameChange = (val: string) => {
+    setLocalShopName(val);
+    setLocalShopSlug(slugify(val));
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -48,6 +64,8 @@ export default function ResellerShop() {
         if (data.theme) setTheme(data.theme);
         if (data.branding) setBranding(data.branding);
         if (data.seo) setSeo(data.seo);
+        if (data.shopName) setLocalShopName(data.shopName);
+        if (data.shopSlug) setLocalShopSlug(data.shopSlug);
       }
     }, (e) => handleFirestoreError(e, OperationType.GET, 'partnerShops/{id}'));
     return () => unsub();
@@ -55,14 +73,24 @@ export default function ResellerShop() {
 
   const handleSave = async () => {
     if (!currentUser) return;
+    if (!localShopName.trim()) {
+      toast.error('Store name cannot be empty');
+      return;
+    }
+    if (!localShopSlug.trim()) {
+      toast.error('Store link slug cannot be empty');
+      return;
+    }
     setSaving(true);
     try {
       await updateDoc(doc(db, 'partnerShops', currentUser.uid), {
         theme,
         branding,
-        seo
+        seo,
+        shopName: localShopName.trim(),
+        shopSlug: localShopSlug.trim().toLowerCase().replace(/\s+/g, '-')
       });
-      toast.success('Shop settings saved successfully!');
+      toast.success('Shop settings saved successfully! Your store link is active immediately.');
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'partnerShops');
     }
@@ -70,8 +98,9 @@ export default function ResellerShop() {
   };
 
   const copyShopLink = () => {
-    if (!shop?.shopSlug) return;
-    const url = `${window.location.origin}/shop/${shop.shopSlug}`;
+    const slugToUse = localShopSlug || shop?.shopSlug;
+    if (!slugToUse) return;
+    const url = `${window.location.origin}/shop/${slugToUse}`;
     navigator.clipboard.writeText(url);
     toast.success('Shop link copied to clipboard!');
   };
@@ -79,17 +108,39 @@ export default function ResellerShop() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') => {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
+
+    if (file.size > 1500000) {
+      toast.error('Image is too large. Please select an image under 1.5MB.');
+      return;
+    }
     
     const toastId = toast.loading(`Uploading ${type}...`);
+    const fieldName = type === 'banner' ? 'bannerImage' : 'logo';
+
     try {
-      // In a real scenario, use smaller sizes, just a placeholder path
+      // Try publishing to Storage first
       const storageRef = ref(storage, `partners/${currentUser.uid}/${type}_${Date.now()}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
-      setBranding(prev => ({ ...prev, [type]: url }));
-      toast.success('Uploaded successfully', { id: toastId });
+      setBranding(prev => ({ ...prev, [fieldName]: url }));
+      toast.success('Uploaded successfully!', { id: toastId });
     } catch (error) {
-      toast.error('Failed to upload image', { id: toastId });
+      console.warn('Storage failed or blocked, loading image as optimized Local base64:', error);
+      // Fallback to base64 synchronously
+      try {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result as string;
+          setBranding(prev => ({ ...prev, [fieldName]: base64 }));
+          toast.success('Uploaded successfully to your profile!', { id: toastId });
+        };
+        reader.onerror = () => {
+          toast.error('Failed to read image file', { id: toastId });
+        };
+        reader.readAsDataURL(file);
+      } catch (fallbackError) {
+        toast.error('Failed to upload image', { id: toastId });
+      }
     }
   };
 
@@ -142,6 +193,39 @@ export default function ResellerShop() {
       {activeTab === 'Appearance' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-8">
+            {/* Shop Identity Card */}
+            <div className="bg-[#111111] p-6 rounded-xl border border-[#2A2A2A] space-y-4">
+              <h2 className="font-bold text-[#E8B84B] uppercase tracking-widest text-xs">Shop Identity Settings</h2>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Store / Shop Name</label>
+                <input 
+                  type="text" 
+                  value={localShopName}
+                  onChange={(e) => handleShopNameChange(e.target.value)}
+                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white px-4 py-3 rounded-lg outline-none focus:border-[#E8B84B] font-bold"
+                  placeholder="Rahul's Premium Store"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Shop URL Link Slug</label>
+                <div className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] px-4 py-3 rounded-lg">
+                  <span className="text-gray-600 text-xs font-mono">{window.location.host}/shop/</span>
+                  <input 
+                    type="text" 
+                    value={localShopSlug}
+                    onChange={(e) => setLocalShopSlug(slugify(e.target.value))}
+                    className="flex-1 bg-transparent text-[#E8B84B] outline-none text-xs font-mono font-bold"
+                    placeholder="slug-name"
+                  />
+                </div>
+                <p className="text-[9px] text-gray-500 leading-snug">
+                  Changing this updates your shop link instantly. Old links will no longer work.
+                </p>
+              </div>
+            </div>
+
             <div className="bg-[#111111] p-6 rounded-xl border border-[#2A2A2A] space-y-4">
               <h2 className="font-bold text-white uppercase tracking-widest text-xs">Branding</h2>
               
@@ -292,7 +376,7 @@ export default function ResellerShop() {
               <div className="w-3 h-3 rounded-full bg-yellow-500/50"></div>
               <div className="w-3 h-3 rounded-full bg-green-500/50"></div>
               <div className="flex-1 text-center bg-black/50 text-[10px] text-gray-500 py-1 rounded mx-4 font-mono">
-                {window.location.origin}/shop/{shop?.shopSlug}
+                {window.location.host}/shop/{localShopSlug || 'store-url'}
               </div>
             </div>
             <div className="h-[700px] overflow-y-auto" style={{ backgroundColor: theme.backgroundColor }}>

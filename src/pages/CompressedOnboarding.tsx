@@ -4,10 +4,11 @@ import { doc, setDoc, query, collection, where, limit, getDocs } from 'firebase/
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { ChevronLeft, Zap, Target, Globe, Users } from 'lucide-react';
+import { ChevronLeft, Zap, Target, Globe, Users, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Logo } from '../components/ui/Logo';
+import { associatePhoneWithUid, checkPhoneDuplicate } from '../utils/phoneDirectory';
 
 export default function CompressedOnboarding() {
   const [step, setStep] = useState(1);
@@ -15,12 +16,15 @@ export default function CompressedOnboarding() {
   const [venture, setVenture] = useState('');
   const [role, setRole] = useState('');
   const [referralCodeInput, setReferralCodeInput] = useState('');
+  const [realPhoneInput, setRealPhoneInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
 
   const { currentUser, userData, loading } = useAuth();
   const navigate = useNavigate();
   const { i18n } = useTranslation();
+
+  const isTempPhone = userData ? (userData.phone?.includes('-TEMP-') || userData.tempPhone || !userData.phone) : false;
 
   useEffect(() => {
     // Keep user here if they haven't picked venture/role
@@ -92,8 +96,25 @@ export default function CompressedOnboarding() {
       return;
     }
 
+    if (isTempPhone) {
+      if (!realPhoneInput || realPhoneInput.length !== 10) {
+        toast.error("Please enter a valid 10-digit actual mobile number");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
+      if (isTempPhone) {
+        // Check duplication
+        const isDuplicate = await checkPhoneDuplicate(db, `+91${realPhoneInput}`, currentUser.email || '');
+        if (isDuplicate) {
+          toast.error("This phone number is already registered with another account");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       let referredById = null;
       if (referralCodeInput) {
           const q = query(collection(db, 'users'), where('referralCode', '==', referralCodeInput.toUpperCase().trim()), limit(1));
@@ -108,6 +129,8 @@ export default function CompressedOnboarding() {
       const generatedCode = userData?.referralCode || Math.random().toString(36).substring(2, 8).toUpperCase();
 
       const userRef = doc(db, 'users', currentUser.uid);
+      const phoneVal = isTempPhone ? `+91${realPhoneInput}` : (userData?.phone || '');
+
       await setDoc(userRef, {
         preferredLanguage,
         venture,
@@ -115,9 +138,26 @@ export default function CompressedOnboarding() {
         kycDeferred: true,
         profileCompletion: 20,
         referralCode: generatedCode,
+        ...(isTempPhone ? { phone: phoneVal, tempPhone: null } : {}),
         ...(referredById ? { referredBy: referredById } : {})
       }, { merge: true });
       
+      if (isTempPhone) {
+        // Associate phone with UID in phoneDirectory
+        await associatePhoneWithUid(db, phoneVal, currentUser.uid);
+        
+        // Sync profile update with backend api
+        try {
+          await fetch(`/api/admin/update-user/${currentUser.uid}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: phoneVal })
+          });
+        } catch (apiErr) {
+          console.warn("Syncing phone change to backend failed:", apiErr);
+        }
+      }
+
       setShowWelcome(true);
     } catch (error: any) {
       toast.error(error.message || 'Failed to update profile');
@@ -334,6 +374,30 @@ export default function CompressedOnboarding() {
                 ))}
               </div>
 
+              {isTempPhone && (
+                <div className="mt-8 border-t border-[#2A2A2A] pt-6">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#E8B84B] ml-2 block mb-2 flex items-center gap-2">
+                    <Phone size={14} /> Enter Actual Mobile Number (Required)
+                  </label>
+                  <div className="relative flex">
+                    <div className="bg-[#1A1A1A] border border-[#2A2A2A] border-r-0 rounded-l-xl px-4 py-4 flex items-center text-gray-400 font-mono text-sm leading-none">
+                       +91
+                    </div>
+                    <input
+                      type="tel"
+                      value={realPhoneInput}
+                      onChange={(e) => setRealPhoneInput(e.target.value.replace(/\D/g, ''))}
+                      maxLength={10}
+                      placeholder="10-digit number"
+                      className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-r-xl text-white px-4 py-4 focus:ring-2 focus:ring-[#E8B84B] font-mono outline-none"
+                    />
+                  </div>
+                  <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-2 ml-2">
+                    We require a real mobile number for payouts and KYC compliance.
+                  </p>
+                </div>
+              )}
+
               <div className="mt-8 border-t border-[#2A2A2A] pt-6">
                 <label className="text-[10px] font-black uppercase tracking-widest text-[#E8B84B] ml-2 block mb-2 flex items-center gap-2">
                   <Users size={14} /> Referral Code (Optional)
@@ -349,7 +413,7 @@ export default function CompressedOnboarding() {
 
               <div className="mt-8 space-y-4">
                 <button 
-                  disabled={!role || isSubmitting}
+                  disabled={!role || isSubmitting || (isTempPhone && realPhoneInput.length !== 10)}
                   onClick={handleComplete}
                   className="w-full bg-[#E8B84B] min-h-[48px] text-black font-black uppercase tracking-widest py-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all"
                 >

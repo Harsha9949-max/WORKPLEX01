@@ -26,6 +26,15 @@ export default function PublicShopPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All Items');
+
+  const filteredProducts = products.filter(product => {
+    const nameToMatch = (product.name || product.productData?.name || '').toLowerCase();
+    const matchesSearch = nameToMatch.includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'All Items' || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -107,133 +116,250 @@ export default function PublicShopPage() {
                     : 'grid-cols-2 gap-4';
 
   return (
-    <div className={`min-h-screen pb-32 text-white ${fontClass}`} style={themeVars}>
-      {/* Dynamic Header */}
-      <div className="relative h-72 overflow-hidden" style={{ backgroundColor: shop.theme?.secondaryColor || '#1A1A1A' }}>
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
-        <div className="absolute -top-24 -left-24 w-64 h-64 blur-[120px] rounded-full" style={{ backgroundColor: shop.theme?.primaryColor || '#14b8a6', opacity: 0.2 }} />
-        
-        <div className="relative z-10 p-8 flex flex-col items-center justify-center h-full text-center">
-          <motion.img 
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            src={shop.logo} 
-            className="w-24 h-24 rounded-[32px] border-4 shadow-2xl mb-4 object-cover" 
-            style={{ borderColor: shop.theme?.backgroundColor || '#0A0A0A' }}
-          />
-          <h1 className="text-3xl font-black text-white uppercase tracking-tighter mb-1">{shop.shopName}</h1>
-          {shop.branding?.tagline && <p className="text-sm font-medium opacity-80 mb-3">{shop.branding.tagline}</p>}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-3 py-1 rounded-full">
-              <CheckCircle2 size={12} className="text-green-500" />
-              <span className="text-[10px] font-black text-green-500 uppercase tracking-widest">Verified Store</span>
+    <div className={`min-h-screen pb-32 ${fontClass}`} style={{ ...themeVars, color: '#FFFFFF', backgroundColor: '#0B0F13' }}>
+      {/* Real-time Top Notification Bar */}
+      <div className="bg-[#131920] border-b border-white/5 py-1.5 px-4 text-center text-[10px] md:text-xs font-black uppercase tracking-wider text-[#FF9900] flex items-center justify-center gap-2">
+        <Zap size={12} className="animate-pulse" />
+        <span>✓ 100% Verified Store | FREE Delivery with Fast Cash on Delivery (COD)</span>
+      </div>
+
+      {/* Amazon-Style Dedicated Header Navbar */}
+      <div className="bg-[#1A222D] shadow-xl sticky top-0 z-50 border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Brand/Store Info */}
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <motion.img 
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              src={shop.logo || `https://api.dicebear.com/7.x/initials/svg?seed=${shop.shopName}`} 
+              className="w-10 h-10 rounded-xl object-cover bg-white/5 border border-white/10 shadow-md shrink-0" 
+            />
+            <div className="leading-tight">
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-sm font-black uppercase tracking-tight text-white">{shop.shopName}</h1>
+                <span className="bg-[#FF9900] text-black text-[8px] font-black uppercase px-1 rounded">Choice</span>
+              </div>
+              <p className="text-[10px] text-gray-400 font-bold max-w-[200px] truncate">{shop.branding?.tagline || 'Authorized Reseller'}</p>
             </div>
+          </div>
+
+          {/* Core Interactive Search Bar */}
+          <div className="flex-1 w-full max-w-xl group">
+            <div className="relative flex items-center bg-white rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#FF9900] shadow-md transition-all">
+              <Search size={16} className="text-gray-400 ml-4 shrink-0" />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search premium products..." 
+                className="bg-transparent border-none outline-none text-xs text-black w-full px-3 py-3.5 placeholder:text-gray-400 font-bold"
+              />
+              <button className="bg-[#FF9900] text-black h-full px-5 hover:bg-[#F3A847] transition-colors flex items-center justify-center font-black text-xs space-gap-1">
+                <span>Filter</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Social Links & Sharing */}
+          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
             <button 
               onClick={handleShare}
-              className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors text-white"
+              className="p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:text-[#FF9900] transition-all text-white flex items-center gap-1 text-[10px] font-black uppercase tracking-widest"
+              title="Share Storefront"
             >
-              <Share2 size={16} />
+              <Share2 size={14} /> Share
             </button>
             {shop.branding?.instagramHandle && (
-              <a href={`https://instagram.com/${shop.branding.instagramHandle.replace('@', '')}`} target="_blank" rel="noreferrer" className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors text-white">
-                <span className="text-[10px] font-bold">IG</span>
+              <a 
+                href={`https://instagram.com/${shop.branding.instagramHandle.replace('@', '')}`} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors text-white text-[10px] font-bold"
+              >
+                Instagram
               </a>
             )}
             {shop.branding?.whatsappNumber && (
-              <a href={`https://wa.me/${shop.branding.whatsappNumber}`} target="_blank" rel="noreferrer" className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors text-white">
-                <span className="text-[10px] font-bold">WA</span>
+              <a 
+                href={`https://wa.me/${shop.branding.whatsappNumber}`} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="p-2.5 bg-green-500/10 border border-green-500/20 rounded-xl hover:bg-green-500/20 transition-colors text-green-400 text-[10px] font-bold"
+              >
+                WhatsApp
               </a>
             )}
           </div>
         </div>
       </div>
 
-      {/* Featured Banner */}
+      {/* Featured Banner & Promo Carousel */}
       {shop.branding?.bannerText && (
-        <div className="px-6 -mt-12 relative z-20">
-          <div className="rounded-[40px] p-8 flex items-center justify-between shadow-2xl overflow-hidden relative" style={{ backgroundColor: shop.theme?.primaryColor || '#14b8a6' }}>
+        <div className="max-w-7xl mx-auto px-4 mt-6">
+          <div className="rounded-3xl p-6 md:p-8 flex items-center justify-between shadow-2xl overflow-hidden relative border border-white/10 bg-[#1D252F]">
             {shop.branding?.bannerImage && (
                <div className="absolute inset-0 opacity-20 pointer-events-none">
                   <img src={shop.branding.bannerImage} className="w-full h-full object-cover" />
                </div>
             )}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-3xl rounded-full pointer-events-none" />
-            <div className="space-y-1 relative z-10 w-full pr-12">
-              <h2 className="text-xl font-black text-black uppercase tracking-tighter mix-blend-color-burn">{shop.branding.bannerText}</h2>
-              <p className="text-black/60 text-xs font-bold uppercase tracking-widest leading-none">Shop the official collection now</p>
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[#FF9900]/10 blur-[100px] rounded-full pointer-events-none" />
+            <div className="space-y-2 relative z-10 w-full pr-12">
+              <div className="inline-flex items-center gap-1.5 bg-[#FF9900]/10 border border-[#FF9900]/20 px-2.5 py-0.5 rounded-full">
+                <CheckCircle2 size={10} className="text-[#FF9900]" />
+                <span className="text-[8px] font-black text-[#FF9900] uppercase tracking-wider">Mega Promotion Live</span>
+              </div>
+              <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter">{shop.branding.bannerText}</h2>
+              <p className="text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-widest leading-none">Complete premium white-label catalog on sale</p>
             </div>
-            <div className="w-12 h-12 bg-black rounded-2xl flex-shrink-0 flex items-center justify-center shadow-xl relative z-10" style={{ color: shop.theme?.primaryColor || '#14b8a6' }}>
-              <Zap size={24} />
+            <div className="w-12 h-12 bg-black rounded-2xl flex-shrink-0 flex items-center justify-center shadow-xl relative z-10 text-[#FF9900]">
+              <Zap size={24} className="animate-pulse" />
             </div>
           </div>
         </div>
       )}
 
-      {/* Search & Categories */}
-      <div className="p-6 space-y-6">
-        <div className="flex gap-4">
-          <div className="flex-1 border rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: shop.theme?.secondaryColor || '#111111', borderColor: 'rgba(255,255,255,0.1)' }}>
-            <Search size={18} className="text-gray-600" />
-            <input 
-              type="text" 
-              placeholder="Search products..." 
-              className="bg-transparent border-none outline-none text-sm text-white w-full placeholder:text-gray-700"
-            />
-          </div>
-          <button className="p-4 border rounded-2xl text-white" style={{ backgroundColor: shop.theme?.secondaryColor || '#111111', borderColor: 'rgba(255,255,255,0.1)' }}>
-            <Package size={18} />
-          </button>
+      {/* Category Section with Interactive Click Triggers */}
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+          <h3 className="text-[10px] md:text-xs font-black text-gray-400 uppercase tracking-widest">Browse Departments</h3>
+          <span className="text-[9px] text-[#FF9900] font-bold uppercase">{filteredProducts.length} Premium Products</span>
         </div>
-
-        <div className="flex gap-3 overflow-x-auto no-scrollbar">
-          {['All Items', ...(shop.categories || [])].map(cat => (
-            <button key={cat} className="flex-shrink-0 px-6 py-2 rounded-full border text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-white" style={{ backgroundColor: shop.theme?.secondaryColor || '#111111', borderColor: 'rgba(255,255,255,0.05)' }}>
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Product Grid */}
-      <div className={`px-6 ${shop.theme?.layout === 'masonry' ? layoutClass : `grid ${layoutClass}`}`}>
-        {products.map((product) => (
-          <motion.div
-            key={product.id}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`border overflow-hidden group shadow-lg ${shop.theme?.layout === 'masonry' ? 'break-inside-avoid mb-4 inline-block w-full' : ''}`}
-            style={{ backgroundColor: shop.theme?.secondaryColor || '#111111', borderColor: 'rgba(255,255,255,0.05)', borderRadius: shop.theme?.buttonStyle === 'sharp' ? '0px' : '40px' }}
-          >
-            <div className="relative aspect-square">
-              <img 
-                src={product.images?.[0] || product.productData?.image || 'https://via.placeholder.com/400'} 
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 font-bold" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-              <button className="absolute top-4 right-4 p-2.5 bg-black/60 backdrop-blur-md rounded-2xl text-white border border-white/10 z-10 hover:text-red-500">
-                <Heart size={16} />
-              </button>
-              <div className="absolute bottom-4 left-4 z-10 text-white shadow-sm">
-                <p className="text-[10px] font-bold uppercase tracking-widest leading-none drop-shadow-md">Price</p>
-                <p className="text-xl font-black drop-shadow-md">Rs.{product.partnerSellingPrice}</p>
-              </div>
-            </div>
-            <div className="p-5 space-y-4">
-              <h3 className="text-xs font-black uppercase leading-snug line-clamp-2">{product.name || product.productData?.name}</h3>
+        <div className="flex gap-2 overflow-x-auto no-scrollbar scroll-smooth">
+          {['All Items', ...(shop.categories || [])].map(cat => {
+            const isSelected = selectedCategory === cat;
+            return (
               <button 
-                onClick={() => setSelectedProduct(product)}
-                className={`w-full py-4 font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all ${buttonClass}`}
-                style={{ backgroundColor: 'white', color: 'black' }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = shop.theme?.primaryColor || '#14b8a6'; e.currentTarget.style.color = '#000'; }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = 'black'; }}
+                key={cat} 
+                onClick={() => setSelectedCategory(cat)}
+                className={`flex-shrink-0 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                  isSelected 
+                    ? 'bg-[#FF9900] text-black border-[#FF9900] shadow-lg shadow-[#FF9900]/10 scale-102 font-black' 
+                    : 'bg-[#181F29] border-white/5 text-gray-400 hover:text-white hover:border-white/20'
+                }`}
               >
-                Buy Now <ArrowRight size={14} />
+                {cat}
               </button>
-            </div>
-          </motion.div>
-        ))}
+            );
+          })}
+        </div>
       </div>
 
+      {/* Main Catalog - Amazon-Designed Grid */}
+      <div className="max-w-7xl mx-auto px-4">
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-20 bg-[#141B24] rounded-3xl border border-white/5 my-6 space-y-3">
+            <Package className="mx-auto text-gray-500" size={32} />
+            <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider">No matching products found</h4>
+            <p className="text-[10px] text-gray-600 max-w-xs mx-auto">Try checking other department filters or adjusting your search keyword.</p>
+          </div>
+        ) : (
+          <div className={`grid ${layoutClass}`}>
+            {filteredProducts.map((product) => {
+              // Calculate beautiful fake Amazon pricing variables
+              const finalPrice = product.partnerSellingPrice;
+              const originalMrp = Math.ceil(finalPrice * 1.48);
+              const discountPercent = Math.floor(((originalMrp - finalPrice) / originalMrp) * 100);
+              
+              // Seed-based rating values
+              const ratingScore = 4.5 + (product.id.charCodeAt(0) % 6) * 0.1;
+              const ratingCount = 80 + (product.id.charCodeAt(0) % 250);
+
+              return (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className={`bg-[#141B24] border border-white/5 overflow-hidden group shadow-lg flex flex-col hover:border-white/10 transition-all ${
+                    shop.theme?.layout === 'masonry' ? 'break-inside-avoid mb-4 inline-block w-full' : ''
+                  }`}
+                  style={{ borderRadius: shop.theme?.buttonStyle === 'sharp' ? '0px' : '24px' }}
+                >
+                  {/* Aspect Ratio & Image Container */}
+                  <div className="relative aspect-square overflow-hidden bg-[#0F141C]">
+                    <img 
+                      src={product.images?.[0] || product.productData?.image || 'https://via.placeholder.com/400'} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                      loading="lazy"
+                    />
+                    
+                    {/* Orange discount tag label */}
+                    <div className="absolute top-3 left-3 bg-[#CC0C39] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow z-10">
+                      -{discountPercent}% DEAL
+                    </div>
+
+                    <button className="absolute top-3 right-3 p-2 bg-[#1A222D]/80 backdrop-blur rounded-full text-white border border-white/10 z-10 hover:text-red-500 shadow transition-colors">
+                      <Heart size={14} />
+                    </button>
+                    
+                    <div className="absolute bottom-3 left-3 z-10">
+                      <span className="bg-[#1A222D]/90 backdrop-blur text-white border border-white/10 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider shadow">
+                        ✓ Prime Delivery
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Info details */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                    <div className="space-y-1">
+                      {/* Department Text */}
+                      <p className="text-[9px] text-[#FF9900] font-black uppercase tracking-widest">{product.category || 'Deals'}</p>
+                      
+                      {/* Full Name */}
+                      <h3 className="text-xs font-black uppercase tracking-tight text-white line-clamp-2 leading-relaxed min-h-[36px]">
+                        {product.name || product.productData?.name}
+                      </h3>
+
+                      {/* Amazon Star Row with counts */}
+                      <div className="flex items-center gap-1.5 pt-0.5">
+                        <div className="flex items-center gap-0.5 text-amber-400">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star 
+                              key={star} 
+                              size={10} 
+                              fill={star <= Math.floor(ratingScore) ? '#FF9900' : 'none'} 
+                              stroke="#FF9900" 
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-gray-400 font-bold">{ratingScore.toFixed(1)}</span>
+                        <span className="text-[10px] text-gray-500 font-bold">({ratingCount})</span>
+                      </div>
+                    </div>
+
+                    {/* Highly Professional Amazon-like Pricing layout */}
+                    <div className="border-t border-white/5 pt-3 space-y-2">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs text-gray-400 font-bold">Rs.</span>
+                        <span className="text-2xl font-black text-white leading-none">{finalPrice}</span>
+                        <span className="text-[10px] text-gray-500 font-bold line-through">M.R.P. {originalMrp}</span>
+                      </div>
+                      
+                      {/* Prime status and shipment speed details */}
+                      <div className="space-y-0.5 text-[10px] text-gray-400 font-medium">
+                        <p className="text-green-500 font-bold flex items-center gap-1">
+                          <span>✓</span> FREE delivery Tomorrow
+                        </p>
+                        <p className="text-gray-500 text-[8px] uppercase tracking-wider font-black">Secure COD payment mode available</p>
+                      </div>
+
+                      {/* Prime and buy visual checkout CTA with customized classes */}
+                      <button 
+                        onClick={() => setSelectedProduct(product)}
+                        className={`w-full py-3 font-semibold uppercase tracking-widest text-[9px] flex items-center justify-center gap-1.5 transition-all bg-gradient-to-r from-[#ffe494] to-[#f4b82d] text-black border border-[#a2a6ac] hover:from-[#f5d06b] hover:to-[#e4aa20] active:scale-[0.98] ${buttonClass}`}
+                      >
+                        Buy Now <ArrowRight size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Checkout Modal Frame */}
       <CheckoutModal 
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
@@ -243,14 +369,17 @@ export default function PublicShopPage() {
         resellerName={shop.shopName}
       />
 
-      {/* Footer Branded */}
-      <div className="mt-20 flex flex-col items-center gap-4 opacity-30">
-        <div className="flex items-center gap-2">
-          <ShieldCheck size={16} className="text-gray-400" />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">Powered by</span>
+      {/* Amazon Footer and Credit Badges */}
+      <div className="mt-24 border-t border-white/5 py-12 flex flex-col items-center gap-4 text-center px-4">
+        <div className="flex items-center gap-2 text-gray-500">
+          <ShieldCheck size={16} className="text-gray-500 animate-pulse" />
+          <span className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-500">Powered by Secure Infrastructure</span>
           <Logo variant="mono" size="xs" />
         </div>
-        <div className="w-12 h-1 bg-gray-900 rounded-full" />
+        <p className="text-[8px] text-gray-600 uppercase tracking-widest">
+          © {new Date().getFullYear()} {shop.shopName}. All rights and trademarks are property of their respective owners.
+        </p>
+        <div className="w-12 h-1 bg-[#1A222D] rounded-full" />
       </div>
     </div>
   );

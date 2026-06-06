@@ -82,6 +82,8 @@ export interface UserData {
     url?: string;
     reason?: string;
   };
+  tempPhone?: string | null;
+  status?: string;
 }
 
 interface AuthContextType {

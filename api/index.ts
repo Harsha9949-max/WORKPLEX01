@@ -29,6 +29,15 @@ const initFirebaseAdmin = () => {
 // Map simulating a simple DB for OTPs
 const otpStore = new Map<string, { otp: string, expiresAt: number }>();
 
+// In-memory cache for Firebase Auth listing to enable sub-100ms rapid loading times
+let cachedAuthUsers: any[] = [];
+let cacheTimestamp = 0;
+const AUTH_CACHE_TTL = 30 * 1000; // 30 seconds cache
+const clearAuthCache = () => {
+  cachedAuthUsers = [];
+  cacheTimestamp = 0;
+};
+
 const getResend = () => {
   const key = process.env.RESEND_API_KEY || "re_KphYtwFU_6VDWdsQQZCcZ2GtuQgrZC23g";
   if (!key) throw new Error("RESEND_API_KEY not configured");
@@ -55,13 +64,21 @@ router.get("/admin/users", async (req, res) => {
       }
     }
 
-    // 2. Fetch from Firebase Auth
+    // 2. Fetch from Firebase Auth (utilizing memory cache with TTL)
     if (isInitialized) {
       try {
-        const authList = await admin.auth().listUsers(1000);
-        authUsers = authList.users;
+        const now = Date.now();
+        if (cachedAuthUsers.length > 0 && (now - cacheTimestamp < AUTH_CACHE_TTL)) {
+          authUsers = cachedAuthUsers;
+        } else {
+          const authList = await admin.auth().listUsers(1000);
+          authUsers = authList.users;
+          cachedAuthUsers = authUsers;
+          cacheTimestamp = now;
+        }
       } catch (authErr) {
         console.error("Backend failed to fetch Auth users:", authErr);
+        authUsers = cachedAuthUsers; // fallback
       }
     }
 
@@ -126,6 +143,7 @@ router.get("/admin/users", async (req, res) => {
 
 router.post("/admin/update-user/:uid", async (req, res) => {
   try {
+    clearAuthCache();
     const { uid } = req.params;
     const { name, phone, venture, role, status } = req.body;
     if (!uid) return res.status(400).json({ error: "UID is required" });
@@ -173,13 +191,32 @@ router.post("/admin/update-user/:uid", async (req, res) => {
           });
         }
 
-        // 3. Update phoneDirectory mapping
+        // 3. Update phoneDirectory mapping with multi-uid support
         if (phone) {
           try {
-            await admin.firestore().collection("phoneDirectory").doc(phone).set({
-              uid,
-              registeredAt: admin.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
+            const cleanPhone = phone.replace("+91", "").trim();
+            const variations = [cleanPhone, `+91${cleanPhone}`];
+            
+            for (const p of variations) {
+              const docRef = admin.firestore().collection("phoneDirectory").doc(p);
+              const snap = await docRef.get();
+              let uids: string[] = [uid];
+              
+              if (snap.exists) {
+                const data = snap.data();
+                if (data?.uids && Array.isArray(data.uids)) {
+                  uids = [...new Set([...data.uids, uid])];
+                } else if (data?.uid) {
+                  uids = [...new Set([data.uid, uid])];
+                }
+              }
+              
+              await docRef.set({
+                uid: uid, // backward compatibility
+                uids: uids,
+                registeredAt: admin.firestore.FieldValue.serverTimestamp()
+              }, { merge: true });
+            }
           } catch (pErr) {
             console.error("Failed to update phone directory entry on backend:", pErr);
           }
@@ -198,6 +235,7 @@ router.post("/admin/update-user/:uid", async (req, res) => {
 
 router.delete("/admin/delete-user/:uid", async (req, res) => {
   try {
+    clearAuthCache();
     const { uid } = req.params;
     if (!uid) return res.status(400).json({ error: "UID is required" });
 
@@ -230,12 +268,36 @@ router.delete("/admin/delete-user/:uid", async (req, res) => {
           console.error("Firestore user doc deletion failed:", fsErr);
         }
 
-        // 4. Clean up phone directory index
+        // 4. Clean up phone directory index with multi-user awareness
         if (phone) {
           try {
-            await admin.firestore().collection("phoneDirectory").doc(phone).delete();
-            const cleanPhone = phone.replace("+91", "");
-            await admin.firestore().collection("phoneDirectory").doc(cleanPhone).delete();
+            const cleanPhone = phone.replace("+91", "").trim();
+            const variations = [cleanPhone, `+91${cleanPhone}`];
+            
+            for (const p of variations) {
+              const docRef = admin.firestore().collection("phoneDirectory").doc(p);
+              const snap = await docRef.get();
+              if (snap.exists) {
+                const data = snap.data();
+                let uids: string[] = [];
+                
+                if (data?.uids && Array.isArray(data.uids)) {
+                  uids = data.uids.filter((id: string) => id !== uid);
+                } else if (data?.uid && data.uid !== uid) {
+                  uids = [data.uid];
+                }
+                
+                if (uids.length > 0) {
+                  await docRef.set({
+                    uid: uids[uids.length - 1], // legacy compatibility to last remaining
+                    uids: uids,
+                    registeredAt: admin.firestore.FieldValue.serverTimestamp()
+                  }, { merge: true });
+                } else {
+                  await docRef.delete();
+                }
+              }
+            }
           } catch (phErr) {
             console.error("Firestore phoneDirectory doc deletion failed:", phErr);
           }
