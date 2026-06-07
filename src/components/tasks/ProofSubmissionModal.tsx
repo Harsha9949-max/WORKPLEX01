@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAI } from '../../hooks/useAI';
 import AIReviewStatus from '../ai/AIReviewStatus';
 import toast from 'react-hot-toast';
+import { compressImageToBlob } from '../../utils/imageCompressor';
 
 export default function ProofSubmissionModal() {
   const { taskId } = useParams();
@@ -50,8 +51,11 @@ export default function ProofSubmissionModal() {
     try {
       let proofUrl = '';
       if (file) {
+        // Compress screenshot to max 800 width/height to keep it perfectly readable but very lightweight
+        const compressedProof = await compressImageToBlob(file, 800, 800, 0.75);
+        
         const storageRef = ref(storage, `proofs/${currentUser.uid}/${taskId}/${Date.now()}.jpg`);
-        await uploadBytes(storageRef, file);
+        await uploadBytes(storageRef, compressedProof);
         proofUrl = await getDownloadURL(storageRef);
       }
 

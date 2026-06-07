@@ -19,6 +19,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { compressImageToBlob } from '../utils/imageCompressor';
 import { handleFirestoreError, OperationType } from '../utils/errorHandlers';
 
 const CATEGORIES = ['Fashion', 'Electronics', 'Home & Kitchen', 'Beauty', 'Gadgets', 'Kits'];
@@ -120,8 +121,11 @@ export default function ShopSetupWizard() {
       let logoUrl = '';
       if (logo) {
         try {
-          const logoRef = ref(storage, `shops/${currentUser.uid}/logo`);
-          await uploadBytes(logoRef, logo);
+          // Instantly compress shop logo to lightweight size
+          const compressedLogo = await compressImageToBlob(logo, 400, 400, 0.75);
+          
+          const logoRef = ref(storage, `shops/${currentUser.uid}/logo.jpg`);
+          await uploadBytes(logoRef, compressedLogo);
           logoUrl = await getDownloadURL(logoRef);
         } catch (storageErr) {
           console.warn('Storage upload error, falling back to optimized local base64:', storageErr);

@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import CryptoJS from 'crypto-js';
 import { Camera, CreditCard, UserCheck, Shield, ChevronRight, X, Briefcase } from 'lucide-react';
 import { calculateProfileCompletion } from '../../lib/cloudFunctions';
+import { compressImageToBlob } from '../../utils/imageCompressor';
 
 const SECRET_KEY = import.meta.env.VITE_KYC_SECRET_KEY || 'HVRS_TEMP_SECRET_KEY_2026';
 
@@ -46,8 +47,11 @@ export default function ProgressiveProfilingWizard({ isOpen, onClose }: { isOpen
       
       // Step 1: Photo
       if (photo) {
+        // Instantly compress profile photo to lightweight thumbnail size
+        const compressedPhoto = await compressImageToBlob(photo, 300, 300, 0.75);
+        
         const storageRef = ref(storage, `profiles/${currentUser.uid}/photo.jpg`);
-        await uploadBytes(storageRef, photo);
+        await uploadBytes(storageRef, compressedPhoto);
         updates.photoURL = await getDownloadURL(storageRef);
       }
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import toast from 'react-hot-toast';
+import { compressImageToBlob } from '../../utils/imageCompressor';
 
 export interface UploadStatus {
   file: File;
@@ -26,10 +27,13 @@ export function useImageUpload() {
     setIsUploading(true);
 
     const uploadPromises = files.map((file, index) => {
-      return new Promise<void>((resolve) => {
+      return new Promise<void>(async (resolve) => {
         const timestamp = Date.now();
-        const storageRef = ref(storage, `catalog/${venture.toLowerCase()}/${timestamp}_${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
+        const storageRef = ref(storage, `catalog/${venture.toLowerCase()}/${timestamp}_product_image.jpg`);
+        
+        // Instantly compress listing image to high quality 1000px max bounds in the browser
+        const compressedBlob = await compressImageToBlob(file, 1000, 1000, 0.75);
+        const uploadTask = uploadBytesResumable(storageRef, compressedBlob);
 
         uploadTask.on('state_changed', 
           (snapshot) => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, auth, firebaseConfig } from '../../lib/firebase';
+import { compressImageToBlob } from '../../utils/imageCompressor';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuth } from '../../context/AuthContext';
@@ -457,9 +458,15 @@ export default function ResellerShop() {
     }
 
     try {
+      const maxWidth = type === 'logo' ? 400 : 1200;
+      const maxHeight = type === 'logo' ? 400 : 600;
+      
+      // Instantly compress image in browser before starting upload
+      const compressedBlob = await compressImageToBlob(file, maxWidth, maxHeight, 0.75);
+
       // Try publishing to Storage first
-      const storageRef = ref(storage, `partners/${currentUser.uid}/${type}_${Date.now()}`);
-      await uploadBytes(storageRef, file);
+      const storageRef = ref(storage, `partners/${currentUser.uid}/${type}_${Date.now()}.jpg`);
+      await uploadBytes(storageRef, compressedBlob);
       const url = await getDownloadURL(storageRef);
       setBranding(prev => ({ ...prev, [fieldName]: url }));
       toast.success('Uploaded successfully!', { id: toastId });

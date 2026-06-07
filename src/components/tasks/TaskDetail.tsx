@@ -9,6 +9,7 @@ import CountdownTimer from './CountdownTimer';
 import { ArrowLeft, Clock, Info, UploadCloud, Link as LinkIcon, FileText, CheckCircle, Camera, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Timestamp } from 'firebase/firestore';
+import { compressImageToBlob } from '../../utils/imageCompressor';
 
 export default function TaskDetail() {
   const { taskId } = useParams();
@@ -87,14 +88,18 @@ export default function TaskDetail() {
       if (proofType === 'image') {
         if (isCC) {
           for (const f of files) {
-            const storageRef = ref(storage, `proofs/${currentUser.uid}/${taskId}/${Date.now()}_${f.name}`);
-            await uploadBytes(storageRef, f);
+            // Compress each file to lightweight dimensions
+            const compressedFile = await compressImageToBlob(f, 800, 800, 0.75);
+            const storageRef = ref(storage, `proofs/${currentUser.uid}/${taskId}/${Date.now()}_original.jpg`);
+            await uploadBytes(storageRef, compressedFile);
             proofUrls.push(await getDownloadURL(storageRef));
           }
           proofUrl = proofUrls[0] || '';
         } else if (file) {
-          const storageRef = ref(storage, `proofs/${currentUser.uid}/${taskId}/${Date.now()}_${file.name}`);
-          await uploadBytes(storageRef, file);
+          // Compress single file to lightweight dimensions
+          const compressedFile = await compressImageToBlob(file, 800, 800, 0.75);
+          const storageRef = ref(storage, `proofs/${currentUser.uid}/${taskId}/${Date.now()}_original.jpg`);
+          await uploadBytes(storageRef, compressedFile);
           proofUrl = await getDownloadURL(storageRef);
           proofUrls = [proofUrl];
         }
