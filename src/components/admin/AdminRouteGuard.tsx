@@ -28,7 +28,7 @@ export default function AdminRouteGuard({ children }: Props) {
       }
 
       // Super Admin (Main Owner)
-      if (currentUser.email === 'marateyh@gmail.com' || currentUser.email === 'hvrsindustriespvtltd@gmail.com') {
+      if (currentUser.email === 'marateyh@gmail.com') {
         setIsAdminAuthorized(true);
         return;
       }

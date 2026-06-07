@@ -79,7 +79,6 @@ export default function WorkerManagement() {
       const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
       const filtered = loaded.filter((w: any) => 
         w.email !== 'marateyh@gmail.com' && 
-        w.email !== 'hvrsindustriespvtltd@gmail.com' && 
         w.role?.toLowerCase() !== 'admin'
       );
       
@@ -113,7 +112,6 @@ export default function WorkerManagement() {
           let loaded = result.workers;
           let filtered = loaded.filter((w: any) => 
             w.email !== 'marateyh@gmail.com' && 
-            w.email !== 'hvrsindustriespvtltd@gmail.com' && 
             w.role?.toLowerCase() !== 'admin'
           );
           filtered.sort((a: any, b: any) => {
@@ -136,7 +134,6 @@ export default function WorkerManagement() {
       let loaded = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
       let filtered = loaded.filter((w: any) => 
         w.email !== 'marateyh@gmail.com' && 
-        w.email !== 'hvrsindustriespvtltd@gmail.com' && 
         w.role?.toLowerCase() !== 'admin'
       );
       filtered.sort((a: any, b: any) => {
@@ -349,7 +346,6 @@ export default function WorkerManagement() {
         // Skip super admins to protect platform safety
         if (
           userData.email === 'marateyh@gmail.com' || 
-          userData.email === 'hvrsindustriespvtltd@gmail.com' || 
           userData.role?.toLowerCase() === 'admin'
         ) {
           continue;

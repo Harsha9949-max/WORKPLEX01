@@ -29,7 +29,6 @@ export default function Dashboard() {
         const allUsers = usersSnap.docs.map(doc => doc.data() as any);
         const filteredWorkers = allUsers.filter(w => 
           w.email !== 'marateyh@gmail.com' && 
-          w.email !== 'hvrsindustriespvtltd@gmail.com' && 
           w.role?.toLowerCase() !== 'admin'
         );
         const total = filteredWorkers.length;

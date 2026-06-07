@@ -304,7 +304,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         await associatePhoneWithUid(db, userData.phone, user.uid);
       }
 
-      if (user.email === 'marateyh@gmail.com' || user.email === 'hvrsindustriespvtltd@gmail.com') {
+      if (user.email === 'marateyh@gmail.com') {
         navigate('/admin');
       } else {
         if (!userData.venture || !userData.role) {

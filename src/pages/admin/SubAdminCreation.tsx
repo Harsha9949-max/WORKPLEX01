@@ -225,7 +225,7 @@ export default function SubAdminCreation() {
                     <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest mb-0.5">Role</p>
                     <p className="text-[10px] font-black text-white uppercase tracking-widest">{admin.role}</p>
                   </div>
-                  {admin.email !== 'marateyh@gmail.com' && admin.email !== 'hvrsindustriespvtltd@gmail.com' && admin.role === 'Sub-Admin' && (
+                  {admin.email !== 'marateyh@gmail.com' && admin.role === 'Sub-Admin' && (
                     <button 
                       onClick={() => handleDelete(admin.id)}
                       className="p-3 bg-[#EF4444]/10 text-[#EF4444] rounded-xl border border-[#EF4444]/10 hover:bg-[#EF4444]/20 transition-all opacity-0 group-hover:opacity-100"
