@@ -186,7 +186,7 @@ export default function StrategicConsole() {
       const workers = userSnap.docs.filter((d: any) => {
         const data = d.data();
         return data?.role?.toLowerCase() !== 'admin' &&
-               data?.email !== 'marateyh@gmail.com';
+               data?.email !== 'hvrsindustriespvtltd@gmail.com';
       });
       setActiveWorkersCount(workers.length || 24);
     });
@@ -280,7 +280,7 @@ export default function StrategicConsole() {
       const userList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
       const workers = userList.filter(u => 
         u.role?.toLowerCase() !== 'admin' &&
-        u.email !== 'marateyh@gmail.com'
+        u.email !== 'hvrsindustriespvtltd@gmail.com'
       );
 
       // Churn Risk

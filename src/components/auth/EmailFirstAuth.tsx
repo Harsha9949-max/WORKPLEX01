@@ -304,9 +304,23 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
         await associatePhoneWithUid(db, userData.phone, user.uid);
       }
 
-      if (user.email === 'marateyh@gmail.com') {
+      const userRole = userData.role?.toLowerCase() || '';
+      const userEmail = user.email?.toLowerCase().trim() || '';
+
+      // 1. Dynamic Role Based Redirects (for EVERY user and worker)
+      if (userRole === 'reseller' || userRole === 'partner' || userData.workerType === 'partner') {
+        navigate('/reseller/dashboard');
+      } else if (userRole === 'sub-admin') {
+        navigate('/sub-admin');
+      } else if (userRole === 'admin' || userRole === 'superadmin' || userRole === 'super-admin') {
         navigate('/admin');
-      } else {
+      }
+      // 2. Email Based Fallback for Super Admins (only if their database role is not a specific worker/reseller role)
+      else if (userEmail === 'hvrsindustriespvtltd@gmail.com' || userEmail === 'marateyh@gmail.com') {
+        navigate('/admin');
+      }
+      // 3. Fallback for workers and normal users
+      else {
         if (!userData.venture || !userData.role) {
           navigate('/onboarding');
         } else {

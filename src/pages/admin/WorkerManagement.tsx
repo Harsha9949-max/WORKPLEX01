@@ -78,7 +78,7 @@ export default function WorkerManagement() {
     const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
       const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
       const filtered = loaded.filter((w: any) => 
-        w.email !== 'marateyh@gmail.com' && 
+        w.email !== 'hvrsindustriespvtltd@gmail.com' && 
         w.role?.toLowerCase() !== 'admin'
       );
       
@@ -111,7 +111,7 @@ export default function WorkerManagement() {
         if (result.success && Array.isArray(result.workers) && result.workers.length > 0) {
           let loaded = result.workers;
           let filtered = loaded.filter((w: any) => 
-            w.email !== 'marateyh@gmail.com' && 
+            w.email !== 'hvrsindustriespvtltd@gmail.com' && 
             w.role?.toLowerCase() !== 'admin'
           );
           filtered.sort((a: any, b: any) => {
@@ -133,7 +133,7 @@ export default function WorkerManagement() {
       const snap = await getDocs(collection(db, 'users'));
       let loaded = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
       let filtered = loaded.filter((w: any) => 
-        w.email !== 'marateyh@gmail.com' && 
+        w.email !== 'hvrsindustriespvtltd@gmail.com' && 
         w.role?.toLowerCase() !== 'admin'
       );
       filtered.sort((a: any, b: any) => {
@@ -345,7 +345,7 @@ export default function WorkerManagement() {
         
         // Skip super admins to protect platform safety
         if (
-          userData.email === 'marateyh@gmail.com' || 
+          userData.email === 'hvrsindustriespvtltd@gmail.com' || 
           userData.role?.toLowerCase() === 'admin'
         ) {
           continue;

@@ -157,7 +157,7 @@ export default function AdminDashboard() {
         const workersSnap = await getDocs(collection(db, 'users'));
         const allUsers = workersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
         const filteredWorkers = allUsers.filter(w => 
-          w.email !== 'marateyh@gmail.com' && 
+          w.email !== 'hvrsindustriespvtltd@gmail.com' && 
           w.role?.toLowerCase() !== 'admin'
         );
         const total = filteredWorkers.length;

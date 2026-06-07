@@ -100,13 +100,13 @@ export default function SubAdminPanel() {
     w.status === 'active' && 
     w.role?.toLowerCase() !== 'admin' && 
     w.role?.toLowerCase() !== 'sub-admin' &&
-    w.email !== 'marateyh@gmail.com'
+    w.email !== 'hvrsindustriespvtltd@gmail.com'
   );
   const pendingWorkers = workers.filter(w => 
     w.status === 'pending' && 
     w.role?.toLowerCase() !== 'admin' && 
     w.role?.toLowerCase() !== 'sub-admin' &&
-    w.email !== 'marateyh@gmail.com'
+    w.email !== 'hvrsindustriespvtltd@gmail.com'
   );
 
   const handleApproveWorker = async (workerId: string, role: string) => {

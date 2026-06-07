@@ -11,7 +11,7 @@ interface Props {
 
 /**
  * Route guard for Admin routes.
- * Strictly allows only marateyh@gmail.com and verified Sub-Admins.
+ * Strictly allows only hvrsindustriespvtltd@gmail.com and verified Sub-Admins.
  */
 export default function AdminRouteGuard({ children }: Props) {
   const { currentUser, loading } = useAuth();
@@ -28,7 +28,7 @@ export default function AdminRouteGuard({ children }: Props) {
       }
 
       // Super Admin (Main Owner)
-      if (currentUser.email === 'marateyh@gmail.com') {
+      if (currentUser.email === 'hvrsindustriespvtltd@gmail.com' || currentUser.email === 'marateyh@gmail.com') {
         setIsAdminAuthorized(true);
         return;
       }

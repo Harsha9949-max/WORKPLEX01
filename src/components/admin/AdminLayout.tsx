@@ -100,7 +100,7 @@ export default function AdminLayout() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-black truncate">{currentUser?.email?.split('@')[0]}</p>
                 <p className="text-[10px] text-gray-500 truncate">
-                  {currentUser?.email === 'marateyh@gmail.com' 
+                  {currentUser?.email === 'hvrsindustriespvtltd@gmail.com' 
                     ? 'Super Admin' 
                     : 'Sub-Admin'}
                 </p>
