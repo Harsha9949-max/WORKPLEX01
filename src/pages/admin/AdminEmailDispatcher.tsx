@@ -83,6 +83,7 @@ export default function AdminEmailDispatcher() {
         gmailEmail: gmailEmail,
         isGmailLinked: true,
         gmailToken: token,
+        isSessionExpired: false,
         updatedAt: new Date()
       }, { merge: true });
       
@@ -174,6 +175,18 @@ export default function AdminEmailDispatcher() {
         toast.success(`Deliverability text dispatched successfully! Check ${testEmail} to verify.`, { id: toastId });
       } else {
         const errorDetail = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          try {
+            await setDoc(doc(db, 'systemConfig', 'gmail'), {
+              gmailToken: null,
+              isSessionExpired: true,
+              updatedAt: new Date()
+            }, { merge: true });
+          } catch (dbErr) {
+            console.error("Failed to invalidate session in Firebase:", dbErr);
+          }
+          throw new Error("Your Gmail dispatcher session has expired (401 Unauthorized / Revoked). Please reconnect your Google account.");
+        }
         throw new Error(errorDetail?.error?.message || `Google API status ${response.status}`);
       }
     } catch (err: any) {
@@ -262,6 +275,18 @@ export default function AdminEmailDispatcher() {
                 </div>
               )}
             </div>
+
+            {gmailConfig?.isSessionExpired && (
+              <div className="bg-red-950/30 border border-red-500/30 text-red-400 p-4 rounded-2xl flex items-start gap-2.5 text-xs mb-8">
+                <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-500" />
+                <div>
+                  <p className="font-extrabold uppercase text-[10px] tracking-widest text-red-500">Google API Session Expired (401)</p>
+                  <p className="text-[11px] text-gray-400 leading-normal mt-1 font-medium">
+                    Your platform-wide linked Gmail dispatcher session has expired, matured, or has been revoked by Google. Resellers are currently unable to send transaction receipts to customers. Click the "Wake Up" or "Connect" button below to re-authenticate immediately.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3">
               {!gmailConfig?.isGmailLinked ? (
