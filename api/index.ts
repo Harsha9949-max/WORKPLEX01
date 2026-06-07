@@ -28,16 +28,19 @@ const initFirebaseAdmin = () => {
         credential: admin.credential.cert(serviceAccount)
       });
       return true;
-    } else {
-      // Fallback for container environments like Cloud Run (uses Application Default Credentials automatically)
+    } else if (process.env.K_SERVICE) {
+      // Fallback for deployed container environments like Cloud Run (uses Application Default Credentials automatically)
       try {
         admin.initializeApp();
         return true;
       } catch (adcError: any) {
-        // Safe check for local sandbox / preview, avoids breaking but warnings are logged
         console.warn("Firebase Admin ADC fallback skipped or failed:", adcError.message || String(adcError));
         return false;
       }
+    } else {
+      // Direct instant return in local development/sandbox environments when service account is absent.
+      // This forces immediate, sub-millisecond client-side Firestore fallback rather than blocking on Google Metadata IP network timeouts.
+      return false;
     }
   } catch (err: any) {
     if (err && err.code === 'app/duplicate-app') {

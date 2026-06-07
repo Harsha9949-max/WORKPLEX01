@@ -11,7 +11,8 @@ import {
   orderBy, 
   limit, 
   Timestamp,
-  increment
+  increment,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
@@ -41,7 +42,6 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatCurrency, safeFormatDate, parseDate } from '../../utils/format';
-import { ensureDatabaseSeeded } from '../../utils/dbSeeding';
 import { format } from 'date-fns';
 
 /**
@@ -67,27 +67,45 @@ export default function WorkerManagement() {
   const realVentures = ['BuyRix', 'Vyuma', 'Zaestify', 'Growplex'];
 
   useEffect(() => {
-    fetchWorkers();
+    setLoading(true);
+    
+    // Subscribe to client-side Firestore in real-time, matching exactly how stats & other consoles do it
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      const filtered = loaded.filter((w: any) => 
+        w.email !== 'marateyh@gmail.com' && 
+        w.email !== 'hvrsindustriespvtltd@gmail.com' && 
+        w.role?.toLowerCase() !== 'admin'
+      );
+      
+      // Sort client-side to prevent Composite Index requirement
+      filtered.sort((a: any, b: any) => {
+        const timeA = parseDate(a.joinedAt)?.getTime() || 0;
+        const timeB = parseDate(b.joinedAt)?.getTime() || 0;
+        return timeB - timeA;
+      });
+      
+      setWorkers(filtered);
+      setLoading(false);
+    }, (error) => {
+      console.warn("onSnapshot failed in WorkerManagement, performing manual load:", error);
+      fetchWorkers();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const fetchWorkers = async () => {
     setLoading(true);
-    
-    // Ensure database is seeded so standard workers are available immediately
-    try {
-      await ensureDatabaseSeeded(db);
-    } catch (seedErr) {
-      console.warn("Seeding failed in WorkerManagement: ", seedErr);
-    }
 
     try {
-      // 1. Attempt fetching from Backend API (integrated merged lists of Auth & Firestore)
+      // 1. Attempt fetching from Backend API
       const res = await fetch('/api/admin/users');
       if (res.ok) {
         const result = await res.json();
-        if (result.success && Array.isArray(result.workers)) {
+        // Crucial fix: do NOT treat empty backend auth result as a complete set if DB has items
+        if (result.success && Array.isArray(result.workers) && result.workers.length > 0) {
           let loaded = result.workers;
-          // Exclude super admins & Sort by joinedAt
           let filtered = loaded.filter((w: any) => 
             w.email !== 'marateyh@gmail.com' && 
             w.email !== 'hvrsindustriespvtltd@gmail.com' && 
@@ -107,7 +125,7 @@ export default function WorkerManagement() {
       console.warn("Backend fetch failed, falling back to client-side Firestore query:", apiErr);
     }
 
-    // 2. Fallback to direct client-side Firestore collection query (No risky index-dependent orderBy clauses)
+    // 2. Fallback to direct client-side Firestore collection query
     try {
       const snap = await getDocs(collection(db, 'users'));
       let loaded = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));

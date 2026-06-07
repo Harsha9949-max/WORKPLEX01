@@ -63,7 +63,7 @@ export default function WithdrawalManagement() {
 
     const fetchAdminRole = async () => {
       if (!currentUser) return;
-      if (currentUser.email === 'marateyh@gmail.com') {
+      if (currentUser.email === 'marateyh@gmail.com' || currentUser.email === 'hvrsindustriespvtltd@gmail.com') {
         setIsAdmin({ role: 'SuperAdmin' });
       } else {
         const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));

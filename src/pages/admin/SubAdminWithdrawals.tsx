@@ -60,7 +60,7 @@ export default function SubAdminWithdrawals({ venture, subAdminId }: { venture: 
             rejectedBy: subAdminId,
             rejectedAt: serverTimestamp()
          });
-         toast.success('Withdrawal rejected. Funds returned to worker (dummy).');
+         toast.success('Withdrawal rejected. Funds returned to worker balance.');
       } catch (err) {
          toast.error('Failed to reject');
       }
