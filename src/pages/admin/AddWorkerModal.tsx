@@ -46,10 +46,12 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
   }
 
   React.useEffect(() => {
+    // Synchronously reset existing worker state immediately on email change
+    setExistingWorker(null);
+
     const checkEmailFn = async () => {
       const cleanEmail = email.trim().toLowerCase();
       if (!cleanEmail || !cleanEmail.includes('@') || cleanEmail.length < 5) {
-        setExistingWorker(null);
         return;
       }
       setIsCheckingEmail(true);
@@ -58,9 +60,10 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
         const emailCheckSnap = await getDocs(emailCheckQ);
         if (!emailCheckSnap.empty) {
           const docData = emailCheckSnap.docs[0];
-          setExistingWorker({ id: docData.id, ...docData.data() });
-        } else {
-          setExistingWorker(null);
+          // Double-check the email input hasn't changed while this async request was in flight
+          if (email.trim().toLowerCase() === cleanEmail) {
+            setExistingWorker({ id: docData.id, ...docData.data() });
+          }
         }
       } catch (err) {
         console.error("Error verifying email registration:", err);
@@ -78,7 +81,10 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (existingWorker) {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    // Only block if existingWorker state is populated AND matches the current input email
+    if (existingWorker && existingWorker.email?.trim().toLowerCase() === cleanEmail) {
       return toast.error('A worker with this email address already exists. See profile details above.');
     }
     if (!name || name.length < 2) return toast.error('Please enter a valid name.');
@@ -90,8 +96,7 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
     setIsSubmitting(true);
 
     try {
-      // Check if email already exists
-      const cleanEmail = email.trim().toLowerCase();
+      // Re-verify strictly right before creation
       const emailCheckQ = query(collection(db, 'users'), where('email', '==', cleanEmail));
       const emailCheckSnap = await getDocs(emailCheckQ);
       if (!emailCheckSnap.empty) {
@@ -192,7 +197,7 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
               </div>
 
               <AnimatePresence>
-                {existingWorker && (
+                {existingWorker && existingWorker.email?.trim().toLowerCase() === email.trim().toLowerCase() && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -329,7 +334,7 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
               </div>
             </div>
 
-            {existingWorker ? (
+            {existingWorker && existingWorker.email?.trim().toLowerCase() === email.trim().toLowerCase() ? (
               <div className="text-center p-3.5 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl text-[10px] font-black uppercase text-[#EF4444] tracking-widest animate-pulse">
                 Email address is already in use
               </div>
