@@ -63,6 +63,11 @@ export default function WorkerManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
 
+  // Accurate Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStep, setSyncStep] = useState(0);
+  const [syncLogs, setSyncLogs] = useState<string[]>([]);
+
   const ventures = ['All', 'BuyRix', 'Vyuma', 'Zaestify', 'Growplex'];
   const realVentures = ['BuyRix', 'Vyuma', 'Zaestify', 'Growplex'];
 
@@ -297,6 +302,134 @@ export default function WorkerManagement() {
     }
   };
 
+  const runAccurateDeepSync = async () => {
+    setIsSyncing(true);
+    setSyncStep(0);
+    setSyncLogs([]);
+
+    const log = (msg: string) => {
+      setSyncLogs(prev => [...prev, `${new Date().toLocaleTimeString()} - ${msg}`]);
+    };
+
+    try {
+      log("Initializing cross-platform directory synchronization...");
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      log("Analyzing active user collection...");
+      const userSnap = await getDocs(collection(db, 'users'));
+      const totalUsers = userSnap.docs.length;
+      log(`Discovered ${totalUsers} total user records in Firestore.`);
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      setSyncStep(1);
+      log("Loading task submissions database for deep-payout auditing...");
+      const subSnap = await getDocs(collection(db, 'taskSubmissions'));
+      const activeSubmissions = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      log(`Analyzing ${activeSubmissions.length} historical task submissions.`);
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      setSyncStep(2);
+      log("Retrieving treasury withdrawal requests...");
+      const withdrawSnap = await getDocs(collection(db, 'withdrawals'));
+      const activeWithdrawals = withdrawSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      log(`Cross-referencing ${activeWithdrawals.length} withdrawal logs.`);
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      setSyncStep(3);
+      log("Beginning ledger-reconciliation algorithm for each user...");
+      await new Promise(resolve => setTimeout(resolve, 600));
+      
+      let correctedCount = 0;
+      let totalPushed = 0;
+
+      for (const userDoc of userSnap.docs) {
+        const userId = userDoc.id;
+        const userData = userDoc.data();
+        
+        // Skip super admins to protect platform safety
+        if (
+          userData.email === 'marateyh@gmail.com' || 
+          userData.email === 'hvrsindustriespvtltd@gmail.com' || 
+          userData.role?.toLowerCase() === 'admin'
+        ) {
+          continue;
+        }
+
+        // 1. Sum up all approved submissions
+        const userApprovedSubs = activeSubmissions.filter((s: any) => s.workerId === userId && s.status === 'approved');
+        const approvedSum = userApprovedSubs.reduce((acc: number, cur: any) => acc + (parseFloat(cur.earningAmount) || 0), 0);
+
+        // 2. Welcome bonus incentive logic
+        const welcomeIncentive = userData.firstTaskDone ? (parseFloat(userData.incentiveAmount) || 0) : 0;
+
+        // 3. Sum up all withdrawals that are paid or pending (deducted initially)
+        const userWithdrawals = activeWithdrawals.filter((w: any) => w.uid === userId && (w.status === 'paid' || w.status === 'pending'));
+        const withdrawnSum = userWithdrawals.reduce((acc: number, cur: any) => acc + (parseFloat(cur.amount) || 0), 0);
+
+        // Calculated correct earned balance
+        const correctEarned = Math.max(0, approvedSum + welcomeIncentive - withdrawnSum);
+
+        // Calculated pending wallet balance (pending submissions + unrevealed welcome bonus if applicable)
+        const pendingSubs = activeSubmissions.filter((s: any) => s.workerId === userId && s.status === 'pending');
+        const pendingSum = pendingSubs.reduce((acc: number, cur: any) => acc + (parseFloat(cur.earningAmount) || 0), 0);
+        const pendingOnboarding = !userData.firstTaskDone ? (parseFloat(userData.incentiveAmount) || 0) : 0;
+        const correctPending = pendingSum + pendingOnboarding;
+
+        const currentWallets = userData.wallets || { earned: 0, pending: 0, bonus: 0, savings: 0 };
+        
+        const driftEarned = Math.abs((currentWallets.earned || 0) - correctEarned);
+        const driftPending = Math.abs((currentWallets.pending || 0) - correctPending);
+
+        const walletsObj = {
+          earned: correctEarned,
+          pending: correctPending,
+          bonus: currentWallets.bonus || 0,
+          savings: currentWallets.savings || 0
+        };
+
+        const updatePayload: any = {
+          wallets: walletsObj
+        };
+
+        // Cure basic schema drift
+        if (!userData.role) updatePayload.role = "Unassigned";
+        if (!userData.venture) updatePayload.venture = "Unassigned";
+        if (userData.kycDone === undefined) updatePayload.kycDone = false;
+
+        // If drift is spotted or structure was incomplete, force write correction!
+        if (driftEarned > 0.01 || driftPending > 0.01 || !userData.wallets || !userData.role || !userData.venture) {
+          correctedCount++;
+          log(`Resolved drift: ${userData.name || userId} [Diff: Earned ±₹${driftEarned.toFixed(2)}, Pending ±₹${driftPending.toFixed(2)}]`);
+          await updateDoc(doc(db, 'users', userId), updatePayload);
+        }
+        totalPushed++;
+      }
+
+      log(`Ledger check completed. Reconciled ${totalPushed} users. Corrected ${correctedCount} drift anomalies.`);
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      setSyncStep(4);
+      log("Updating UI state with synchronized Firestore snapshot...");
+      
+      try {
+        await fetch('/api/admin/users');
+      } catch (e) {
+        console.warn("Backend cache invalidation in background skipped:", e);
+      }
+      
+      await fetchWorkers();
+      log("Platform ledger successfully aligned with Firestore absolute states.");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setSyncStep(5);
+      toast.success("All workers successfully audited & synchronized!");
+    } catch (err: any) {
+      console.error(err);
+      log(`Error during deep sync: ${err.message || String(err)}`);
+      toast.error("Deep sync failed");
+    }
+  };
+
   const filteredWorkers = workers.filter(w => {
     if (selectedVenture !== 'All' && w.venture !== selectedVenture) {
       return false;
@@ -320,10 +453,18 @@ export default function WorkerManagement() {
         
         <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
           <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="w-full md:w-auto flex items-center justify-center gap-2 bg-[#E8B84B] text-black hover:bg-[#E8B84B]/90 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 min-h-[40px]"
+            onClick={runAccurateDeepSync}
+            disabled={isSyncing}
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#E8B84B] to-[#F59E0B] hover:brightness-110 text-black px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 min-h-[40px] border border-[#E8B84B]/20"
           >
-            <UserPlus size={14} className="stroke-[3px]" />
+            <ShieldCheck size={14} className={`stroke-[3px] ${isSyncing ? "animate-spin text-black" : ""}`} />
+            <span>Accurate Sync</span>
+          </button>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] hover:bg-white/10 text-white px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 min-h-[40px]"
+          >
+            <UserPlus size={14} className="stroke-[3px] text-[#E8B84B]" />
             <span>Add Worker</span>
           </button>
           <div className="flex items-center gap-2 w-full md:w-auto">
@@ -631,6 +772,125 @@ export default function WorkerManagement() {
           fetchWorkers();
         }} 
       />
+
+      {/* Accurate Sync Progress Modal */}
+      <AnimatePresence>
+        {isSyncing && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/90 backdrop-blur-md z-[90]"
+            />
+            <div className="fixed inset-0 flex items-center justify-center z-[100] p-4">
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="w-full max-w-lg bg-[#111111] border border-white/10 rounded-[32px] p-6 md:p-8 shadow-2xl relative overflow-hidden"
+              >
+                {/* Visual Accent */}
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#E8B84B] via-[#10B981] to-[#E8B84B]" />
+                
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-[#E8B84B]/10 border border-[#E8B84B]/20 flex items-center justify-center text-[#E8B84B]">
+                    <Activity className="animate-pulse" size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-white uppercase tracking-tighter">Accurate Deep Sync</h3>
+                    <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-widest mt-0.5">Real-time ledger audit & schema alignment</p>
+                  </div>
+                </div>
+
+                {/* Steps Progress */}
+                <div className="space-y-4 mb-6">
+                  {[
+                    { label: "User Accounts Scan", desc: "Scan, index, and load worker directory" },
+                    { label: "Missions & Submissions Audit", desc: "Tally historical task proof states" },
+                    { label: "Treasury Ledger Reconcile", desc: "Audit earnings & payout balances" },
+                    { label: "Database Sync & Patch", desc: "Resolve state drift & write corrections" }
+                  ].map((step, idx) => {
+                    const isDone = syncStep > idx;
+                    const isActive = syncStep === idx;
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`p-3 rounded-2xl border transition-all ${
+                          isDone 
+                            ? "bg-[#10B981]/5 border-[#10B981]/20 text-[#10B981]" 
+                            : isActive 
+                            ? "bg-[#E8B84B]/5 border-[#E8B84B]/20 text-[#E8B84B]" 
+                            : "bg-white/[0.01] border-white/5 text-gray-500"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className={`w-6 h-6 rounded-lg text-[10px] font-black flex items-center justify-center border ${
+                              isDone 
+                                ? "border-[#10B981] bg-[#10B981]/10" 
+                                : isActive 
+                                ? "border-[#E8B84B] bg-[#E8B84B]/10 animate-pulse" 
+                                : "border-white/5 bg-white/5"
+                            }`}>
+                              {idx + 1}
+                            </span>
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-wider">{step.label}</p>
+                              <p className={`text-[9px] font-bold ${isActive ? 'text-gray-400' : 'text-gray-500'}`}>{step.desc}</p>
+                            </div>
+                          </div>
+                          {isDone ? (
+                            <span className="text-[10px] font-black uppercase tracking-widest bg-[#10B981]/10 px-2 py-0.5 rounded-full">OK</span>
+                          ) : isActive ? (
+                            <div className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E8B84B] opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#E8B84B]"></span>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Logging terminal */}
+                <div className="bg-black border border-white/5 rounded-2xl p-4 h-36 font-mono text-[9px] overflow-y-auto space-y-1 scrollbar-thin scrollbar-thumb-white/5 scrollbar-track-transparent">
+                  {syncLogs.map((logStr, i) => (
+                    <div key={i} className="text-gray-400">
+                      <span className="text-gray-600">&gt;</span> {logStr}
+                    </div>
+                  ))}
+                  {syncStep < 4 && (
+                    <div className="text-[#E8B84B] animate-pulse">
+                      <span className="text-gray-600">&gt;</span> Run deep reconcile calculations...
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Controls */}
+                <div className="mt-6 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Platform Status</span>
+                    <p className="text-xs font-black text-white uppercase mt-0.5 flex items-center gap-1.5 font-mono">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" /> SECURE
+                    </p>
+                  </div>
+                  {syncStep >= 5 && (
+                    <button 
+                      onClick={() => setIsSyncing(false)}
+                      className="px-6 py-2.5 bg-gradient-to-r from-[#10B981] to-[#059669] text-white hover:brightness-110 rounded-xl text-xs font-black uppercase tracking-widest transition-transform hover:scale-105 active:scale-95"
+                    >
+                      Understood & Close
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
