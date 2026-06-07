@@ -269,6 +269,7 @@ export default function ResellerCatalogPage() {
                             name: selectedProduct.name,
                             images: selectedProduct.images || [],
                             hvrsBasePrice: selectedProduct.hvrsBasePrice,
+                            suggestedRetailPrice: selectedProduct.suggestedRetailPrice || selectedProduct.hvrsBasePrice,
                             partnerSellingPrice: selectedProduct.suggestedRetailPrice || (selectedProduct.hvrsBasePrice * 1.5),
                             partnerMargin: (selectedProduct.suggestedRetailPrice || (selectedProduct.hvrsBasePrice * 1.5)) - selectedProduct.hvrsBasePrice,
                             category: selectedProduct.category || 'General',

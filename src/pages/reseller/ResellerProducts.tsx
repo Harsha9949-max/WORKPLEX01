@@ -71,7 +71,7 @@ export default function ResellerProducts() {
       }
     }, (error) => handleFirestoreError(error, OperationType.GET, 'partnerShops'));
 
-    // Listen to My Products
+    // Listen to My Products in real-time
     const qProducts = query(collection(db, `partnerProducts/${currentUser.uid}/products`));
     const unsubMyProducts = onSnapshot(qProducts, (snap) => {
       setMyProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -83,34 +83,31 @@ export default function ResellerProducts() {
     };
   }, [currentUser]);
 
-  // Load Catalog Products
-  const loadCatalog = async () => {
+  // Listen to Catalog Products dynamically in real-time (instant updates when Admin shifts pricing!)
+  useEffect(() => {
     const currentVenture = shop?.venture || userData?.venture || 'BuyRix';
     if (!currentVenture) return;
-    
-    try {
-      const q = query(
-        collection(db, 'catalogProducts'),
-        where('venture', '==', currentVenture),
-        where('isActive', '==', true)
-      );
-      const snap = await getDocs(q);
-      setCatalogProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (e) {
-      handleFirestoreError(e, OperationType.LIST, 'catalogProducts');
-    }
-  };
 
-  useEffect(() => {
-    if (showCatalogModal) {
-      loadCatalog();
-    }
-  }, [showCatalogModal, shop?.venture, userData?.venture]);
+    const q = query(
+      collection(db, 'catalogProducts'),
+      where('venture', '==', currentVenture),
+      where('isActive', '==', true)
+    );
+
+    const unsubCatalog = onSnapshot(q, (snap) => {
+      setCatalogProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'catalogProducts');
+    });
+
+    return () => unsubCatalog();
+  }, [shop?.venture, userData?.venture]);
 
   const handleAddProduct = async (catalogProd: any, sellingPrice: number) => {
     if (!currentUser) return;
     const currentVenture = shop?.venture || userData?.venture || 'BuyRix';
-    const basePriceForMargin = catalogProd.suggestedRetailPrice || catalogProd.hvrsBasePrice;
+    // Margin is calculated as sellingPrice minus Admin Base Wholesale Cost Price (not Suggested Retail Price) for correct profits!
+    const basePriceForMargin = catalogProd.hvrsBasePrice;
     try {
       const docRef = doc(db, `partnerProducts/${currentUser.uid}/products`, catalogProd.id);
       await setDoc(docRef, {
@@ -225,72 +222,93 @@ export default function ResellerProducts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#2A2A2A]">
-                {myProducts.map(prod => (
-                  <tr key={prod.id} className="hover:bg-white/5 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <ProductImage images={prod.images} name={prod.name} size={40} />
-                        <span className="font-medium text-white">{prod.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-400 capitalize">{prod.category}</td>
-                    <td className="px-6 py-4">
-                      {editingPriceId === prod.id ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400">Rs.</span>
-                          <input 
-                            type="number"
-                            value={tempPrice}
-                            onChange={(e) => setTempPrice(e.target.value)}
-                            onKeyDown={(e) => {
-                              const baseMarginPrice = prod.suggestedRetailPrice || prod.hvrsBasePrice;
-                              if (e.key === 'Enter') handleUpdatePrice(prod.id, Number(tempPrice), baseMarginPrice);
-                              if (e.key === 'Escape') setEditingPriceId(null);
-                            }}
-                            autoFocus
-                            className="w-20 bg-[#1A1A1A] border border-[#00C9A7] text-white px-2 py-1 rounded outline-none"
-                          />
-                          <button onClick={() => {
-                            const baseMarginPrice = prod.suggestedRetailPrice || prod.hvrsBasePrice;
-                            handleUpdatePrice(prod.id, Number(tempPrice), baseMarginPrice);
-                          }} className="text-[#00C9A7] hover:text-[#00C9A7]/80">
-                            <Check size={16} />
-                          </button>
-                          <button onClick={() => setEditingPriceId(null)} className="text-gray-500 hover:text-white">
-                            <X size={16} />
-                          </button>
+                {myProducts.map(prod => {
+                  const masterId = prod.productId || prod.id;
+                  const master = catalogProducts.find(cp => cp.id === masterId);
+                  
+                  const name = master ? master.name : prod.name;
+                  const images = master ? (master.images || []) : (prod.images || []);
+                  const category = master ? master.category : prod.category;
+                  
+                  const adminBasePrice = master ? master.hvrsBasePrice : prod.hvrsBasePrice;
+                  const adminSuggestedPrice = master ? master.suggestedRetailPrice : (prod.suggestedRetailPrice || prod.hvrsBasePrice);
+                  
+                  const customPrice = prod.partnerSellingPrice;
+                  const marginValue = customPrice - adminBasePrice;
+
+                  return (
+                    <tr key={prod.id} className="hover:bg-white/5 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <ProductImage images={images} name={name} size={40} />
+                          <span className="font-medium text-white max-w-sm line-clamp-2" title={name}>{name}</span>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-2 group/price cursor-pointer" onClick={() => { setEditingPriceId(prod.id); setTempPrice(prod.partnerSellingPrice.toString()); }}>
-                          <span className="font-bold text-white">{formatCurrency(prod.partnerSellingPrice)}</span>
-                          <Edit2 size={12} className="text-gray-500 group-hover/price:text-white opacity-0 group-hover/price:opacity-100 transition-opacity" />
+                      </td>
+                      <td className="px-6 py-4 text-gray-400 capitalize">{category}</td>
+                      <td className="px-6 py-4">
+                        {editingPriceId === prod.id ? (
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-400">Rs.</span>
+                            <input 
+                              type="number"
+                              value={tempPrice}
+                              onChange={(e) => setTempPrice(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleUpdatePrice(prod.id, Number(tempPrice), adminBasePrice);
+                                if (e.key === 'Escape') setEditingPriceId(null);
+                              }}
+                              autoFocus
+                              className="w-20 bg-[#1A1A1A] border border-[#00C9A7] text-white px-2 py-1 rounded outline-none"
+                            />
+                            <button onClick={() => {
+                              handleUpdatePrice(prod.id, Number(tempPrice), adminBasePrice);
+                            }} className="text-[#00C9A7] hover:text-[#00C9A7]/80">
+                              <Check size={16} />
+                            </button>
+                            <button onClick={() => setEditingPriceId(null)} className="text-gray-500 hover:text-white">
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col select-none">
+                            <div className="flex items-center gap-2 group/price cursor-pointer" onClick={() => { setEditingPriceId(prod.id); setTempPrice(prod.partnerSellingPrice.toString()); }}>
+                              <span className="font-bold text-white">{formatCurrency(prod.partnerSellingPrice)}</span>
+                              <Edit2 size={12} className="text-gray-500 group-hover/price:text-white opacity-0 group-hover/price:opacity-100 transition-opacity" />
+                            </div>
+                            <span className="text-[10px] text-gray-500 mt-0.5">Sug: {formatCurrency(adminSuggestedPrice)}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className={`font-bold ${editingPriceId === prod.id ? (Number(tempPrice) - adminBasePrice >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]') : (marginValue >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]')}`}>
+                            {formatCurrency(editingPriceId === prod.id ? (Number(tempPrice) - adminBasePrice) : marginValue)}
+                          </span>
+                          <span className="text-[10px] text-gray-500 mt-0.5 font-normal">Base: {formatCurrency(adminBasePrice)}</span>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 font-bold text-[#10B981]">
-                      {formatCurrency(editingPriceId === prod.id ? (Number(tempPrice) - (prod.suggestedRetailPrice || prod.hvrsBasePrice)) : prod.partnerMargin)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <button 
-                        onClick={() => handleToggleActive(prod.id, prod.isActive)}
-                        className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${
-                          prod.isActive ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#EF4444]/20 text-[#EF4444]'
-                        }`}
-                      >
-                        {prod.isActive ? 'Active' : 'Inactive'}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => handleRemoveProduct(prod.id)}
-                        className="p-2 text-gray-500 hover:text-[#EF4444] transition-colors rounded hover:bg-[#EF4444]/10"
-                        title="Remove product"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button 
+                          onClick={() => handleToggleActive(prod.id, prod.isActive)}
+                          className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${
+                            prod.isActive ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-[#EF4444]/20 text-[#EF4444]'
+                          }`}
+                        >
+                          {prod.isActive ? 'Active' : 'Inactive'}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => handleRemoveProduct(prod.id)}
+                          className="p-2 text-gray-500 hover:text-[#EF4444] transition-colors rounded hover:bg-[#EF4444]/10"
+                          title="Remove product"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -335,8 +353,11 @@ export default function ResellerProducts() {
 
               <div className="flex-1 overflow-y-auto p-6 bg-[#0A0A0A]">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredCatalog.map(p => {
-                    const isAdded = myProducts.some(mp => mp.productId === p.id);
+                   {filteredCatalog.map(p => {
+                    const isAdded = myProducts.some(mp => 
+                      ((mp.productId && mp.productId === p.id) || (mp.id && mp.id === p.id)) && 
+                      mp.isActive !== false
+                    );
                     return (
                       <div key={p.id} className="bg-[#111111] border border-[#2A2A2A] rounded-lg overflow-hidden flex flex-col group hover:border-[#E8B84B]/50 transition-colors">
                         <div className="aspect-square bg-[#1A1A1A] relative">
@@ -351,6 +372,10 @@ export default function ResellerProducts() {
                             <div>
                               <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sug. Retail</p>
                               <p className="text-lg font-black text-[#E8B84B]">{formatCurrency(p.suggestedRetailPrice)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Wholesale cost</p>
+                              <p className="text-sm font-bold text-gray-400">{formatCurrency(p.hvrsBasePrice)}</p>
                             </div>
                           </div>
                           <div className="mt-auto">
@@ -383,8 +408,9 @@ export default function ResellerProducts() {
 
 function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, price: number) => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const baseForMargin = product.suggestedRetailPrice || product.hvrsBasePrice;
-  const [price, setPrice] = useState(baseForMargin + 100);
+  const baseForMargin = product.hvrsBasePrice;
+  const suggestedPrice = product.suggestedRetailPrice || product.hvrsBasePrice;
+  const [price, setPrice] = useState(suggestedPrice);
 
   if (!isOpen) {
     return (

@@ -505,7 +505,51 @@ export default function AdminCatalogManager() {
 
       if (productForm.id) {
         await updateDoc(doc(db, 'catalogProducts', productForm.id), payload);
-        toast.success("Product updated successfully!");
+        
+        // Propagate updates to all reseller partner stores containing this product
+        try {
+          const shopsQuery = await getDocs(query(collection(db, 'partnerShops'), where('venture', '==', activeTab)));
+          let batch = writeBatch(db);
+          let batchCount = 0;
+          
+          const commitAndReset = async () => {
+               if (batchCount > 0) {
+                   await batch.commit();
+                   batch = writeBatch(db);
+                   batchCount = 0;
+               }
+          };
+
+          for (const shopDoc of shopsQuery.docs) {
+               const partnerProdRef = doc(db, `partnerProducts/${shopDoc.id}/products`, productForm.id);
+               const partnerProdSnap = await getDocs(query(collection(db, `partnerProducts/${shopDoc.id}/products`), where('productId', '==', productForm.id)));
+               if (!partnerProdSnap.empty) {
+                   const partnerProdData = partnerProdSnap.docs[0].data();
+                   const customSellingPrice = partnerProdData.partnerSellingPrice || payload.suggestedRetailPrice || (payload.hvrsBasePrice * 1.5);
+                   batch.set(partnerProdRef, {
+                       productId: productForm.id,
+                       name: payload.name,
+                       images: payload.images || [],
+                       hvrsBasePrice: payload.hvrsBasePrice,
+                       suggestedRetailPrice: payload.suggestedRetailPrice || payload.hvrsBasePrice,
+                       partnerSellingPrice: customSellingPrice,
+                       partnerMargin: customSellingPrice - payload.hvrsBasePrice,
+                       category: payload.category || 'General',
+                       description: payload.description || '',
+                       isActive: partnerProdData.isActive !== undefined ? partnerProdData.isActive : payload.isActive,
+                       venture: activeTab,
+                       addedAt: partnerProdData.addedAt || serverTimestamp()
+                   }, { merge: true });
+                   batchCount++;
+                   if (batchCount >= 450) await commitAndReset();
+               }
+          }
+          await commitAndReset();
+        } catch (syncErr) {
+          console.error("Error syncing catalog edits to partners: ", syncErr);
+        }
+
+        toast.success("Product updated and synced to shops successfully!");
       } else {
         const productRef = doc(collection(db, 'catalogProducts'));
         let batch = writeBatch(db);
