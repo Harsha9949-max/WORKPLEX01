@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UserPlus, Phone, Briefcase, Mail } from 'lucide-react';
+import { X, UserPlus, Phone, Briefcase, Mail, ShieldCheck, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { db } from '../../lib/firebase';
 import { doc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
@@ -15,15 +15,18 @@ interface AddWorkerModalProps {
   onClose: () => void;
   subAdminVenture?: string;
   subAdminId?: string;
+  onWorkerFound?: (worker: any) => void;
 }
 
-export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAdminId }: AddWorkerModalProps) {
+export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAdminId, onWorkerFound }: AddWorkerModalProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [venture, setVenture] = useState(subAdminVenture || '');
   const [role, setRole] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingWorker, setExistingWorker] = useState<any | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -32,6 +35,7 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
       setPhone('');
       setVenture(subAdminVenture || '');
       setRole('');
+      setExistingWorker(null);
     }
   }, [isOpen, subAdminVenture]);
 
@@ -41,8 +45,42 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
     availableRoles.push('Reseller');
   }
 
+  React.useEffect(() => {
+    const checkEmailFn = async () => {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail || !cleanEmail.includes('@') || cleanEmail.length < 5) {
+        setExistingWorker(null);
+        return;
+      }
+      setIsCheckingEmail(true);
+      try {
+        const emailCheckQ = query(collection(db, 'users'), where('email', '==', cleanEmail));
+        const emailCheckSnap = await getDocs(emailCheckQ);
+        if (!emailCheckSnap.empty) {
+          const docData = emailCheckSnap.docs[0];
+          setExistingWorker({ id: docData.id, ...docData.data() });
+        } else {
+          setExistingWorker(null);
+        }
+      } catch (err) {
+        console.error("Error verifying email registration:", err);
+      } finally {
+        setIsCheckingEmail(false);
+      }
+    };
+
+    const delayDebounceFn = setTimeout(() => {
+      checkEmailFn();
+    }, 450);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [email]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (existingWorker) {
+      return toast.error('A worker with this email address already exists. See profile details above.');
+    }
     if (!name || name.length < 2) return toast.error('Please enter a valid name.');
     if (!email || !email.includes('@')) return toast.error('Please enter a valid email address.');
     if (!phone || phone.length !== 10) return toast.error('Please enter a valid 10-digit phone number.');
@@ -58,7 +96,9 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
       const emailCheckSnap = await getDocs(emailCheckQ);
       if (!emailCheckSnap.empty) {
         setIsSubmitting(false);
-        return toast.error('A worker with this email address already exists.');
+        const docData = emailCheckSnap.docs[0];
+        setExistingWorker({ id: docData.id, ...docData.data() });
+        return toast.error('A worker with this email address already exists. Details are displayed below.');
       }
       
       const newUserId = 'worker_' + Math.random().toString(36).substr(2, 9);
@@ -118,7 +158,7 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="bg-[#111111] border-t border-l border-r sm:border border-[#2A2A2A] rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 relative"
+          className="bg-[#111111] border-t border-l border-r sm:border border-[#2A2A2A] rounded-t-3xl sm:rounded-2xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
         >
           <div className="flex justify-between items-start mb-6">
@@ -133,20 +173,6 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
-              <div className="relative">
-                <UserPlus size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter full name"
-                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-[#F59E0B] transition-colors"
-                />
-              </div>
-            </div>
-
-            <div>
               <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Email Address</label>
               <div className="relative">
                 <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -158,6 +184,87 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
                   required
                   className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-[#F59E0B] transition-colors"
                 />
+                {isCheckingEmail && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Activity className="animate-spin text-[#F59E0B]" size={16} />
+                  </div>
+                )}
+              </div>
+
+              <AnimatePresence>
+                {existingWorker && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mt-3 p-4 bg-[#E8B84B]/10 border border-[#E8B84B]/20 rounded-2xl space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] bg-[#E8B84B] text-black px-2 py-0.5 rounded-full font-black uppercase tracking-wider">
+                        Registered Worker Details
+                      </span>
+                      <span className="text-[8px] font-mono text-gray-500">ID: {existingWorker.id.substring(0, 10)}...</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-xs font-black text-white uppercase">{existingWorker.name || 'Anonymous'}</p>
+                      <p className="text-[10px] text-gray-400 font-mono flex items-center gap-1.5 mt-0.5">
+                        <Phone size={10} className="text-gray-500" /> +91 {existingWorker.phone?.replace('+91', '') || 'No Phone Registered'}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[9px] font-bold uppercase tracking-wider">
+                      <div className="bg-[#1A1A1A] p-2 rounded-xl border border-white/5">
+                        <p className="text-[8px] text-gray-500 mb-0.5">Venture / Role</p>
+                        <p className="text-white font-extrabold">{existingWorker.venture || 'N/A'} • {existingWorker.role || 'N/A'}</p>
+                      </div>
+                      <div className="bg-[#1A1A1A] p-2 rounded-xl border border-white/5">
+                        <p className="text-[8px] text-gray-500 mb-0.5">Status / Level</p>
+                        <p className="text-white font-extrabold">{existingWorker.status || 'Active'} • {existingWorker.level || 'Bronze'}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[9px] font-bold uppercase tracking-wider">
+                      <div className="bg-[#1C2A22] p-2 rounded-xl border border-[#10B981]/15">
+                        <p className="text-[8px] text-[#10B981]/70 mb-0.5">Earned Balance</p>
+                        <p className="text-[#10B981] font-extrabold">₹{existingWorker.wallets?.earned || 0}</p>
+                      </div>
+                      <div className="bg-[#2A2418] p-2 rounded-xl border border-[#F59E0B]/15">
+                        <p className="text-[8px] text-[#F59E0B]/70 mb-0.5">Pending Balance</p>
+                        <p className="text-[#F59E0B] font-extrabold">₹{existingWorker.wallets?.pending || 0}</p>
+                      </div>
+                    </div>
+
+                    {onWorkerFound && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onWorkerFound(existingWorker);
+                          onClose();
+                        }}
+                        className="w-full bg-[#E8B84B] hover:bg-[#E8B84B]/90 text-black py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all mt-1 flex items-center justify-center gap-1.5 active:scale-95 shadow-md border border-[#E8B84B]/20 animate-pulse"
+                      >
+                        <ShieldCheck size={14} className="stroke-[3px]" />
+                        <span>Manage Selected Profile</span>
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
+              <div className="relative">
+                <UserPlus size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter full name"
+                  disabled={!!existingWorker}
+                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-[#F59E0B] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                />
               </div>
             </div>
 
@@ -166,14 +273,15 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
               <div className="relative flex">
                 <div className="bg-[#1A1A1A] border border-[#2A2A2A] border-r-0 rounded-l-xl px-3 py-3 flex items-center text-gray-400 font-mono text-sm">
                    +91
-                </div>
+                 </div>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                   maxLength={10}
                   placeholder="10-digit number"
-                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-r-xl text-white pl-3 pr-4 py-3 focus:outline-none focus:border-[#F59E0B] transition-colors font-mono"
+                  disabled={!!existingWorker}
+                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-r-xl text-white pl-3 pr-4 py-3 focus:outline-none focus:border-[#F59E0B] transition-colors font-mono disabled:opacity-30 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -189,7 +297,8 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
                       setVenture(e.target.value);
                       setRole('');
                     }}
-                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-[#F59E0B] transition-colors appearance-none"
+                    disabled={!!existingWorker}
+                    className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-[#F59E0B] transition-colors appearance-none disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <option value="" disabled>Select a venture...</option>
                     {['BuyRix', 'Vyuma', 'Zaestify', 'Growplex'].map(v => (
@@ -209,7 +318,8 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-[#F59E0B] transition-colors appearance-none"
+                  disabled={!!existingWorker}
+                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:border-[#F59E0B] transition-colors appearance-none disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <option value="" disabled>Select a role...</option>
                   {availableRoles.map(r => (
@@ -219,13 +329,19 @@ export default function AddWorkerModal({ isOpen, onClose, subAdminVenture, subAd
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-[#F59E0B] text-black font-black uppercase py-4 rounded-xl mt-6 hover:bg-[#F59E0B]/90 transition-colors disabled:opacity-50"
-            >
-              {isSubmitting ? 'Creating...' : 'Create Account'}
-            </button>
+            {existingWorker ? (
+              <div className="text-center p-3.5 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl text-[10px] font-black uppercase text-[#EF4444] tracking-widest animate-pulse">
+                Email address is already in use
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={isSubmitting || isCheckingEmail}
+                className="w-full bg-[#F59E0B] text-black font-black uppercase py-4 rounded-xl mt-6 hover:bg-[#F59E0B]/90 transition-colors disabled:opacity-50"
+              >
+                {isSubmitting ? 'Creating...' : 'Create Account'}
+              </button>
+            )}
           </form>
         </motion.div>
       </motion.div>

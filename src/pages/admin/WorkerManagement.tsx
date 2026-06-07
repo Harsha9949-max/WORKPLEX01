@@ -771,6 +771,10 @@ export default function WorkerManagement() {
           setIsAddModalOpen(false);
           fetchWorkers();
         }} 
+        onWorkerFound={(worker) => {
+          setSearchTerm(worker.email || worker.name || '');
+          openWorkerDetail(worker);
+        }}
       />
 
       {/* Accurate Sync Progress Modal */}
