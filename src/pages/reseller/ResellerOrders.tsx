@@ -183,18 +183,6 @@ export default function ResellerOrders() {
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          try {
-            await setDoc(doc(db, 'systemConfig', 'gmail'), {
-              gmailToken: null,
-              isSessionExpired: true,
-              updatedAt: new Date()
-            }, { merge: true });
-          } catch (dbErr) {
-            console.error("Failed to invalidate session in Firebase:", dbErr);
-          }
-          throw new Error('Our platform’s global Gmail session has expired (401 Unauthorized). Please notify the Super Admin to log in and reconnect their Gmail account in the Control Panel.');
-        }
         throw new Error(`Gmail API returned status ${response.status}`);
       }
 
@@ -910,15 +898,6 @@ export default function ResellerOrders() {
                               ⚠️ This customer completed a mobile-only checkout and didn't specify an email address.
                             </div>
                           )
-                        ) : systemGmail?.isSessionExpired ? (
-                          <div className="space-y-2 text-center py-2.5 px-3 bg-red-950/30 border border-red-500/30 rounded-xl">
-                            <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest flex items-center justify-center gap-1">
-                              ⚠️ Gmail Session Expired (401)
-                            </p>
-                            <p className="text-[10px] text-gray-400 leading-normal">
-                              The Super Admin's global connected Gmail session has expired or been revoked. Please notify the Admin to reconnect Gmail in the Control Panel.
-                            </p>
-                          </div>
                         ) : (
                           <div className="space-y-2 text-center py-1">
                             <p className="text-[10px] text-amber-500 font-semibold">
