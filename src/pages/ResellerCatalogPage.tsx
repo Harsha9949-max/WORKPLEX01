@@ -159,12 +159,8 @@ export default function ResellerCatalogPage() {
                   </button>
                   <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between">
                     <div>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase">Price</p>
-                      <p className="text-lg font-black text-white leading-none">Rs.{product.suggestedRetailPrice}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] text-green-500 font-black uppercase tracking-tighter">Est. Margin</p>
-                      <p className="text-sm font-black text-green-500">Rs.{product.suggestedRetailPrice - product.hvrsBasePrice}</p>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase">Admin Price</p>
+                      <p className="text-lg font-black text-white leading-none">Rs.{product.suggestedRetailPrice || product.hvrsBasePrice}</p>
                     </div>
                   </div>
                 </div>
@@ -233,8 +229,8 @@ export default function ResellerCatalogPage() {
                       <p className="text-gray-500 text-sm font-medium">{selectedProduct.description}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-black text-white">Rs.{selectedProduct.suggestedRetailPrice}</p>
-                      <p className="text-[10px] text-green-500 font-black uppercase tracking-tighter">Earn Rs.{selectedProduct.suggestedRetailPrice - selectedProduct.hvrsBasePrice}</p>
+                      <p className="text-2xl font-black text-white">Rs.{selectedProduct.suggestedRetailPrice || selectedProduct.hvrsBasePrice}</p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter mt-1">Customize margin inside your catalog</p>
                     </div>
                   </div>
 
@@ -264,21 +260,23 @@ export default function ResellerCatalogPage() {
                         try {
                           const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
                           const docRef = doc(db, `partnerProducts/${userData?.uid}/products`, selectedProduct.id);
+                          const adminPrice = selectedProduct.suggestedRetailPrice || selectedProduct.hvrsBasePrice;
+                          const defaultSellingPrice = adminPrice + 100;
                           await setDoc(docRef, {
                             productId: selectedProduct.id,
                             name: selectedProduct.name,
                             images: selectedProduct.images || [],
                             hvrsBasePrice: selectedProduct.hvrsBasePrice,
-                            suggestedRetailPrice: selectedProduct.suggestedRetailPrice || selectedProduct.hvrsBasePrice,
-                            partnerSellingPrice: selectedProduct.suggestedRetailPrice || (selectedProduct.hvrsBasePrice * 1.5),
-                            partnerMargin: (selectedProduct.suggestedRetailPrice || (selectedProduct.hvrsBasePrice * 1.5)) - selectedProduct.hvrsBasePrice,
+                            suggestedRetailPrice: adminPrice,
+                            partnerSellingPrice: defaultSellingPrice,
+                            partnerMargin: 100, 
                             category: selectedProduct.category || 'General',
                             description: selectedProduct.description || '',
                             isActive: true,
                             venture: currentVenture,
                             addedAt: serverTimestamp()
                           });
-                          toast.success('Product added to your shop!');
+                          toast.success('Product added to your shop with Rs.100 margin!');
                           setSelectedProduct(null);
                         } catch (err: any) {
                           toast.error('Failed to add product: ' + err.message);

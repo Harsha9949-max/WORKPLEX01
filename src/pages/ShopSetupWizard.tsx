@@ -169,8 +169,9 @@ export default function ShopSetupWizard() {
           category: p.category || 'General',
           description: p.description || '',
           hvrsBasePrice: p.hvrsBasePrice,
+          suggestedRetailPrice: p.suggestedRetailPrice || p.hvrsBasePrice,
           partnerSellingPrice: p.partnerSellingPrice,
-          partnerMargin: p.partnerSellingPrice - p.hvrsBasePrice,
+          partnerMargin: p.partnerSellingPrice - (p.suggestedRetailPrice || p.hvrsBasePrice),
           isActive: true,
           addedAt: serverTimestamp()
         });
@@ -472,12 +473,13 @@ export default function ShopSetupWizard() {
               <div className="space-y-4 max-h-[400px] overflow-y-auto no-scrollbar pr-2">
                 {catalog.map(product => {
                   const isSelected = selectedProducts.find(p => p.id === product.id);
+                  const adminPrice = product.suggestedRetailPrice || product.hvrsBasePrice;
                   return (
                     <div key={product.id} className="bg-[#111111] border border-white/5 rounded-3xl p-4 flex gap-4 items-center">
                       <img src={product.images[0]} className="w-16 h-16 rounded-2xl object-cover" />
                       <div className="flex-1 space-y-1">
                         <h4 className="text-xs font-black uppercase tracking-tight">{product.name}</h4>
-                        <p className="text-[10px] text-gray-500 font-bold">Base: Rs.{product.hvrsBasePrice}</p>
+                        <p className="text-[10px] text-gray-500 font-bold">Admin Price: Rs.{adminPrice}</p>
                       </div>
                       {!isSelected ? (
                         <button 
@@ -494,7 +496,7 @@ export default function ShopSetupWizard() {
                             onChange={(e) => updateProductPrice(product.id, parseFloat(e.target.value) || 0)}
                             className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-2 text-xs font-black text-teal-400 outline-none"
                           />
-                          <p className="text-[8px] text-center mt-1 text-green-500 font-black">Profit: Rs.{(isSelected.partnerSellingPrice || 0) - product.hvrsBasePrice}</p>
+                          <p className="text-[8px] text-center mt-1 text-green-500 font-black">Margin: Rs.{(isSelected.partnerSellingPrice || 0) - adminPrice}</p>
                         </div>
                       )}
                     </div>

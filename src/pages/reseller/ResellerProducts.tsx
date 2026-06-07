@@ -106,8 +106,7 @@ export default function ResellerProducts() {
   const handleAddProduct = async (catalogProd: any, sellingPrice: number) => {
     if (!currentUser) return;
     const currentVenture = shop?.venture || userData?.venture || 'BuyRix';
-    // Margin is calculated as sellingPrice minus Admin Base Wholesale Cost Price (not Suggested Retail Price) for correct profits!
-    const basePriceForMargin = catalogProd.hvrsBasePrice;
+    const adminPrice = catalogProd.suggestedRetailPrice || catalogProd.hvrsBasePrice;
     try {
       const docRef = doc(db, `partnerProducts/${currentUser.uid}/products`, catalogProd.id);
       await setDoc(docRef, {
@@ -115,9 +114,9 @@ export default function ResellerProducts() {
         name: catalogProd.name,
         images: catalogProd.images || [],
         hvrsBasePrice: catalogProd.hvrsBasePrice,
-        suggestedRetailPrice: catalogProd.suggestedRetailPrice || catalogProd.hvrsBasePrice,
+        suggestedRetailPrice: adminPrice,
         partnerSellingPrice: sellingPrice,
-        partnerMargin: sellingPrice - basePriceForMargin,
+        partnerMargin: sellingPrice - adminPrice,
         category: catalogProd.category || 'General',
         description: catalogProd.description || '',
         isActive: true,
@@ -131,7 +130,7 @@ export default function ResellerProducts() {
     }
   };
 
-  const handleUpdatePrice = async (prodId: string, newPrice: number, basePrice: number) => {
+  const handleUpdatePrice = async (prodId: string, newPrice: number, adminPrice: number) => {
     if (newPrice <= 0) {
       toast.error('Selling price must be greater than 0');
       return;
@@ -141,7 +140,7 @@ export default function ResellerProducts() {
       const docRef = doc(db, `partnerProducts/${currentUser.uid}/products`, prodId);
       await updateDoc(docRef, {
         partnerSellingPrice: newPrice,
-        partnerMargin: newPrice - basePrice
+        partnerMargin: newPrice - adminPrice
       });
       toast.success('Price updated successfully');
       setEditingPriceId(null);
@@ -211,12 +210,13 @@ export default function ResellerProducts() {
         <div className="bg-[#111111] border border-[#2A2A2A] rounded-[8px] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-[#1A1A1A] text-gray-400 font-medium">
+              <thead className="bg-[#1A1A1A] text-gray-400 font-medium font-bold uppercase text-[11px] tracking-widest border-b border-[#2A2A2A]">
                 <tr>
                   <th className="px-6 py-4">Product</th>
                   <th className="px-6 py-4">Category</th>
-                  <th className="px-6 py-4">Your Price</th>
+                  <th className="px-6 py-4">Admin Price</th>
                   <th className="px-6 py-4">Your Margin</th>
+                  <th className="px-6 py-4">Selling Price</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
@@ -230,11 +230,13 @@ export default function ResellerProducts() {
                   const images = master ? (master.images || []) : (prod.images || []);
                   const category = master ? master.category : prod.category;
                   
-                  const adminBasePrice = master ? master.hvrsBasePrice : prod.hvrsBasePrice;
-                  const adminSuggestedPrice = master ? master.suggestedRetailPrice : (prod.suggestedRetailPrice || prod.hvrsBasePrice);
+                  // The price listed by the admin is suggestedRetailPrice (or hvrsBasePrice fallback)
+                  const adminPrice = master 
+                    ? (master.suggestedRetailPrice || master.hvrsBasePrice)
+                    : (prod.suggestedRetailPrice || prod.hvrsBasePrice);
                   
                   const customPrice = prod.partnerSellingPrice;
-                  const marginValue = customPrice - adminBasePrice;
+                  const marginValue = customPrice - adminPrice;
 
                   return (
                     <tr key={prod.id} className="hover:bg-white/5 transition-colors group">
@@ -245,24 +247,37 @@ export default function ResellerProducts() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-gray-400 capitalize">{category}</td>
+                      <td className="px-6 py-4 text-gray-300 font-semibold font-mono">
+                        {formatCurrency(adminPrice)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className={`font-bold font-mono ${editingPriceId === prod.id ? (Number(tempPrice) - adminPrice >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]') : (marginValue >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]')}`}>
+                            {editingPriceId === prod.id 
+                              ? (Number(tempPrice) - adminPrice >= 0 ? `+` : '') + formatCurrency(Number(tempPrice) - adminPrice)
+                              : (marginValue >= 0 ? `+` : '') + formatCurrency(marginValue)
+                            }
+                          </span>
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         {editingPriceId === prod.id ? (
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-400">Rs.</span>
+                            <span className="text-gray-400 font-mono">Rs.</span>
                             <input 
                               type="number"
                               value={tempPrice}
                               onChange={(e) => setTempPrice(e.target.value)}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleUpdatePrice(prod.id, Number(tempPrice), adminBasePrice);
+                                if (e.key === 'Enter') handleUpdatePrice(prod.id, Number(tempPrice), adminPrice);
                                 if (e.key === 'Escape') setEditingPriceId(null);
                               }}
                               autoFocus
-                              className="w-20 bg-[#1A1A1A] border border-[#00C9A7] text-white px-2 py-1 rounded outline-none"
+                              className="w-24 bg-[#1A1A1A] border border-[#E8B84B] text-white px-2 py-1 rounded outline-none font-mono text-sm"
                             />
                             <button onClick={() => {
-                              handleUpdatePrice(prod.id, Number(tempPrice), adminBasePrice);
-                            }} className="text-[#00C9A7] hover:text-[#00C9A7]/80">
+                              handleUpdatePrice(prod.id, Number(tempPrice), adminPrice);
+                            }} className="text-[#10B981] hover:text-[#10B981]/80">
                               <Check size={16} />
                             </button>
                             <button onClick={() => setEditingPriceId(null)} className="text-gray-500 hover:text-white">
@@ -270,22 +285,11 @@ export default function ResellerProducts() {
                             </button>
                           </div>
                         ) : (
-                          <div className="flex flex-col select-none">
-                            <div className="flex items-center gap-2 group/price cursor-pointer" onClick={() => { setEditingPriceId(prod.id); setTempPrice(prod.partnerSellingPrice.toString()); }}>
-                              <span className="font-bold text-white">{formatCurrency(prod.partnerSellingPrice)}</span>
-                              <Edit2 size={12} className="text-gray-500 group-hover/price:text-white opacity-0 group-hover/price:opacity-100 transition-opacity" />
-                            </div>
-                            <span className="text-[10px] text-gray-500 mt-0.5">Sug: {formatCurrency(adminSuggestedPrice)}</span>
+                          <div className="flex items-center gap-2 group/price cursor-pointer select-none" onClick={() => { setEditingPriceId(prod.id); setTempPrice(prod.partnerSellingPrice.toString()); }}>
+                            <span className="font-extrabold text-white font-mono">{formatCurrency(prod.partnerSellingPrice)}</span>
+                            <Edit2 size={12} className="text-gray-500 group-hover/price:text-white opacity-0 group-hover/price:opacity-100 transition-opacity" />
                           </div>
                         )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col">
-                          <span className={`font-bold ${editingPriceId === prod.id ? (Number(tempPrice) - adminBasePrice >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]') : (marginValue >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]')}`}>
-                            {formatCurrency(editingPriceId === prod.id ? (Number(tempPrice) - adminBasePrice) : marginValue)}
-                          </span>
-                          <span className="text-[10px] text-gray-500 mt-0.5 font-normal">Base: {formatCurrency(adminBasePrice)}</span>
-                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <button 
@@ -370,12 +374,8 @@ export default function ResellerProducts() {
                           <h3 className="font-bold text-white mb-2 line-clamp-1">{p.name}</h3>
                           <div className="flex justify-between items-end mb-4">
                             <div>
-                              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Sug. Retail</p>
-                              <p className="text-lg font-black text-[#E8B84B]">{formatCurrency(p.suggestedRetailPrice)}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Wholesale cost</p>
-                              <p className="text-sm font-bold text-gray-400">{formatCurrency(p.hvrsBasePrice)}</p>
+                              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Admin Listed Price</p>
+                              <p className="text-lg font-black text-[#E8B84B]">{formatCurrency(p.suggestedRetailPrice || p.hvrsBasePrice)}</p>
                             </div>
                           </div>
                           <div className="mt-auto">
@@ -408,9 +408,8 @@ export default function ResellerProducts() {
 
 function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, price: number) => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const baseForMargin = product.hvrsBasePrice;
-  const suggestedPrice = product.suggestedRetailPrice || product.hvrsBasePrice;
-  const [price, setPrice] = useState(suggestedPrice);
+  const adminPrice = product.suggestedRetailPrice || product.hvrsBasePrice;
+  const [margin, setMargin] = useState(100);
 
   if (!isOpen) {
     return (
@@ -423,24 +422,37 @@ function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, pr
     );
   }
 
-  const margin = price - baseForMargin;
+  const price = adminPrice + margin;
 
   return (
-    <div className="bg-[#1A1A1A] p-3 rounded border border-[#00C9A7]">
-      <p className="text-[10px] font-bold text-[#00C9A7] uppercase tracking-widest mb-2">Set Your Selling Price</p>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-gray-400">Rs.</span>
-        <input 
-          type="number" 
-          value={price}
-          onChange={(e) => setPrice(Number(e.target.value))}
-          className="flex-1 bg-[#111111] border border-[#2A2A2A] text-white px-2 py-1.5 rounded outline-none text-sm focus:border-[#E8B84B]"
-          autoFocus
-        />
+    <div className="bg-[#1A1A1A] p-3 rounded border border-[#E8B84B]/60">
+      <p className="text-[10px] font-bold text-[#E8B84B] uppercase tracking-widest mb-2">Configure Price & Margin</p>
+      
+      <div className="space-y-2 mb-3">
+        <div className="flex justify-between items-center text-xs">
+          <span className="text-gray-400">Admin Price:</span>
+          <span className="text-white font-semibold font-mono">{formatCurrency(adminPrice)}</span>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400 shrink-0">Your Margin:</span>
+          <div className="flex items-center gap-1 bg-[#111111] border border-[#2A2A2A] rounded px-2 py-1 flex-1">
+            <span className="text-gray-500 text-xs font-mono">Rs.</span>
+            <input 
+              type="number" 
+              value={margin}
+              onChange={(e) => setMargin(Number(e.target.value) || 0)}
+              className="w-full bg-transparent text-white outline-none text-xs text-right font-mono"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center text-xs pt-1 border-t border-[#2A2A2A]">
+          <span className="text-gray-400">Final Selling Price:</span>
+          <span className="text-[#10B981] font-black font-mono">{formatCurrency(price)}</span>
+        </div>
       </div>
-      <p className="text-xs text-gray-400 mb-3">
-        You'll earn: <span className={`font-bold ${margin >= 0 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>Rs. {margin}</span>
-      </p>
+
       <div className="flex gap-2">
         <button 
           onClick={() => setIsOpen(false)}
@@ -450,14 +462,13 @@ function CatalogAddButton({ product, onAdd }: { product: any, onAdd: (p: any, pr
         </button>
         <button 
           onClick={() => {
-            if (price < baseForMargin) {
-              toast.error(`Price must be at least Rs. ${baseForMargin}`);
+            if (margin < 0) {
+              toast.error(`Margin must be at least Rs. 0`);
               return;
             }
             onAdd(product, price);
           }}
-          disabled={price < baseForMargin}
-          className="flex-1 py-1.5 bg-[#E8B84B] text-black rounded text-xs font-bold hover:bg-[#E8B84B]/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 py-1.5 bg-[#E8B84B] text-black rounded text-xs font-bold hover:bg-[#E8B84B]/90"
         >
           Confirm Add
         </button>
