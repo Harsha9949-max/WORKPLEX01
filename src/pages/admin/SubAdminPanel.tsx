@@ -96,8 +96,20 @@ export default function SubAdminPanel() {
      return <Navigate to="/home" replace />;
   }
 
-  const activeWorkers = workers.filter(w => w.status === 'active');
-  const pendingWorkers = workers.filter(w => w.status === 'pending');
+  const activeWorkers = workers.filter(w => 
+    w.status === 'active' && 
+    w.role?.toLowerCase() !== 'admin' && 
+    w.role?.toLowerCase() !== 'sub-admin' &&
+    w.email !== 'marateyh@gmail.com' &&
+    w.email !== 'hvrsindustriespvtltd@gmail.com'
+  );
+  const pendingWorkers = workers.filter(w => 
+    w.status === 'pending' && 
+    w.role?.toLowerCase() !== 'admin' && 
+    w.role?.toLowerCase() !== 'sub-admin' &&
+    w.email !== 'marateyh@gmail.com' &&
+    w.email !== 'hvrsindustriespvtltd@gmail.com'
+  );
 
   const handleApproveWorker = async (workerId: string, role: string) => {
      if (!role) return toast.error('Please select a role to approve.');

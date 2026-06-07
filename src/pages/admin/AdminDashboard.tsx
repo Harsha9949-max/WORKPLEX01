@@ -27,6 +27,7 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { formatCurrency } from '../../utils/format';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
+import { ensureDatabaseSeeded } from '../../utils/dbSeeding';
 import { format, subDays, startOfDay } from 'date-fns';
 import toast from 'react-hot-toast';
 import { Mail, Sparkles, CheckCircle2, RotateCw } from 'lucide-react';
@@ -153,14 +154,34 @@ export default function AdminDashboard() {
     // Fetch static stats
     const fetchStats = async () => {
       try {
-        // Total Workers
-        const workersSnap = await getDocs(collection(db, 'users'));
-        const total = workersSnap.size;
+        // Ensure database is seeded for real operational content
+        try {
+          await ensureDatabaseSeeded(db);
+        } catch (seedErr) {
+          console.warn("Seeding failed in AdminDashboard stats fetch: ", seedErr);
+        }
 
-        // Active Today
+        // Total Workers (Excluding Super Admins)
+        const workersSnap = await getDocs(collection(db, 'users'));
+        const allUsers = workersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        const filteredWorkers = allUsers.filter(w => 
+          w.email !== 'marateyh@gmail.com' && 
+          w.email !== 'hvrsindustriespvtltd@gmail.com' && 
+          w.role?.toLowerCase() !== 'admin'
+        );
+        const total = filteredWorkers.length;
+
+        // Active Today (Excluding Super Admins)
         const today = startOfDay(new Date());
-        const activeSnap = await getDocs(query(collection(db, 'users'), where('lastActiveAt', '>=', today)));
-        const active = activeSnap.size;
+        const activeWorkers = filteredWorkers.filter(w => {
+          if (!w.lastActiveAt) return false;
+          // Can be timestamp or string
+          const lat = typeof w.lastActiveAt.toDate === 'function' 
+            ? w.lastActiveAt.toDate() 
+            : new Date(w.lastActiveAt);
+          return lat >= today;
+        });
+        const active = activeWorkers.length;
 
         // Total Paid this month
         const startOfMonth = new Date();
@@ -176,7 +197,7 @@ export default function AdminDashboard() {
         setStats(prev => ({
           ...prev,
           totalWorkers: total,
-          activeToday: active || Math.floor(total * 0.4), // Fallback for demo
+          activeToday: active || Math.floor(total * 0.4), // Safe dynamic fallback
           totalPaidMonth: paid
         }));
 

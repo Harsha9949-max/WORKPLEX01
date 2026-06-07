@@ -27,6 +27,7 @@ import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
+import { parseDate } from '../utils/format';
 
 interface Message {
   id: string;
@@ -160,7 +161,7 @@ export default function TeamChatScreen() {
                   {msg.text}
                 </div>
                 <span className="text-[9px] font-bold text-gray-600 uppercase tracking-tighter mt-1 px-1">
-                  {msg.timestamp ? formatDistanceToNow(msg.timestamp.toDate(), { addSuffix: true }) : 'sending...'}
+                  {msg.timestamp && parseDate(msg.timestamp) ? formatDistanceToNow(parseDate(msg.timestamp)!, { addSuffix: true }) : 'sending...'}
                 </span>
               </motion.div>
             );

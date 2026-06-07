@@ -16,7 +16,8 @@ import {
   Menu,
   X,
   Briefcase,
-  Mail
+  Mail,
+  TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -31,6 +32,7 @@ export default function AdminLayout() {
 
   const menuItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+    { name: 'Strategic Advisory', path: '/admin/strategy', icon: TrendingUp },
     { name: 'Partner Orders', path: '/admin/partner-orders', icon: Briefcase },
     { name: 'Workers', path: '/admin/workers', icon: Users },
     { name: 'Missions', path: '/admin/tasks', icon: CheckSquare },

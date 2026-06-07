@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, Check, X, ArrowRight } from 'lucide-react';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, parseDate } from '../../utils/format';
 
 interface Task {
   id: string;
@@ -24,7 +24,8 @@ export default function TaskCard({ task, onAccept, onSkip }: Props) {
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date().getTime();
-      const expiry = task.expiresAt.toDate().getTime();
+      const parsedExpiry = parseDate(task.expiresAt);
+      const expiry = parsedExpiry ? parsedExpiry.getTime() : now;
       const diff = expiry - now;
 
       if (diff <= 0) {

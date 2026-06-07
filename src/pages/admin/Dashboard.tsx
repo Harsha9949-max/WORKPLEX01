@@ -26,9 +26,16 @@ export default function Dashboard() {
     const fetchStats = async () => {
       try {
         const usersSnap = await getDocs(collection(db, 'users'));
-        setStats(prev => ({ ...prev, totalWorkers: usersSnap.size }));
+        const allUsers = usersSnap.docs.map(doc => doc.data() as any);
+        const filteredWorkers = allUsers.filter(w => 
+          w.email !== 'marateyh@gmail.com' && 
+          w.email !== 'hvrsindustriespvtltd@gmail.com' && 
+          w.role?.toLowerCase() !== 'admin'
+        );
+        const total = filteredWorkers.length;
+        setStats(prev => ({ ...prev, totalWorkers: total }));
         // Mocking other stats for now
-        setStats(prev => ({ ...prev, activeToday: Math.floor(usersSnap.size * 0.4), pendingWithdrawals: 12, totalPaid: 45000 }));
+        setStats(prev => ({ ...prev, activeToday: Math.floor(total * 0.4), pendingWithdrawals: 12, totalPaid: 45000 }));
       } catch (error) {
         console.error("Error fetching stats", error);
       }

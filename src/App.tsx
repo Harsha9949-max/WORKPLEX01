@@ -59,6 +59,7 @@ import AdminRouteGuard from './components/admin/AdminRouteGuard';
 import AdminLayout from './components/admin/AdminLayout';
 import Footer from './components/layout/Footer';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import StrategicConsole from './pages/admin/StrategicConsole';
 import AdminEmailDispatcher from './pages/admin/AdminEmailDispatcher';
 import WorkerManagement from './pages/admin/WorkerManagement';
 import TaskManagement from './pages/admin/TaskManagement';
@@ -156,6 +157,7 @@ function AppContent() {
         {/* Phase 7 Admin Panel */}
         <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
           <Route index element={<AdminDashboard />} />
+          <Route path="strategy" element={<StrategicConsole />} />
           <Route path="cms" element={<MainPageCMS />} />
           <Route path="partner-orders" element={<AdminPartnerOrders />} />
           <Route path="workers" element={<WorkerManagement />} />

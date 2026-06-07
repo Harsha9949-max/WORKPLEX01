@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import { safeFormatDate } from '../../utils/format';
 
 /**
  * Fraud Alerts Management.
@@ -140,7 +141,7 @@ export default function FraudAlerts() {
               <div className="flex items-center gap-8 w-full lg:w-auto border-t lg:border-t-0 lg:border-l border-[#2A2A2A] pt-8 lg:pt-0 lg:pl-10">
                 <div className="text-center hidden xl:block">
                   <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest mb-1">Flagged At</p>
-                  <p className="text-xs font-black text-white uppercase">{alert.createdAt ? format(alert.createdAt.toDate(), 'HH:mm | dd MMM') : 'N/A'}</p>
+                  <p className="text-xs font-black text-white uppercase">{safeFormatDate(alert.createdAt, 'HH:mm | dd MMM')}</p>
                 </div>
 
                 <div className="flex items-center gap-3 flex-1 lg:flex-none">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Share2, Clock, Copy, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { parseDate } from '../../utils/format';
 
 interface Props {
   coupon: {
@@ -21,7 +22,8 @@ export default function CouponCard({ coupon, venture }: Props) {
 
     const interval = setInterval(() => {
       const now = new Date().getTime();
-      const expiry = coupon.expiresAt.toDate().getTime();
+      const parsedExpiry = parseDate(coupon.expiresAt);
+      const expiry = parsedExpiry ? parsedExpiry.getTime() : now;
       const diff = Math.max(0, Math.floor((expiry - now) / 1000));
       setTimeLeft(diff);
       

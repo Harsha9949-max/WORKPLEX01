@@ -29,7 +29,7 @@ import {
   Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, safeFormatDate } from '../../utils/format';
 import { format, startOfDay } from 'date-fns';
 
 /**
@@ -247,7 +247,7 @@ export default function WithdrawalManagement() {
                   </td>
                   <td className="px-6 py-5">
                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                      {w.createdAt ? format(w.createdAt.toDate(), 'HH:mm | dd MMM') : 'N/A'}
+                      {safeFormatDate(w.createdAt, 'HH:mm | dd MMM')}
                     </p>
                   </td>
                   <td className="px-6 py-5 text-right">

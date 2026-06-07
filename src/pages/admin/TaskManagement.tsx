@@ -36,7 +36,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../lib/firebase';
 import toast from 'react-hot-toast';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, safeFormatDate } from '../../utils/format';
 import { format } from 'date-fns';
 
 /**
@@ -629,7 +629,7 @@ export default function TaskManagement() {
                     </div>
                     <div className="text-center border-l border-[#2A2A2A] pl-8">
                       <p className="text-[8px] text-gray-500 font-black uppercase tracking-widest mb-1">Timestamp</p>
-                      <p className="text-xs font-bold text-white">{sub.submittedAt ? format(sub.submittedAt.toDate(), 'HH:mm | dd MMM') : 'N/A'}</p>
+                      <p className="text-xs font-bold text-white">{safeFormatDate(sub.submittedAt, 'HH:mm | dd MMM')}</p>
                     </div>
                   </div>
 

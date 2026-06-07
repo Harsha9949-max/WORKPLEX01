@@ -40,7 +40,8 @@ import {
   UserPlus
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, safeFormatDate, parseDate } from '../../utils/format';
+import { ensureDatabaseSeeded } from '../../utils/dbSeeding';
 import { format } from 'date-fns';
 
 /**
@@ -71,6 +72,14 @@ export default function WorkerManagement() {
 
   const fetchWorkers = async () => {
     setLoading(true);
+    
+    // Ensure database is seeded so standard workers are available immediately
+    try {
+      await ensureDatabaseSeeded(db);
+    } catch (seedErr) {
+      console.warn("Seeding failed in WorkerManagement: ", seedErr);
+    }
+
     try {
       // 1. Attempt fetching from Backend API (integrated merged lists of Auth & Firestore)
       const res = await fetch('/api/admin/users');
@@ -78,13 +87,18 @@ export default function WorkerManagement() {
         const result = await res.json();
         if (result.success && Array.isArray(result.workers)) {
           let loaded = result.workers;
-          // Sort by joinedAt
-          loaded.sort((a: any, b: any) => {
-            const timeA = a.joinedAt?.seconds || 0;
-            const timeB = b.joinedAt?.seconds || 0;
+          // Exclude super admins & Sort by joinedAt
+          let filtered = loaded.filter((w: any) => 
+            w.email !== 'marateyh@gmail.com' && 
+            w.email !== 'hvrsindustriespvtltd@gmail.com' && 
+            w.role?.toLowerCase() !== 'admin'
+          );
+          filtered.sort((a: any, b: any) => {
+            const timeA = parseDate(a.joinedAt)?.getTime() || 0;
+            const timeB = parseDate(b.joinedAt)?.getTime() || 0;
             return timeB - timeA;
           });
-          setWorkers(loaded);
+          setWorkers(filtered);
           setLoading(false);
           return;
         }
@@ -93,12 +107,21 @@ export default function WorkerManagement() {
       console.warn("Backend fetch failed, falling back to client-side Firestore query:", apiErr);
     }
 
-    // 2. Fallback to direct client-side Firestore collection query
+    // 2. Fallback to direct client-side Firestore collection query (No risky index-dependent orderBy clauses)
     try {
-      let q = query(collection(db, 'users'), orderBy('joinedAt', 'desc'), limit(150));
-
-      const snap = await getDocs(q);
-      setWorkers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const snap = await getDocs(collection(db, 'users'));
+      let loaded = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      let filtered = loaded.filter((w: any) => 
+        w.email !== 'marateyh@gmail.com' && 
+        w.email !== 'hvrsindustriespvtltd@gmail.com' && 
+        w.role?.toLowerCase() !== 'admin'
+      );
+      filtered.sort((a: any, b: any) => {
+        const timeA = parseDate(a.joinedAt)?.getTime() || 0;
+        const timeB = parseDate(b.joinedAt)?.getTime() || 0;
+        return timeB - timeA;
+      });
+      setWorkers(filtered);
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'users');
     } finally {
@@ -499,7 +522,7 @@ export default function WorkerManagement() {
                       <Calendar size={10} className="text-[#E8B84B]" /> Joined
                     </p>
                     <p className="text-xs md:text-sm font-black text-white mt-1">
-                      {selectedWorker.joinedAt ? format(selectedWorker.joinedAt.toDate(), 'dd MMM yyyy') : 'N/A'}
+                      {safeFormatDate(selectedWorker.joinedAt)}
                     </p>
                   </div>
                   <div className="p-3 md:p-4 bg-[#1A1A1A] rounded-2xl border border-white/5">

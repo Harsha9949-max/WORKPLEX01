@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTeamData } from '../hooks/useTeamData';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, parseDate } from '../utils/format';
 import { format } from 'date-fns';
 
 export default function TeamManagement() {
@@ -62,10 +62,10 @@ export default function TeamManagement() {
             <span className="text-[10px] font-bold uppercase">Growth</span>
           </div>
           <p className="text-xl font-black text-teal-500">+{teamMembers.filter(m => {
-            const joined = m.joinedAt?.toDate();
+            const joined = parseDate(m.joinedAt);
             const weekAgo = new Date();
             weekAgo.setDate(weekAgo.getDate() - 7);
-            return joined > weekAgo;
+            return joined ? joined > weekAgo : false;
           }).length}</p>
         </div>
       </div>

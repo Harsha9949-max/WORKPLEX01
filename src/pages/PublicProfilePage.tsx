@@ -21,6 +21,7 @@ import {
   Gem
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { safeFormatDate } from '../utils/format';
 import { BADGES } from '../constants/gamification';
 import SkeletonLoader from '../components/dashboard/SkeletonLoader';
 import { Logo } from '../components/ui/Logo';
@@ -192,7 +193,7 @@ export default function PublicProfilePage() {
         </div>
 
         <p className="mt-8 text-center text-[10px] font-black uppercase tracking-widest text-gray-700">
-          Member since {profile.joinedAt ? format(profile.joinedAt.toDate(), 'MM/yyyy') : 'Unrecorded'}
+          Member since {safeFormatDate(profile.joinedAt, 'MM/yyyy')}
         </p>
       </div>
 

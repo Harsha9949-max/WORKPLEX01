@@ -161,7 +161,11 @@ router.get("/admin/users", async (req, res) => {
       }
     });
 
-    const mergedList = Array.from(mergedMap.values());
+    const mergedList = Array.from(mergedMap.values()).filter(user => 
+      user.email !== 'marateyh@gmail.com' && 
+      user.email !== 'hvrsindustriespvtltd@gmail.com' && 
+      user.role?.toLowerCase() !== 'admin'
+    );
     res.json({ success: true, workers: mergedList });
   } catch (error: any) {
     console.error("Backend List Users error:", error);

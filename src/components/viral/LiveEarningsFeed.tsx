@@ -4,6 +4,7 @@ import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestor
 import { db } from '../../lib/firebase';
 import { TrendingUp, DollarSign } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { parseDate } from '../../utils/format';
 
 interface FeedItem {
   id: string;
@@ -65,7 +66,7 @@ export default function LiveEarningsFeed() {
                   <span className="text-[10px] text-gray-400 truncate max-w-[60px]">via {item.source}</span>
                 </div>
                 <div className="text-[9px] text-gray-600 mt-1 uppercase font-bold tracking-wider">
-                  {item.timestamp ? formatDistanceToNow(item.timestamp.toDate(), { addSuffix: true }) : 'Just now'}
+                  {item.timestamp && parseDate(item.timestamp) ? formatDistanceToNow(parseDate(item.timestamp)!, { addSuffix: true }) : 'Just now'}
                 </div>
               </div>
             </motion.div>
