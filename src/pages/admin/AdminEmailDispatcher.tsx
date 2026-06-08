@@ -36,7 +36,12 @@ export default function AdminEmailDispatcher() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setGmailConfig(data);
-        if (data.gmailToken) {
+        
+        // Safely check if the saved token has expired (Google access tokens expire in 1 hour)
+        const updatedAtVal = data.updatedAt?.toMillis ? data.updatedAt.toMillis() : (data.updatedAt ? new Date(data.updatedAt).getTime() : 0);
+        const isExpired = !updatedAtVal || (Date.now() - updatedAtVal > 59 * 60 * 1000);
+        
+        if (data.gmailToken && !isExpired) {
           setGmailToken(data.gmailToken);
         } else {
           setGmailToken(null);

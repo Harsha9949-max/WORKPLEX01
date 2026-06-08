@@ -4,12 +4,12 @@ import {
   Zap, Sparkles, CheckCircle2, ArrowRight, ShieldCheck, 
   Trophy, Target, Flame, ShoppingBag, Video, TrendingUp, 
   Users, Wallet, Clock, ChevronDown, Facebook, Twitter, 
-  Instagram, Linkedin, Mail, Phone, MapPin
+  Instagram, Linkedin, Mail, Phone, MapPin, Layers, Briefcase
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Logo } from '../components/ui/Logo';
 import { useTranslation } from 'react-i18next';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, collection } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 // 3D Tilt Card Component
@@ -92,6 +92,18 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [cmsData, setCmsData] = useState<any>(null);
+  const [dbVentures, setDbVentures] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Real-time subscribe to ventures for immediate rendering of admin edits
+    const unsub = onSnapshot(collection(db, 'ventures'), (snap) => {
+      if (!snap.empty) {
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        setDbVentures(list);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const fetchCMS = async () => {
@@ -122,6 +134,22 @@ export default function LandingPage() {
   const statsPaidLabel = cmsData?.statsPaidLabel || 'Paid Out Securely';
   const statsMissionsText = cmsData?.statsMissionsText || '750+';
   const statsMissionsLabel = cmsData?.statsMissionsLabel || 'Daily Missions Added';
+
+  // Available icon mapper for dynamic ventures
+  const getVentureIcon = (iconName: string) => {
+    switch (iconName) {
+      case 'ShoppingBag': return ShoppingBag;
+      case 'Video': return Video;
+      case 'TrendingUp': return TrendingUp;
+      case 'Users': return Users;
+      case 'Target': return Target;
+      case 'Flame': return Flame;
+      case 'Zap': return Zap;
+      case 'Sparkles': return Sparkles;
+      case 'Layers': return Layers;
+      default: return Briefcase;
+    }
+  };
 
   const defaultVentures = [
     { 
@@ -162,12 +190,24 @@ export default function LandingPage() {
     }
   ];
 
-  const venturesToDisplay = defaultVentures.map((v, i) => {
-    if (cmsData?.ventures && cmsData.ventures[i]) {
-      return { ...v, ...cmsData.ventures[i] };
-    }
-    return v;
-  });
+  // Dynamic vs fallback logic and dynamic styling mapping
+  const venturesToDisplay = dbVentures.length > 0 
+    ? dbVentures.map((v) => ({
+        id: v.name?.toUpperCase() || v.id?.toUpperCase(),
+        icon: getVentureIcon(v.iconName),
+        color: v.color || 'text-amber-400',
+        bg: v.bg || 'bg-[#111111]',
+        desc: v.desc || '',
+        potential: v.potential || 'Coming Soon',
+        comingSoon: !!v.comingSoon,
+        active: v.active !== false
+      }))
+    : defaultVentures.map((v, i) => {
+        if (cmsData?.ventures && cmsData.ventures[i]) {
+          return { ...v, ...cmsData.ventures[i] };
+        }
+        return v;
+      });
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white overflow-hidden relative selection:bg-[#E8B84B] selection:text-black">

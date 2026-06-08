@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { doc, setDoc, query, collection, where, limit, getDocs } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -50,31 +50,124 @@ export default function CompressedOnboarding() {
     { code: 'pa', name: 'Punjabi (ਪੰਜਾਬੀ)', flag: '🇮🇳' }
   ];
 
-  const ventures = [
-    { id: 'BuyRix', name: 'BuyRix', tag: 'E-commerce', desc: 'Product reviews & sharing', active: true },
-    { id: 'Vyuma', name: 'Vyuma', tag: 'Creator', desc: 'Content & Social Media', active: true },
-    { id: 'Growplex', name: 'Growplex', tag: 'Agency', desc: 'B2B & Digital Marketing', active: true },
-    { id: 'Zaestify', name: 'Zaestify', tag: 'Fashion', desc: 'Apparel & Trends', active: false }
+  const [dbVentures, setDbVentures] = useState<any[]>([]);
+  const [regConfig, setRegConfig] = useState<any>({
+    globalRegistrationEnabled: true,
+    blockedVentureIds: [],
+    blockedRoles: [],
+    quotas: {},
+    blockedCombinations: {}
+  });
+  const [dynamicCounts, setDynamicCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    // Subscriber to live channels
+    const unsubVentures = onSnapshot(collection(db, 'ventures'), (snap) => {
+      if (!snap.empty) {
+        setDbVentures(snap.docs.map(doc => ({ id: doc.id, ...doc.data() as any })));
+      }
+    });
+
+    const unsubConfig = onSnapshot(doc(db, 'systemConfig', 'registrationControls'), (snap) => {
+      if (snap.exists()) {
+        setRegConfig(snap.data());
+      }
+    });
+
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
+      const counts: Record<string, number> = {};
+      snap.docs.forEach(docSnap => {
+        const u = docSnap.data();
+        if (u.email !== 'hvrsindustriespvtltd@gmail.com' && u.role?.toLowerCase() !== 'admin' && u.venture && u.role) {
+          // Normalize matching key with capitalisation
+          const key = `${u.venture}_${u.role}`;
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      });
+      setDynamicCounts(counts);
+    });
+
+    return () => {
+      unsubVentures();
+      unsubConfig();
+      unsubUsers();
+    };
+  }, []);
+
+  const defaultVentures = [
+    { id: 'BuyRix', name: 'BuyRix', tag: 'E-commerce', desc: 'Product reviews & sharing', active: true, roles: ['Reseller', 'Marketer', 'Content Creator'] },
+    { id: 'Vyuma', name: 'Vyuma', tag: 'Creator', desc: 'Content & Social Media', active: true, roles: ['Reseller', 'Marketer', 'Content Creator'] },
+    { id: 'Growplex', name: 'Growplex', tag: 'Agency', desc: 'B2B & Digital Marketing', active: true, roles: ['Promoter', 'Content Creator'] },
+    { id: 'Zaestify', name: 'Zaestify', tag: 'Fashion', desc: 'Apparel & Trends', active: false, roles: ['Marketer', 'Content Creator'] }
   ];
 
-  const getRolesByVenture = (v: string) => {
-    switch(v) {
-      case 'BuyRix': return [
-        { id: 'Marketer', name: 'Marketer', icon: '📈', desc: 'Promote products and earn commissions', disabled: true },
-        { id: 'Content Creator', name: 'Content Creator', icon: '🎥', desc: 'Create videos, write reviews', disabled: true },
-        { id: 'Reseller', name: 'Reseller', icon: '🛍️', desc: 'Sell catalog items directly', disabled: false }
-      ];
-      case 'Vyuma': return [
-        { id: 'Marketer', name: 'Marketer', icon: '📈', desc: 'Promote content and earn', disabled: true },
-        { id: 'Content Creator', name: 'Content Creator', icon: '🎥', desc: 'Create videos, write reviews', disabled: true },
-        { id: 'Reseller', name: 'Reseller', icon: '🛍️', desc: 'Merch sales', disabled: false }
-      ];
-      case 'Growplex': return [
-        { id: 'Promoter', name: 'Promoter', icon: '📢', desc: 'Promote B2B services', disabled: true },
-        { id: 'Content Creator', name: 'Content Creator', icon: '🎥', desc: 'Create marketing materials', disabled: true }
-      ];
-      default: return [];
-    }
+  // Dynamic Ventures mapping matching admin custom settings
+  const ventures = (dbVentures.length > 0 ? dbVentures : defaultVentures).map(v => {
+    // Check if the whole venture is closed by admin controls
+    const isVentureBlocked = regConfig.blockedVentureIds?.includes(v.id);
+    return {
+      ...v,
+      // Active state is driven by direct active status and block lists
+      active: v.active !== false && !isVentureBlocked && !v.comingSoon
+    };
+  });
+
+  const getRoleDesc = (r: string) => {
+     switch(r) {
+        case 'Reseller': return 'Sell catalog items directly';
+        case 'Content Creator': return 'Create videos, write reviews';
+        case 'Marketer': return 'Promote products and earn commissions';
+        case 'Promoter': return 'Promote B2B services';
+        default: return `Participate as an active ${r}`;
+     }
+  };
+
+  const getRolesByVenture = (vId: string) => {
+    const matchedVenture = (dbVentures.length > 0 ? dbVentures : defaultVentures).find(v => v.id.toLowerCase() === vId.toLowerCase());
+    if (!matchedVenture) return [];
+
+    const matchedRoles = matchedVenture.roles || ['Marketer', 'Content Creator', 'Reseller'];
+
+    return matchedRoles.map((rName: string) => {
+      const comboKey = `${matchedVenture.id}_${rName}`;
+      
+      const isRoleBlockedGlobally = regConfig.blockedRoles?.includes(rName);
+      const isComboBlocked = !!regConfig.blockedCombinations?.[comboKey];
+      const maxQuota = regConfig.quotas?.[comboKey] || 0;
+      const currentCount = dynamicCounts[comboKey] || 0;
+      const isQuotaFull = maxQuota > 0 && currentCount >= maxQuota;
+
+      // Master lock: disabled if blocked globally, combination blocked, or capacity reached
+      let isDisabled = isRoleBlockedGlobally || isComboBlocked || isQuotaFull;
+
+      // Enforce the default state locks for standardized values
+      if (matchedVenture.id === 'BuyRix' || matchedVenture.id === 'Vyuma') {
+         if (rName !== 'Reseller' && !isComboBlocked && !isQuotaFull && !isRoleBlockedGlobally && dbVentures.length === 0) {
+            // Standard state has non-reseller roles as coming soon by default
+            isDisabled = true;
+         }
+      } else if (matchedVenture.id === 'Growplex' || matchedVenture.id === 'Zaestify') {
+         if (dbVentures.length === 0) {
+            isDisabled = true; // Growplex/Zaestify roles default to coming soon in static mode
+         }
+      }
+
+      // Add descriptive status tags
+      let statusTag = '';
+      if (isQuotaFull) statusTag = '(QUOTA FULL)';
+      else if (isComboBlocked || isRoleBlockedGlobally) statusTag = '(LOCKED)';
+
+      return {
+        id: rName,
+        name: rName,
+        icon: rName.toLowerCase().includes('resell') ? '🛍️' : rName.toLowerCase().includes('creat') || rName.toLowerCase().includes('video') ? '🎥' : rName.toLowerCase().includes('promot') ? '📢' : '📈',
+        desc: `${getRoleDesc(rName)} ${statusTag}`,
+        disabled: isDisabled,
+        isQuotaFull,
+        maxQuota,
+        currentCount
+      };
+    });
   };
 
   const currentRoles = getRolesByVenture(venture);
@@ -93,6 +186,35 @@ export default function CompressedOnboarding() {
     if (!currentUser) {
       toast.error('Auth error. Please login again.');
       navigate('/login');
+      return;
+    }
+
+    // Secure systemwide, venture, and combination quota locks
+    if (regConfig.globalRegistrationEnabled === false) {
+      toast.error('Registration is temporarily closed system-wide by the administrator.');
+      return;
+    }
+
+    if (regConfig.blockedVentureIds?.includes(venture)) {
+      toast.error(`Signups for the ${venture} venture are currently suspended.`);
+      return;
+    }
+
+    if (regConfig.blockedRoles?.includes(role)) {
+      toast.error(`The "${role}" role is currently suspended system-wide.`);
+      return;
+    }
+
+    const comboKey = `${venture}_${role}`;
+    if (regConfig.blockedCombinations?.[comboKey]) {
+      toast.error(`Signups for "${role}" within ${venture} are currently locked.`);
+      return;
+    }
+
+    const maxQuota = regConfig.quotas?.[comboKey] || 0;
+    const currentCount = dynamicCounts[comboKey] || 0;
+    if (maxQuota > 0 && currentCount >= maxQuota) {
+      toast.error(`Registration slot is full! This field has reached its limit of ${maxQuota} workers.`);
       return;
     }
 
@@ -283,7 +405,7 @@ export default function CompressedOnboarding() {
 
           {step === 2 && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-              <div className="mb-8">
+              <div className="mb-8 font-sans">
                 <div className="w-12 h-12 bg-[#2A2A2A] rounded-2xl flex items-center justify-center mb-4">
                   <Target className="text-[#E8B84B]" size={24} />
                 </div>
@@ -291,40 +413,63 @@ export default function CompressedOnboarding() {
                 <p className="text-gray-400 text-sm">Choose your primary focus area to match missions exactly to your interests.</p>
               </div>
 
+              {regConfig.globalRegistrationEnabled === false && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-6 text-xs text-red-400 font-bold tracking-tight">
+                  ⚠️ ONBOARDING SUSPENDED: System administration has temporarily paused new account registrations worldwide.
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {ventures.map(v => (
-                  <button
-                    key={v.id}
-                    disabled={!v.active}
-                    onClick={() => {
-                      if(!v.active) {
-                        toast('Zaestify launching soon! Stay tuned for updates.', { icon: '🚀' });
-                        return;
-                      }
-                      setVenture(v.id);
-                      setRole(''); // Reset role when venture changes
-                    }}
-                    className={`p-4 rounded-2xl border min-h-[100px] text-left flex flex-col transition-all relative overflow-hidden ${
-                      !v.active ? 'opacity-70 bg-[#111] border-white/5 cursor-not-allowed grayscale' :
-                      venture === v.id 
-                        ? 'bg-[#E8B84B]/10 border-[#E8B84B]' 
-                        : 'bg-[#111] border-white/5 hover:border-white/20'
-                    }`}
-                  >
-                    {!v.active && (
-                      <div className="absolute top-2 right-2 bg-[#E8B84B] text-black text-[9px] font-black uppercase px-2 py-1 rounded-full z-10">
-                        Coming Soon
-                      </div>
-                    )}
-                    <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${v.active ? 'text-[#E8B84B]' : 'text-gray-500'}`}>{v.tag}</span>
-                    <span className="text-white font-black text-lg mb-1">{v.name}</span>
-                    <span className="text-gray-500 text-xs">{v.desc}</span>
-                  </button>
-                ))}
+                {ventures.map(v => {
+                  const isVentureBlocked = regConfig.blockedVentureIds?.includes(v.id);
+                  const isClosed = !v.active || isVentureBlocked;
+                  const displayBadge = isVentureBlocked ? 'CLOSED' : (!v.active ? 'COMING SOON' : 'ACTIVE_SPOTS');
+
+                  return (
+                    <button
+                      key={v.id}
+                      disabled={isClosed || regConfig.globalRegistrationEnabled === false}
+                      onClick={() => {
+                        if (isClosed) {
+                          toast(`${v.name} onboarding is currently closed or launching soon.`, { icon: '🚀' });
+                          return;
+                        }
+                        setVenture(v.id);
+                        setRole(''); // Reset role when venture changes
+                      }}
+                      className={`p-4 rounded-2xl border min-h-[100px] text-left flex flex-col transition-all relative overflow-hidden ${
+                        isClosed || regConfig.globalRegistrationEnabled === false 
+                          ? 'opacity-60 bg-[#111] border-white/5 cursor-not-allowed grayscale' 
+                          : venture === v.id 
+                            ? 'bg-[#E8B84B]/10 border-[#E8B84B]' 
+                            : 'bg-[#111] border-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      {displayBadge === 'CLOSED' && (
+                        <div className="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-black uppercase px-2 py-1 rounded-full z-10 font-mono">
+                          CLOSED
+                        </div>
+                      )}
+                      {displayBadge === 'COMING SOON' && (
+                        <div className="absolute top-2 right-2 bg-[#E8B84B] text-black text-[9px] font-black uppercase px-2 py-1 rounded-full z-10 font-mono">
+                          COMING SOON
+                        </div>
+                      )}
+                      {v.active && !isVentureBlocked && (
+                        <div className="absolute top-2 right-2 bg-green-900/40 text-green-400 border border-green-500/20 text-[9px] font-black uppercase px-2 py-1 rounded-full z-10 font-mono">
+                          OPEN
+                        </div>
+                      )}
+                      <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${!isClosed ? 'text-[#E8B84B]' : 'text-gray-500'}`}>{v.tag || 'Venture'}</span>
+                      <span className="text-white font-black text-lg mb-1">{v.name}</span>
+                      <span className="text-gray-500 text-xs">{v.desc}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <button 
-                disabled={!venture}
+                disabled={!venture || regConfig.globalRegistrationEnabled === false}
                 onClick={() => setStep(3)}
                 className="w-full mt-8 min-h-[48px] bg-[#E8B84B] text-black font-black uppercase tracking-widest py-4 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
@@ -335,43 +480,57 @@ export default function CompressedOnboarding() {
 
           {step === 3 && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-              <div className="mb-8">
+              <div className="mb-8 font-sans">
                 <div className="w-12 h-12 bg-[#2A2A2A] rounded-2xl flex items-center justify-center mb-4">
                   <Zap className="text-[#E8B84B]" size={24} />
                 </div>
                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Select Your Role</h2>
-                <p className="text-gray-400 text-sm">Only Reseller role is available at the moment. More coming soon!</p>
+                <p className="text-gray-400 text-sm">Choose your operational role in {venture}. Live seats and limits apply.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {currentRoles.map(r => (
-                  <button
-                    key={r.id}
-                    disabled={r.disabled}
-                    onClick={() => {
+                {currentRoles.map(r => {
+                  const comboKey = `${venture}_${r.id}`;
+                  const currentCount = r.currentCount || 0;
+                  const maxQuota = r.maxQuota || 0;
+                  const displaySeats = maxQuota > 0 ? `${currentCount}/${maxQuota} Seats filled` : 'Unlimited Seats';
+
+                  return (
+                    <button
+                      key={r.id}
+                      disabled={r.disabled}
+                      onClick={() => {
                         if (r.disabled) {
-                            toast('Role launching soon! Stay tuned.', { icon: '🚀' });
-                            return;
+                          toast(r.isQuotaFull ? 'This slot registration limit has been fully saturated.' : 'Role launching soon! Stay tuned.', { icon: '🚀' });
+                          return;
                         }
                         setRole(r.id);
-                    }}
-                    className={`p-4 rounded-2xl border min-h-[100px] relative text-left flex flex-col transition-all ${
-                      r.disabled ? 'opacity-70 bg-[#111] border-white/5 cursor-not-allowed grayscale' :
-                      role === r.id 
-                        ? 'bg-[#E8B84B]/10 border-[#E8B84B]' 
-                        : 'bg-[#111] border-white/5 hover:border-white/20'
-                    }`}
-                  >
-                    {r.disabled && (
-                      <div className="absolute top-2 right-2 bg-[#F59E0B] text-black text-[9px] font-black uppercase px-2 py-1 rounded-full z-10 w-fit whitespace-nowrap">
-                        Coming Soon
-                      </div>
-                    )}
-                    <span className="text-2xl mb-2">{r.icon}</span>
-                    <span className="text-white font-black text-lg mb-1">{r.name}</span>
-                    <span className="text-gray-500 text-xs">{r.desc}</span>
-                  </button>
-                ))}
+                      }}
+                      className={`p-4 rounded-2xl border min-h-[100px] relative text-left flex flex-col transition-all ${
+                        r.disabled 
+                          ? 'opacity-60 bg-[#111] border-white/5 cursor-not-allowed grayscale' 
+                          : role === r.id 
+                            ? 'bg-[#E8B84B]/10 border-[#E8B84B]' 
+                            : 'bg-[#111] border-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      {r.disabled && (
+                        <div className="absolute top-2 right-2 bg-red-600 text-white text-[9px] font-black uppercase px-2 py-1 rounded-full z-10 w-fit whitespace-nowrap font-mono">
+                          {r.isQuotaFull ? 'FULL' : 'LOCKED'}
+                        </div>
+                      )}
+                      {!r.disabled && (
+                        <div className="absolute top-2 right-2 bg-green-900/40 text-green-400 border border-green-500/20 text-[9px] font-black uppercase px-2 py-1 rounded-full z-10 font-mono">
+                          ACTIVE
+                        </div>
+                      )}
+                      <span className="text-2xl mb-2">{r.icon}</span>
+                      <span className="text-white font-black text-lg mb-1">{r.name}</span>
+                      <span className="text-gray-500 text-xs mb-2 leading-tight">{r.desc}</span>
+                      <span className="text-[10px] font-mono text-[#E8B84B] font-semibold mt-auto">{displaySeats}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               {isTempPhone && (

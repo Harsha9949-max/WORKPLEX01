@@ -62,6 +62,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import StrategicConsole from './pages/admin/StrategicConsole';
 import AdminEmailDispatcher from './pages/admin/AdminEmailDispatcher';
 import WorkerManagement from './pages/admin/WorkerManagement';
+import VentureControl from './pages/admin/VentureControl';
 import TaskManagement from './pages/admin/TaskManagement';
 import CouponManagement from './pages/admin/CouponManagement';
 import WithdrawalManagement from './pages/admin/WithdrawalManagement';
@@ -161,6 +162,7 @@ function AppContent() {
           <Route path="cms" element={<MainPageCMS />} />
           <Route path="partner-orders" element={<AdminPartnerOrders />} />
           <Route path="workers" element={<WorkerManagement />} />
+          <Route path="ventures" element={<VentureControl />} />
           <Route path="tasks" element={<TaskManagement />} />
           <Route path="coupons" element={<CouponManagement />} />
           <Route path="withdrawals" element={<WithdrawalManagement />} />
