@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';                
+import React, { useState, useEffect } from 'react';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';                
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { Copy, Share2, Info, Loader2, MessageCircle, Link as LinkIcon, CheckCircle2 } from 'lucide-react';
@@ -14,9 +14,15 @@ export default function CouponDashboard() {
   const { coupon, loading } = useCoupon();
   const { usages } = useCouponUsages();
   
+  const venture = userData?.venture?.toLowerCase() || 'buyrix';
+  const isGrowplex = venture === 'growplex';
+
   const [copied, setCopied] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [requestStatus, setRequestStatus] = useState<'idle' | 'pending' | 'success'>('idle');
+  const [customCode, setCustomCode] = useState('');
+  const [customSubmitted, setCustomSubmitted] = useState(false);
+  const [existingRequest, setExistingRequest] = useState<any>(null);
 
   useEffect(() => {
     if (!loading && !coupon && currentUser && requestStatus === 'idle') {
@@ -28,29 +34,63 @@ export default function CouponDashboard() {
                 const snapshot = await getDocs(q);
                 
                 if (snapshot.empty) {
-                    // Create request
-                    await addDoc(collection(db, 'couponRequests'), {
-                        userId: currentUser.uid,
-                        userName: userData?.name || 'Worker',
-                        venture: userData?.venture || 'Unassigned',
-                        status: 'pending',
-                        createdAt: serverTimestamp()
-                    });
-                    setRequestStatus('pending');
-                    toast.success('Your coupon activation request has been sent to admin!');
+                    if (userData?.role === 'Marketer' || userData?.role === 'Content Creator' || userData?.role === 'content creator') {
+                        // Create automatic request
+                        const newReq = {
+                            userId: currentUser.uid,
+                            userName: userData?.name || 'Worker',
+                            venture: userData?.venture || 'Unassigned',
+                            status: 'pending',
+                            desiredCode: '',
+                            canEditCode: true, // One-time opportunity to edit
+                            createdAt: serverTimestamp()
+                        };
+                        const docRef = await addDoc(collection(db, 'couponRequests'), newReq);
+                        setExistingRequest({ id: docRef.id, ...newReq });
+                        setRequestStatus('pending');
+                        toast.success('New session: Coupon activation request auto-generated!');
+                    }
                 } else {
+                    setExistingRequest({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
                     setRequestStatus('pending');
                 }
             } catch (error) {
                 console.error("Failed to auto-request coupon:", error);
-                toast.error('Failed to request coupon. Please try again later.');
             } finally {
                 setRequesting(false);
             }
         };
         checkAndRequest();
     }
-  }, [loading, coupon, currentUser, requestStatus]);
+  }, [loading, coupon, currentUser, requestStatus, userData]);
+
+  const submitCustomCode = async () => {
+     if (!customCode.trim()) {
+        toast.error('Desired code cannot be empty');
+        return;
+     }
+     if (customCode.length < 3 || customCode.length > 15) {
+        toast.error('Code must be between 3 and 15 characters');
+        return;
+     }
+
+     try {
+        if (existingRequest) {
+            const reqRef = doc(db, 'couponRequests', existingRequest.id);
+            await updateDoc(reqRef, {
+                desiredCode: customCode.toUpperCase().replace(/\s+/g, ''),
+                canEditCode: false // Limit editing to only one time
+            });
+            setExistingRequest((prev: any) => ({ ...prev, desiredCode: customCode.toUpperCase(), canEditCode: false }));
+            setCustomSubmitted(true);
+            toast.success('Desired custom code requested successfully!');
+        } else {
+            toast.error('Request not found, please wait');
+        }
+     } catch (e) {
+        toast.error('Failed to update code request');
+     }
+  };
 
   const ventureColors: Record<string, string> = {
     buyrix: '#3B82F6',
@@ -114,9 +154,44 @@ export default function CouponDashboard() {
         <h2 className="text-xl font-bold mb-2">
             {requestStatus === 'pending' || requesting ? 'Your coupon code request is being processed' : 'Coupon Pending Activation'}
         </h2>
-        <p className="text-gray-500 text-sm">
+        <p className="text-gray-500 text-sm mb-6">
             {requestStatus === 'pending' || requesting ? 'Your request has been sent to the admin. Sit tight!' : 'Please check back later.'}
         </p>
+
+        {existingRequest && (
+           <div className="w-full bg-[#111111] border border-[#2A2A2A] rounded-2xl p-5 text-left mb-6">
+              <span className="text-[10px] font-black uppercase text-[#E8B84B] tracking-widest block mb-2">ONE-TIME CONFIGURATION</span>
+              <h4 className="text-sm font-bold mb-1">Customize Your Promo Code</h4>
+              <p className="text-xs text-gray-400 mb-4 leading-medium">
+                 {existingRequest.canEditCode 
+                   ? 'You are allowed to request a custom coupon name once before the admin completes your activation.'
+                   : `Your requested custom code is locked for verification: "${existingRequest.desiredCode}".`}
+              </p>
+
+              {existingRequest.canEditCode ? (
+                 <div className="space-y-3">
+                    <input 
+                       type="text" 
+                       value={customCode}
+                       onChange={e => setCustomCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
+                       placeholder="E.g. VIPCREATOR50"
+                       className="w-full bg-black border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm focus:border-[#E8B84B] outline-none tracking-widest uppercase"
+                    />
+                    <button 
+                       onClick={submitCustomCode}
+                       className="w-full bg-[#E8B84B] text-black font-black uppercase tracking-widest text-[10px] py-3 rounded-xl transition hover:opacity-90"
+                    >
+                       Request Custom Code
+                    </button>
+                 </div>
+              ) : (
+                 <div className="bg-black/40 border border-emerald-500/20 text-emerald-400 text-xs py-3 px-4 rounded-xl flex items-center justify-between">
+                    <span>Desired: <strong className="tracking-widest">{existingRequest.desiredCode}</strong></span>
+                    <span className="text-[10px] uppercase font-black tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">Locked (1 Max)</span>
+                 </div>
+              )}
+           </div>
+        )}
      </div>
   );
 

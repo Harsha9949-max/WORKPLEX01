@@ -10,8 +10,12 @@ export function useCoupon() {
 
   useEffect(() => {
     if (!currentUser) return;
-    const unsub = onSnapshot(doc(db, 'coupons', currentUser.uid), (doc) => {
-      setCoupon(doc.exists() ? { id: doc.id, ...doc.data() } : null);
+    const q = query(
+      collection(db, 'coupons'),
+      where('workerId', '==', currentUser.uid)
+    );
+    const unsub = onSnapshot(q, (snapshot) => {
+      setCoupon(snapshot.docs.length > 0 ? { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } : null);
       setLoading(false);
     });
     return unsub;

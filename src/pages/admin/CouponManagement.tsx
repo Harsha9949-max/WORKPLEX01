@@ -6,7 +6,10 @@ import {
   onSnapshot, 
   doc, 
   updateDoc, 
-  Timestamp 
+  Timestamp,
+  where,
+  addDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
@@ -42,6 +45,7 @@ export default function CouponManagement() {
 
     const requestsQ = query(collection(db, 'couponRequests'), where('status', '==', 'pending'));
     const unsubRequests = onSnapshot(requestsQ, (snapshot) => {
+      console.log("Pending coupon requests:", snapshot.docs.map(doc => doc.data()));
       setCouponRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
@@ -63,8 +67,9 @@ export default function CouponManagement() {
 
   const handleActivate = async (request: any) => {
     try {
+        const couponCode = request.desiredCode ? request.desiredCode : `COUPON_${request.userName.slice(0,3).toUpperCase()}_${Math.floor(Math.random()*900)+100}`;
         await addDoc(collection(db, 'coupons'), {
-            code: `COUPON_${request.userName.slice(0,3).toUpperCase()}_${Math.floor(Math.random()*900)+100}`,
+            code: couponCode,
             workerId: request.userId,
             workerName: request.userName,
             venture: request.venture,
@@ -72,7 +77,7 @@ export default function CouponManagement() {
             createdAt: serverTimestamp()
         });
         await updateDoc(doc(db, 'couponRequests', request.id), { status: 'activated' });
-        toast.success('Coupon activated and assigned!');
+        toast.success(`Coupon (${couponCode}) activated and assigned!`);
     } catch (e) {
         toast.error('Failed to activate coupon');
     }
@@ -113,9 +118,17 @@ export default function CouponManagement() {
                   <div key={req.id} className="bg-[#1A1A1A] rounded-xl p-4 flex justify-between items-center border border-white/5">
                      <div>
                         <p className="text-sm font-bold text-white">{req.userName}</p>
-                        <p className="text-[10px] text-gray-500 uppercase font-black">{req.venture}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{req.venture}</p>
+                        {req.desiredCode && (
+                           <p className="text-xs text-[#E8B84B] mt-1.5 flex items-center gap-1 font-semibold">
+                              Desired Code: 
+                              <span className="font-mono bg-[#E8B84B]/10 hover:bg-[#E8B84B]/20 transition border border-[#E8B84B]/30 px-2 py-0.5 rounded text-[11px] font-black tracking-widest text-[#E8B84B]">
+                                 {req.desiredCode}
+                              </span>
+                           </p>
+                        )}
                      </div>
-                     <button onClick={() => handleActivate(req)} className="bg-[#E8B84B] text-black px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest">Activate</button>
+                     <button onClick={() => handleActivate(req)} className="bg-[#E8B84B] text-black px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest hover:bg-[#d6a537] transition-all">Activate</button>
                   </div>
                ))}
             </div>

@@ -82,15 +82,33 @@ export default function HomeDashboard() {
     if (!currentUser || !userData) return;
 
     const tasksRef = collection(db, 'tasks');
-    const q = query(
-      tasksRef,
-      where('venture', '==', userData.venture),
-      where('status', '==', 'active'),
-      limit(3)
-    );
+    const q = query(tasksRef);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const taskList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const now = Date.now();
+      const taskList = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((task: any) => {
+          if (task.status === 'archived') return false;
+
+          const expiresVal = task.expiresAt?.toMillis ? task.expiresAt.toMillis() : task.expiresAt;
+          if (expiresVal && expiresVal < now) return false;
+
+          if (task.venture && task.venture !== 'All' && task.venture.toLowerCase() !== userData.venture?.toLowerCase()) {
+             return false;
+          }
+
+          if (task.targetRoles && task.targetRoles.length > 0) {
+             const matched = task.targetRoles.some((r: string) => 
+                r.toLowerCase() === 'all' || r.toLowerCase() === userData.role?.toLowerCase()
+             );
+             if (!matched) return false;
+          }
+
+          return true;
+        })
+        .slice(0, 3);
+
       setTasks(taskList);
       setLoadingTasks(false);
     });
@@ -100,15 +118,36 @@ export default function HomeDashboard() {
 
   // Listen to Announcements
   useEffect(() => {
+    if (!userData) return;
     const annRef = collection(db, 'announcements');
-    const q = query(annRef, orderBy('priority', 'desc'), limit(5));
+    const q = query(annRef, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const now = Date.now();
+      const allAnn = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const activeAnn = allAnn.filter((ann: any) => {
+         // Check expiration
+         const expiresAtMillis = ann.expiresAt?.toMillis ? ann.expiresAt.toMillis() : ann.expiresAt;
+         if (expiresAtMillis && expiresAtMillis < now) return false;
+         
+         // Check Audience segment
+         if (ann.audience === 'By Venture') {
+            if (!ann.targetVenture || !userData.venture || ann.targetVenture.toLowerCase() !== userData.venture.toLowerCase()) {
+               return false;
+            }
+         }
+         if (ann.audience === 'By Role') {
+            if (!ann.targetRole || !userData.role || ann.targetRole.toLowerCase() !== userData.role.toLowerCase()) {
+               return false;
+            }
+         }
+         return true;
+      });
+      setAnnouncements(activeAnn);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [userData]);
 
   // Mystery Mission Trigger
   useEffect(() => {

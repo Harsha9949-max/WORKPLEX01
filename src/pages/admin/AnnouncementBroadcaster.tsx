@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { Megaphone, Send, Users, Layers, Briefcase, Zap } from 'lucide-react';
+import { Megaphone, Send, Users, Layers, Briefcase, Zap, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 /**
@@ -14,7 +14,8 @@ export default function AnnouncementBroadcaster() {
     text: '',
     audience: 'All Workers',
     targetVenture: 'BuyRix',
-    targetRole: 'Marketer'
+    targetRole: 'Marketer',
+    durationDays: 7
   });
   const [isSending, setIsSending] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -41,16 +42,26 @@ export default function AnnouncementBroadcaster() {
     try {
       await addDoc(collection(db, 'announcements'), {
         ...form,
-        priority: 1, // Standard priority
-        createdAt: serverTimestamp()
+        priority: 1,
+        createdAt: serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(Date.now() + form.durationDays * 24 * 60 * 60 * 1000)
       });
       
       toast.success('Announcement broadcasted successfully! 📢');
-      setForm({ ...form, text: '' });
+      setForm({ ...form, text: '', durationDays: 7 });
     } catch (error) {
       toast.error('Broadcast failed');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const deleteAnnouncement = async (id: string) => {
+    try {
+        await deleteDoc(doc(db, 'announcements', id));
+        toast.success('Announcement deleted');
+    } catch (e) {
+        toast.error('Failed to delete');
     }
   };
 
@@ -138,6 +149,15 @@ export default function AnnouncementBroadcaster() {
               </p>
             </div>
 
+            <div className="space-y-3">
+               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Expiration (Days)</label>
+               <input type="number" 
+                    value={form.durationDays}
+                    onChange={e => setForm({...form, durationDays: Number(e.target.value)})}
+                    className="w-full bg-black border border-[#2A2A2A] text-white px-5 py-3 rounded-xl focus:border-[#E8B84B] outline-none"
+               />
+            </div>
+
             <div className="pt-6 border-t border-[#2A2A2A]">
               <button 
                 type="submit"
@@ -199,9 +219,14 @@ export default function AnnouncementBroadcaster() {
           <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-6">Announcement History</h3>
           <div className="grid grid-cols-1 gap-4">
             {announcements.map(ann => (
-                <div key={ann.id} className="bg-[#1A1A1A] p-6 rounded-2xl border border-white/5">
-                    <p className="text-white text-sm font-bold">{ann.text}</p>
-                    <p className="text-gray-500 text-[10px] font-black uppercase mt-2">{ann.audience} • {ann.createdAt?.toDate().toLocaleDateString()}</p>
+                <div key={ann.id} className="bg-[#1A1A1A] p-6 rounded-2xl border border-white/5 flex items-center justify-between">
+                    <div>
+                        <p className="text-white text-sm font-bold">{ann.text}</p>
+                        <p className="text-gray-500 text-[10px] font-black uppercase mt-2">{ann.audience} • Exp: {ann.expiresAt?.toDate().toLocaleDateString()}</p>
+                    </div>
+                    <button onClick={() => deleteAnnouncement(ann.id)} className="text-red-500 hover:text-red-400">
+                        <Trash2 size={16} />
+                    </button>
                 </div>
             ))}
           </div>

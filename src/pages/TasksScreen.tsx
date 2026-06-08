@@ -22,13 +22,36 @@ export default function TasksScreen() {
    useEffect(() => {
       if (!userData) return;
       const tasksRef = collection(db, 'tasks');
-      const q = query(
-         tasksRef, 
-         where('venture', '==', userData.venture)
-      );
+      const q = query(tasksRef);
 
       const unsub = onSnapshot(q, (snap) => {
-         const t = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+         const now = Date.now();
+         const t = snap.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter((task: any) => {
+               // Ignore archived tasks
+               if (task.status === 'archived') return false;
+               
+               // Expiration timeframe verification
+               const expiresVal = task.expiresAt?.toMillis ? task.expiresAt.toMillis() : task.expiresAt;
+               if (expiresVal && expiresVal < now) return false;
+
+               // Venture segment checking (matches "All" or worker's exact assigned venture)
+               if (task.venture && task.venture !== 'All' && task.venture.toLowerCase() !== userData.venture?.toLowerCase()) {
+                  return false;
+               }
+
+               // Roles segment checking (matches worker's exact role or "All")
+               if (task.targetRoles && task.targetRoles.length > 0) {
+                  const matchedRole = task.targetRoles.some((r: string) => 
+                     r.toLowerCase() === 'all' || r.toLowerCase() === userData.role?.toLowerCase()
+                  );
+                  if (!matchedRole) return false;
+               }
+               
+               return true;
+            });
+
          t.sort((a: any, b: any) => {
             const dateA = a.createdAt?.toMillis?.() || 0;
             const dateB = b.createdAt?.toMillis?.() || 0;
