@@ -18,9 +18,11 @@ export function useWalletData() {
     if (!currentUser) return;
 
     // 1. User Wallet & Profile
-    const userUnsub = onSnapshot(doc(db, 'users', currentUser.uid), (doc) => {
-      if (doc.exists()) {
-        const uData = doc.data();
+    console.log("useWalletData listening to UI:", currentUser.uid);
+    const userUnsub = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
+      console.log("Wallet snapshot received");
+      if (docSnap.exists()) {
+        const uData = docSnap.data();
         setData(prev => ({
           ...prev,
           wallets: uData.wallets || { earned: 0, pending: 0, bonus: 0, savings: 0, withdrawn: 0 },
@@ -28,6 +30,8 @@ export function useWalletData() {
           kycDone: uData.kycDone || false
         }));
       }
+    }, (error) => {
+      console.error("Wallet snapshot error:", error);
     });
 
     // 2. Transactions

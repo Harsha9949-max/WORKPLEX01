@@ -29,6 +29,7 @@ import { formatCurrency } from '../../utils/format';
  */
 export default function CouponManagement() {
   const [coupons, setCoupons] = useState<any[]>([]);
+  const [couponRequests, setCouponRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -37,11 +38,14 @@ export default function CouponManagement() {
     const unsub = onSnapshot(q, (snapshot) => {
       setCoupons(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'coupons');
     });
 
-    return () => unsub();
+    const requestsQ = query(collection(db, 'couponRequests'), where('status', '==', 'pending'));
+    const unsubRequests = onSnapshot(requestsQ, (snapshot) => {
+      setCouponRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => { unsub(); unsubRequests(); };
   }, []);
 
   const toggleCouponStatus = async (coupon: any) => {
@@ -54,6 +58,23 @@ export default function CouponManagement() {
       toast.success(`Coupon ${newStatus ? 'Activated' : 'Paused'}`);
     } catch (error) {
       toast.error('Failed to toggle status');
+    }
+  };
+
+  const handleActivate = async (request: any) => {
+    try {
+        await addDoc(collection(db, 'coupons'), {
+            code: `COUPON_${request.userName.slice(0,3).toUpperCase()}_${Math.floor(Math.random()*900)+100}`,
+            workerId: request.userId,
+            workerName: request.userName,
+            venture: request.venture,
+            isActive: true,
+            createdAt: serverTimestamp()
+        });
+        await updateDoc(doc(db, 'couponRequests', request.id), { status: 'activated' });
+        toast.success('Coupon activated and assigned!');
+    } catch (e) {
+        toast.error('Failed to activate coupon');
     }
   };
 
@@ -81,6 +102,25 @@ export default function CouponManagement() {
           />
         </div>
       </div>
+
+      {couponRequests.length > 0 && (
+         <div className="bg-[#111111] border border-[#E8B84B]/20 rounded-[32px] p-6">
+            <h3 className="text-lg font-black text-white uppercase tracking-tighter mb-4 flex items-center gap-2">
+               <AlertCircle size={20} className="text-[#E8B84B]" /> Pending Activation Requests
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {couponRequests.map(req => (
+                  <div key={req.id} className="bg-[#1A1A1A] rounded-xl p-4 flex justify-between items-center border border-white/5">
+                     <div>
+                        <p className="text-sm font-bold text-white">{req.userName}</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-black">{req.venture}</p>
+                     </div>
+                     <button onClick={() => handleActivate(req)} className="bg-[#E8B84B] text-black px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest">Activate</button>
+                  </div>
+               ))}
+            </div>
+         </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {loading ? (

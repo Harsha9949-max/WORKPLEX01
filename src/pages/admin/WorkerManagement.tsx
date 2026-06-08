@@ -281,7 +281,9 @@ export default function WorkerManagement() {
       await updateDoc(doc(db, 'users', selectedWorker.id), {
         'wallets.earned': increment(adjustment)
       });
+      console.log(`Manual adjustment successful: ${adjustment} for user ID: ${selectedWorker.id}`);
       toast.success(`Successfully ${isAdd ? 'credited' : 'removed'} ₹${amount} ${isAdd ? 'to' : 'from'} ${selectedWorker.name}`);
+      console.log("Selected worker ID:", selectedWorker.id);
       setAdjustmentAmount('');
       
       // Update local state

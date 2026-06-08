@@ -1,21 +1,56 @@
 import React, { useState } from 'react';
-import { useCoupon, useCouponUsages } from '../hooks/useCoupon';
-import CommissionCalculator from '../components/coupon/CommissionCalculator';
-import { formatCurrency } from '../utils/couponUtils';
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';                
+import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { Copy, Share2, Info, Loader2, MessageCircle, Link as LinkIcon, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import { useCoupon, useCouponUsages } from '../hooks/useCoupon';
+import CommissionCalculator from '../components/coupon/CommissionCalculator';
+import { formatCurrency } from '../utils/couponUtils';
 
 export default function CouponDashboard() {
-  const { userData } = useAuth();
+  const { userData, currentUser } = useAuth();
   const { coupon, loading } = useCoupon();
   const { usages } = useCouponUsages();
   
   const [copied, setCopied] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [requestStatus, setRequestStatus] = useState<'idle' | 'pending' | 'success'>('idle');
 
-  const venture = userData?.venture?.toLowerCase() || 'buyrix';
-  const isGrowplex = venture === 'growplex';
+  useEffect(() => {
+    if (!loading && !coupon && currentUser && requestStatus === 'idle') {
+        const checkAndRequest = async () => {
+            setRequesting(true);
+            try {
+                // Check if already requested
+                const q = query(collection(db, 'couponRequests'), where('userId', '==', currentUser.uid));
+                const snapshot = await getDocs(q);
+                
+                if (snapshot.empty) {
+                    // Create request
+                    await addDoc(collection(db, 'couponRequests'), {
+                        userId: currentUser.uid,
+                        userName: userData?.name || 'Worker',
+                        venture: userData?.venture || 'Unassigned',
+                        status: 'pending',
+                        createdAt: serverTimestamp()
+                    });
+                    setRequestStatus('pending');
+                    toast.success('Your coupon activation request has been sent to admin!');
+                } else {
+                    setRequestStatus('pending');
+                }
+            } catch (error) {
+                console.error("Failed to auto-request coupon:", error);
+                toast.error('Failed to request coupon. Please try again later.');
+            } finally {
+                setRequesting(false);
+            }
+        };
+        checkAndRequest();
+    }
+  }, [loading, coupon, currentUser, requestStatus]);
 
   const ventureColors: Record<string, string> = {
     buyrix: '#3B82F6',
@@ -74,10 +109,14 @@ export default function CouponDashboard() {
   if (!coupon) return (
      <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center text-center p-6 text-white max-w-md mx-auto">
         <div className="w-20 h-20 bg-[#111111] border border-[#2A2A2A] rounded-full flex justify-center items-center mb-6">
-           <Loader2 className="w-8 h-8 text-[#E8B84B] animate-spin" />
+           {requestStatus === 'pending' || requesting ? <Loader2 className="w-8 h-8 text-[#E8B84B] animate-spin" /> : <CheckCircle2 className="w-8 h-8 text-green-500" />}
         </div>
-        <h2 className="text-xl font-bold mb-2">Your coupon code is being generated</h2>
-        <p className="text-gray-500 text-sm">Admin will activate it soon. Please check back later.</p>
+        <h2 className="text-xl font-bold mb-2">
+            {requestStatus === 'pending' || requesting ? 'Your coupon code request is being processed' : 'Coupon Pending Activation'}
+        </h2>
+        <p className="text-gray-500 text-sm">
+            {requestStatus === 'pending' || requesting ? 'Your request has been sent to the admin. Sit tight!' : 'Please check back later.'}
+        </p>
      </div>
   );
 
