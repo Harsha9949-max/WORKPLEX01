@@ -69,8 +69,47 @@ export default function TaskManagement() {
         ))}
       </div>
 
+      {activeTab === 'create' && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-[#111111] p-8 rounded-3xl">
+          <h2 className="text-xl font-black text-white uppercase mb-6">Create New Mission</h2>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            await addDoc(collection(db, 'tasks'), {
+              title: formData.get('title'),
+              description: formData.get('desc'),
+              earningAmount: Number(formData.get('amount')),
+              createdAt: serverTimestamp(),
+              status: 'active'
+            });
+            toast.success('Mission created!');
+          }} className="space-y-4">
+            <input name="title" placeholder="Mission Title" className="w-full bg-black p-4 rounded-xl text-white" required />
+            <textarea name="desc" placeholder="Description" className="w-full bg-black p-4 rounded-xl text-white" required />
+            <input name="amount" type="number" placeholder="Earning Amount" className="w-full bg-black p-4 rounded-xl text-white" required />
+            <button type="submit" className="bg-[#E8B84B] text-black px-6 py-3 rounded-xl font-black uppercase text-xs">Create</button>
+          </form>
+        </motion.div>
+      )}
+
       {activeTab === 'tracking' && (
-        <MissionTracking tasks={allTasks} workers={allWorkers} submissions={allSubmissions} />
+        <div className="bg-[#111111] p-8 rounded-3xl">
+            <h2 className="text-xl font-black text-white uppercase mb-6">Manage Missions</h2>
+            <div className="grid grid-cols-1 gap-4">
+                {allTasks.map(task => (
+                    <div key={task.id} className="bg-[#1A1A1A] p-4 rounded-xl flex justify-between items-center border border-white/5">
+                        <div className="text-white">
+                            <p className="font-bold">{task.title}</p>
+                            <p className="text-xs text-gray-500">{task.description}</p>
+                        </div>
+                        <button onClick={async () => {
+                             await updateDoc(doc(db, 'tasks', task.id), { status: 'archived' });
+                             toast.success('Task Archived');
+                        }} className="bg-red-900/20 text-red-400 px-4 py-2 rounded-lg font-black text-xs uppercase">Archive</button>
+                    </div>
+                ))}
+            </div>
+        </div>
       )}
       
       {activeTab === 'review' && (

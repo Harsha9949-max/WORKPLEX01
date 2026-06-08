@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Megaphone, Send, Users, Layers, Briefcase, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -17,10 +17,18 @@ export default function AnnouncementBroadcaster() {
     targetRole: 'Marketer'
   });
   const [isSending, setIsSending] = useState(false);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
 
   const ventures = ['BuyRix', 'Vyuma', 'Zaestify', 'Growplex'];
   const roles = ['Marketer', 'Content Creator', 'Reseller', 'Partner'];
   const audiences = ['All Workers', 'By Venture', 'By Role'];
+
+  useEffect(() => {
+    const q = query(collection(db, 'announcements'), orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+        setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+  }, []);
 
   const handleBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,9 +44,6 @@ export default function AnnouncementBroadcaster() {
         priority: 1, // Standard priority
         createdAt: serverTimestamp()
       });
-      
-      // In production, this document creation would trigger a Cloud Function
-      // to send FCM push notifications to the respective devices.
       
       toast.success('Announcement broadcasted successfully! 📢');
       setForm({ ...form, text: '' });
@@ -188,6 +193,18 @@ export default function AnnouncementBroadcaster() {
             </div>
           </div>
         </div>
+      </div>
+      
+      <div className="bg-[#111111] p-10 rounded-[40px]">
+          <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-6">Announcement History</h3>
+          <div className="grid grid-cols-1 gap-4">
+            {announcements.map(ann => (
+                <div key={ann.id} className="bg-[#1A1A1A] p-6 rounded-2xl border border-white/5">
+                    <p className="text-white text-sm font-bold">{ann.text}</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase mt-2">{ann.audience} • {ann.createdAt?.toDate().toLocaleDateString()}</p>
+                </div>
+            ))}
+          </div>
       </div>
     </div>
   );
