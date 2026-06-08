@@ -208,7 +208,6 @@ export default function LandingPage() {
   ];
 
   const isVentureClosed = (vId: string, vName?: string, isActive?: boolean, isComingSoon?: boolean) => {
-    if (isComingSoon) return true;
     const isBlocked = regConfig?.blockedVentureIds?.some(
       (blockedId: string) => 
         blockedId?.toLowerCase() === vId?.toLowerCase() || 
