@@ -93,6 +93,23 @@ export default function LandingPage() {
   const { t } = useTranslation();
   const [cmsData, setCmsData] = useState<any>(null);
   const [dbVentures, setDbVentures] = useState<any[]>([]);
+  const [regConfig, setRegConfig] = useState<any>({
+    globalRegistrationEnabled: true,
+    blockedVentureIds: [],
+    blockedRoles: [],
+    quotas: {},
+    blockedCombinations: {}
+  });
+
+  useEffect(() => {
+    // Real-time subscribe to system configuration of registration controls
+    const unsubConfig = onSnapshot(doc(db, 'systemConfig', 'registrationControls'), (snap) => {
+      if (snap.exists()) {
+        setRegConfig(snap.data());
+      }
+    });
+    return () => unsubConfig();
+  }, []);
 
   useEffect(() => {
     // Real-time subscribe to ventures for immediate rendering of admin edits
@@ -190,23 +207,43 @@ export default function LandingPage() {
     }
   ];
 
+  const isVentureClosed = (vId: string, vName?: string, isActive?: boolean, isComingSoon?: boolean) => {
+    if (isComingSoon) return true;
+    const isBlocked = regConfig?.blockedVentureIds?.some(
+      (blockedId: string) => 
+        blockedId?.toLowerCase() === vId?.toLowerCase() || 
+        blockedId?.toLowerCase() === (vName || vId)?.toLowerCase()
+    );
+    if (isBlocked) return true;
+    if (isActive === false) return true;
+    return false;
+  };
+
   // Dynamic vs fallback logic and dynamic styling mapping
   const venturesToDisplay = dbVentures.length > 0 
-    ? dbVentures.map((v) => ({
-        id: v.name?.toUpperCase() || v.id?.toUpperCase(),
-        icon: getVentureIcon(v.iconName),
-        color: v.color || 'text-amber-400',
-        bg: v.bg || 'bg-[#111111]',
-        desc: v.desc || '',
-        potential: v.potential || 'Coming Soon',
-        comingSoon: !!v.comingSoon,
-        active: v.active !== false
-      }))
+    ? dbVentures.map((v) => {
+        const closed = isVentureClosed(v.id, v.name, v.active !== false, !!v.comingSoon);
+        return {
+          id: v.name?.toUpperCase() || v.id?.toUpperCase(),
+          icon: getVentureIcon(v.iconName),
+          color: v.color || 'text-amber-400',
+          bg: v.bg || 'bg-[#111111]',
+          desc: v.desc || '',
+          potential: closed ? 'Coming Soon' : (v.potential || 'Coming Soon'),
+          comingSoon: closed,
+          active: !closed
+        };
+      })
     : defaultVentures.map((v, i) => {
-        if (cmsData?.ventures && cmsData.ventures[i]) {
-          return { ...v, ...cmsData.ventures[i] };
-        }
-        return v;
+        const baseV = cmsData?.ventures && cmsData.ventures[i]
+          ? { ...v, ...cmsData.ventures[i] }
+          : v;
+        const closed = isVentureClosed(baseV.id, undefined, baseV.active !== false, !!baseV.comingSoon);
+        return {
+          ...baseV,
+          potential: closed ? 'Coming Soon' : baseV.potential,
+          comingSoon: closed
+        };
       });
 
   return (
