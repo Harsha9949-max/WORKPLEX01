@@ -196,5 +196,9 @@ service cloud.firestore {
       allow read: if isOwner(existing().senderId);
       allow create: if isOwner(incoming().senderId);
     }
+
+    match /sentEmails/{emailId} {
+      allow read, write, delete: if isAdmin();
+    }
   }
 }

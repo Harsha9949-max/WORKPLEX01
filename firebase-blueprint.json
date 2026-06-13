@@ -293,6 +293,29 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["text", "audience", "createdAt"]
+    },
+    "SentReceipt": {
+      "title": "SentReceipt",
+      "description": "An official transaction receipt email dispatched to a client",
+      "type": "object",
+      "properties": {
+        "recipientEmail": { "type": "string", "format": "email" },
+        "recipientName": { "type": "string" },
+        "invoiceId": { "type": "string" },
+        "invoiceDate": { "type": "string" },
+        "selectedVenture": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["PAID", "PENDING", "REFUNDED"] },
+        "paymentButtonLink": { "type": "string" },
+        "receiptStyle": { "type": "string", "enum": ["minimalist", "onyx", "golden"] },
+        "taxPercent": { "type": "number" },
+        "discountAmount": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "items": { "type": "array" },
+        "sentAt": { "type": "string", "format": "date-time" },
+        "sentBy": { "type": "string" }
+      },
+      "required": ["recipientEmail", "recipientName", "invoiceId", "invoiceDate", "selectedVenture", "paymentMethod", "paymentStatus", "receiptStyle", "grandTotal", "items", "sentAt"]
     }
   },
   "firestore": {
@@ -367,6 +390,10 @@
     "/catalogProducts/{productId}": {
       "schema": { "$ref": "#/entities/CatalogProduct" },
       "description": "Master catalog products"
+    },
+    "/sentEmails/{emailId}": {
+      "schema": { "$ref": "#/entities/SentReceipt" },
+      "description": "Dispatched transaction receipts history"
     }
   }
 }
