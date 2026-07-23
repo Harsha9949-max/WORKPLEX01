@@ -16,7 +16,7 @@ export default function AppLayout() {
   
   // Pages that show bottom nav:
   const showNavPages = [
-    '/home', '/tasks', '/wallet', '/profile', '/leaderboard', '/coupon', '/team-chat'
+    '/home', '/tasks', '/wallet', '/profile', '/coupon', '/team-chat'
   ];
   
   const showNav = showNavPages.some(path => location.pathname === path || location.pathname.startsWith(path + '/'));

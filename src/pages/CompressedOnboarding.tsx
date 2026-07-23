@@ -95,10 +95,10 @@ export default function CompressedOnboarding() {
   }, []);
 
   const defaultVentures = [
-    { id: 'BuyRix', name: 'BuyRix', tag: 'E-commerce', desc: 'Product reviews & sharing', active: true, roles: ['Reseller', 'Marketer', 'Content Creator'] },
-    { id: 'Vyuma', name: 'Vyuma', tag: 'Creator', desc: 'Content & Social Media', active: true, roles: ['Reseller', 'Marketer', 'Content Creator'] },
-    { id: 'Growplex', name: 'Growplex', tag: 'Agency', desc: 'B2B & Digital Marketing', active: true, roles: ['Promoter', 'Content Creator'] },
-    { id: 'Zaestify', name: 'Zaestify', tag: 'Fashion', desc: 'Apparel & Trends', active: false, roles: ['Marketer', 'Content Creator'] }
+    { id: 'BuyRix', name: 'BuyRix', tag: 'Digital Commerce', desc: 'Digital products only. Sell premium software, licenses, templates, and courses.', active: true, roles: ['Reseller', 'Marketer', 'Content Creator'] },
+    { id: 'Vyuma', name: 'Vyuma', tag: 'E-commerce', desc: 'Physical product marketplace. Sell gadgets, accessories, apparel, and direct courier items.', active: true, roles: ['Reseller', 'Marketer', 'Content Creator'] },
+    { id: 'Growplex', name: 'Growplex', tag: 'SMM Panel', desc: 'B2C Social Media Panel. Sell followers, likes, engagement, and promotional funnels.', active: true, roles: ['Reseller', 'Marketer', 'Content Creator'] },
+    { id: 'Zaestify', name: 'Zaestify', tag: 'Startup Hub', desc: 'Encouraging startups is our main motto. Incubation and startup workspace (Coming Soon).', active: false, roles: ['Reseller', 'Marketer', 'Content Creator'] }
   ];
 
   // Dynamic Ventures mapping matching admin custom settings
@@ -114,10 +114,9 @@ export default function CompressedOnboarding() {
 
   const getRoleDesc = (r: string) => {
      switch(r) {
-        case 'Reseller': return 'Sell catalog items directly';
-        case 'Content Creator': return 'Create videos, write reviews';
-        case 'Marketer': return 'Promote products and earn commissions';
-        case 'Promoter': return 'Promote B2B services';
+        case 'Reseller': return 'Launch custom white-label stores with chosen venture products';
+        case 'Marketer': return 'Market ventures & get paid on verified sales. Instagram video assets provided';
+        case 'Content Creator': return 'Create custom video reviews and creative media assets (Coming Soon)';
         default: return `Participate as an active ${r}`;
      }
   };
@@ -295,13 +294,94 @@ export default function CompressedOnboarding() {
 
   if (showWelcome) {
     return (
-      <div className="min-h-screen bg-black/95 flex items-center justify-center p-6 z-50 fixed inset-0">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#111111] border border-[#E8B84B]/30 rounded-3xl p-8 max-w-sm w-full space-y-6 text-center flex flex-col items-center">
-          <Logo variant="vertical" size="xl" />
-          <p className="text-gray-400">Your welcome incentive has been credited to your pending wallet.</p>
-          <p className="text-xs text-[#E8B84B] font-bold mt-2">Complete your shop setup to unlock your incentive + earn more!</p>
-          <button onClick={() => navigate(role === 'Reseller' ? '/reseller/dashboard' : '/wallet')} className="w-full bg-[#E8B84B] text-black font-black uppercase py-4 rounded-xl mt-6 hover:scale-105 transition-transform min-h-[48px]">
-            Continue to Dashboard
+      <div className="min-h-screen bg-black/95 flex items-center justify-center p-6 z-50 fixed inset-0 overflow-y-auto">
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }} 
+          animate={{ scale: 1, opacity: 1 }} 
+          className="bg-[#111111] border border-[#E8B84B]/30 rounded-3xl p-6 md:p-8 max-w-md w-full space-y-6 text-center flex flex-col items-center my-8 shadow-[0_0_50px_rgba(232,184,75,0.15)]"
+        >
+          <Logo variant="vertical" size="lg" />
+          
+          <div className="space-y-2">
+            <h3 className="text-xl font-black text-white uppercase tracking-wider">🎉 CONGRATULATIONS!</h3>
+            <p className="text-gray-400 text-xs">
+              You are officially activated. You have unlocked the first chunk of your gamified <span className="text-[#E8B84B] font-bold">₹2,500 Welcome Incentive</span>!
+            </p>
+          </div>
+
+          {/* Gamified Chunk Milestones Timeline */}
+          <div className="w-full bg-[#0A0A0B] border border-white/5 rounded-2xl p-4 text-left space-y-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2">Incentive Unlock Roadmap (₹2,500 Total)</p>
+            
+            <div className="space-y-3 relative">
+              {/* Vertical connector line */}
+              <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-white/10 z-0" />
+              
+              {/* Milestone 1: Done */}
+              <div className="flex items-start gap-3 relative z-10">
+                <div className="w-6 h-6 rounded-full bg-[#10B981] border border-[#10B981]/50 flex items-center justify-center text-[10px] font-black text-black shrink-0">
+                  ✓
+                </div>
+                <div>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-xs font-bold text-white">Profile Activation</span>
+                    <span className="text-[10px] font-mono font-black text-[#10B981] bg-[#10B981]/10 px-1.5 py-0.5 rounded">₹200 UNLOCKED</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400">Credited to your pending wallet bonus balance.</p>
+                </div>
+              </div>
+
+              {/* Milestone 2 */}
+              <div className="flex items-start gap-3 relative z-10">
+                <div className="w-6 h-6 rounded-full bg-[#222] border border-white/10 flex items-center justify-center text-[10px] font-black text-gray-500 shrink-0">
+                  2
+                </div>
+                <div>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-xs font-medium text-gray-300">Store / First Catalog Setup</span>
+                    <span className="text-[10px] font-mono font-bold text-gray-500">₹500 LOCKED</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500">Unlocks automatically when you activate your custom storefront.</p>
+                </div>
+              </div>
+
+              {/* Milestone 3 */}
+              <div className="flex items-start gap-3 relative z-10">
+                <div className="w-6 h-6 rounded-full bg-[#222] border border-white/10 flex items-center justify-center text-[10px] font-black text-gray-500 shrink-0">
+                  3
+                </div>
+                <div>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-xs font-medium text-gray-300">First Verified Customer Sale</span>
+                    <span className="text-[10px] font-mono font-bold text-gray-500">₹800 LOCKED</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500">Unlocks upon courier delivery and reconciliation of your first order.</p>
+                </div>
+              </div>
+
+              {/* Milestone 4 */}
+              <div className="flex items-start gap-3 relative z-10">
+                <div className="w-6 h-6 rounded-full bg-[#222] border border-white/10 flex items-center justify-center text-[10px] font-black text-gray-500 shrink-0">
+                  4
+                </div>
+                <div>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="text-xs font-medium text-gray-300">Streak / Volume Master</span>
+                    <span className="text-[10px] font-mono font-bold text-gray-500">₹1,000 LOCKED</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500">Unlocks upon completing 5 verified orders or keeping a 7-day streak.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-[#E8B84B] font-bold mt-2">Activate your workspace now to complete the remaining milestones!</p>
+          
+          <button 
+            onClick={() => navigate(role === 'Reseller' ? '/reseller/dashboard' : '/home')} 
+            className="w-full bg-[#E8B84B] text-black font-black uppercase py-4 rounded-xl mt-4 hover:scale-102 transition-transform min-h-[48px] shadow-[0_0_20px_rgba(232,184,75,0.2)]"
+          >
+            Launch My Dashboard
           </button>
         </motion.div>
       </div>

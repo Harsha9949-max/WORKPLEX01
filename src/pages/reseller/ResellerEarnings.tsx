@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/format';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import { Wallet, ArrowUpRight, ArrowDownRight, Clock, CheckCircle } from 'lucide-react';
+import SubscriptionLimitsNotice from '../../components/reseller/SubscriptionLimitsNotice';
 
 export default function ResellerEarnings() {
   const { currentUser } = useAuth();
@@ -50,6 +51,9 @@ export default function ResellerEarnings() {
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       <h1 className="text-2xl font-black text-white">Earnings & Wallet</h1>
+
+      {/* Subscription limits and upgrade benefits */}
+      <SubscriptionLimitsNotice context="earnings" />
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-[#111111] border border-[#2A2A2A] p-6 rounded-2xl relative overflow-hidden">

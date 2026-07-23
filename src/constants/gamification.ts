@@ -32,7 +32,6 @@ export const BADGES: Badge[] = [
   { id: 'venture_pro', name: 'Venture Pro', description: 'Work in 3 different ventures', icon: Target, category: 'Activity', rarity: 'Epic', condition: 'venturesWorked >= 3' },
   { id: 'night_owl', name: 'Night Owl', description: 'Complete a mission after midnight', icon: Star, category: 'Activity', rarity: 'Common', condition: 'nightTask === true' },
   { id: 'consistent', name: 'Consistent', description: 'Maintain a 30-day streak', icon: Shield, category: 'Streak', rarity: 'Epic', condition: 'streak >= 30' },
-  { id: 'top_earner', name: 'Top Earner', description: 'Rank #1 on any leaderboard', icon: Trophy, category: 'Earning', rarity: 'Legendary', condition: 'rank === 1' },
   { id: 'workaholic', name: 'Workaholic', description: 'Complete 10 missions in one day', icon: Rocket, category: 'Activity', rarity: 'Rare', condition: 'dailyTasks >= 10' },
   { id: 'elite', name: 'WorkPlex Elite', description: 'Reach Legend level', icon: Crown, category: 'Activity', rarity: 'Legendary', condition: 'level === "Legend"' },
   { id: 'gem_collector', name: 'Gem Collector', description: 'Earn Rs. 1 Lakh total', icon: Gem, category: 'Earning', rarity: 'Legendary', condition: 'totalEarned >= 100000' },

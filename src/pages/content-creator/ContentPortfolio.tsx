@@ -1,25 +1,110 @@
-import React, { useState } from 'react';
-import { Camera, CheckCircle, Clock, XCircle, ExternalLink, Image as ImageIcon, Video, Type } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Camera, CheckCircle, Clock, XCircle, ExternalLink, Image as ImageIcon, Video, Type, Plus, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function ContentPortfolio() {
    const [filter, setFilter] = useState('all');
+   const [showSubmitModal, setShowSubmitModal] = useState(false);
+   const [newTitle, setNewTitle] = useState('');
+   const [newType, setNewType] = useState('Reel');
+   const [newLink, setNewLink] = useState('');
 
    const [portfolioItems, setPortfolioItems] = useState<any[]>([]);
 
+   useEffect(() => {
+      setPortfolioItems([
+         {
+            id: '1',
+            status: 'approved',
+            task: 'Cinematic Brand Teaser',
+            type: 'Reel',
+            date: '2026-06-21',
+            amount: 450,
+            icon: Video
+         },
+         {
+            id: '2',
+            status: 'approved',
+            task: 'Unboxing & First Impression',
+            type: 'Video',
+            date: '2026-06-18',
+            amount: 600,
+            icon: Video
+         },
+         {
+            id: '3',
+            status: 'pending',
+            task: 'Smart Lifestyle Routine',
+            type: 'Reel',
+            date: '2026-06-25',
+            amount: 500,
+            icon: Video
+         },
+         {
+            id: '4',
+            status: 'rejected',
+            task: 'Workspace Stylist Review',
+            type: 'Story',
+            date: '2026-06-14',
+            amount: 400,
+            icon: ImageIcon
+         }
+      ]);
+   }, []);
+
    const filteredItems = filter === 'all' ? portfolioItems : portfolioItems.filter(i => i.status === filter);
+
+   // Dynamic Stats Calculations
+   const totalCount = portfolioItems.length;
+   const approvedCount = portfolioItems.filter(i => i.status === 'approved').length;
+   const pendingCount = portfolioItems.filter(i => i.status === 'pending').length;
+   const rejectedCount = portfolioItems.filter(i => i.status === 'rejected').length;
+   const approvalRate = totalCount > 0 ? Math.round((approvedCount / (totalCount - pendingCount || 1)) * 100) : 100;
+
+   const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newTitle.trim() || !newLink.trim()) {
+         toast.error('Please fill in all fields.');
+         return;
+      }
+
+      const newItem = {
+         id: String(Date.now()),
+         status: 'pending',
+         task: newTitle,
+         type: newType,
+         date: new Date().toISOString().split('T')[0],
+         amount: 500,
+         icon: newType === 'Story' ? ImageIcon : Video
+      };
+
+      setPortfolioItems([newItem, ...portfolioItems]);
+      setShowSubmitModal(false);
+      setNewTitle('');
+      setNewLink('');
+      toast.success('Content submission logged under review!');
+   };
 
    return (
       <div className="space-y-6">
          {/* Stats Summary Stickyish */}
          <div className="bg-[#111111] p-4 rounded-2xl border border-[#2A2A2A] flex flex-wrap gap-4 items-center justify-between">
             <div className="flex gap-4">
-               <span className="text-white font-bold text-sm">Total: 12</span>
-               <span className="text-[#10B981] font-bold text-sm">✅ 9</span>
-               <span className="text-yellow-500 font-bold text-sm">⏳ 2</span>
-               <span className="text-red-500 font-bold text-sm">❌ 1</span>
+               <span className="text-white font-bold text-sm">Total: {totalCount}</span>
+               <span className="text-[#10B981] font-bold text-sm">✅ {approvedCount}</span>
+               <span className="text-yellow-500 font-bold text-sm">⏳ {pendingCount}</span>
+               <span className="text-red-500 font-bold text-sm">❌ {rejectedCount}</span>
             </div>
-            <div className="text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded-lg text-xs font-black tracking-widest">
-               APPROVAL RATE: 75%
+            <div className="flex items-center gap-4">
+               <div className="text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded-lg text-xs font-black tracking-widest">
+                  APPROVAL RATE: {approvalRate}%
+               </div>
+               <button 
+                  onClick={() => setShowSubmitModal(true)}
+                  className="bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition"
+               >
+                  <Plus size={14} /> Submit Work
+               </button>
             </div>
          </div>
 
@@ -75,6 +160,66 @@ export default function ContentPortfolio() {
                </div>
             )}
          </div>
+
+         {/* Submit Proof Modal */}
+         {showSubmitModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+               <div className="bg-[#111111] border border-[#2A2A2A] rounded-2xl w-full max-w-md overflow-hidden relative">
+                  <button 
+                     onClick={() => setShowSubmitModal(false)}
+                     className="absolute top-4 right-4 text-gray-500 hover:text-white"
+                  >
+                     <X size={20} />
+                  </button>
+
+                  <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                     <h3 className="text-lg font-black uppercase tracking-tight text-white mb-2">Submit Content Proof</h3>
+                     
+                     <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Mission / Video Title</label>
+                        <input 
+                           type="text" 
+                           placeholder="e.g. Aesthetic Brand Teaser" 
+                           value={newTitle}
+                           onChange={(e) => setNewTitle(e.target.value)}
+                           className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white focus:border-pink-500 transition-colors"
+                        />
+                     </div>
+
+                     <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Content Format</label>
+                        <select 
+                           value={newType}
+                           onChange={(e) => setNewType(e.target.value)}
+                           className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white focus:border-pink-500 transition-colors"
+                        >
+                           <option value="Reel">Reel / Shorts</option>
+                           <option value="Video">Full Video</option>
+                           <option value="Story">Story Post</option>
+                        </select>
+                     </div>
+
+                     <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Social Link (Instagram/YouTube)</label>
+                        <input 
+                           type="url" 
+                           placeholder="https://instagram.com/reel/..." 
+                           value={newLink}
+                           onChange={(e) => setNewLink(e.target.value)}
+                           className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl px-4 py-3 text-sm text-white focus:border-pink-500 transition-colors"
+                        />
+                     </div>
+
+                     <button 
+                        type="submit"
+                        className="w-full bg-pink-500 hover:bg-pink-600 text-white text-xs font-black uppercase tracking-widest py-4 rounded-xl transition shadow-[0_0_25px_rgba(236,72,153,0.3)]"
+                     >
+                        Submit Review Application
+                     </button>
+                  </form>
+               </div>
+            </div>
+         )}
       </div>
    );
 }

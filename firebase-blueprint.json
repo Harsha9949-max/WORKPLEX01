@@ -316,6 +316,31 @@
         "sentBy": { "type": "string" }
       },
       "required": ["recipientEmail", "recipientName", "invoiceId", "invoiceDate", "selectedVenture", "paymentMethod", "paymentStatus", "receiptStyle", "grandTotal", "items", "sentAt"]
+    },
+    "AcademyCourse": {
+      "title": "AcademyCourse",
+      "description": "A course in the WorkPlex Academy",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "duration": { "type": "string" },
+        "type": { "type": "string", "enum": ["Video", "Course", "Article"] },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "category", "duration", "type", "isActive"]
+    },
+    "AcademyProgress": {
+      "title": "AcademyProgress",
+      "description": "Progress tracking for a user in the Academy",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "completedCourseIds": { "type": "array", "items": { "type": "string" } },
+        "lastActivityAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "completedCourseIds"]
     }
   },
   "firestore": {
@@ -394,6 +419,14 @@
     "/sentEmails/{emailId}": {
       "schema": { "$ref": "#/entities/SentReceipt" },
       "description": "Dispatched transaction receipts history"
+    },
+    "/academyCourses/{courseId}": {
+      "schema": { "$ref": "#/entities/AcademyCourse" },
+      "description": "WorkPlex Academy courses"
+    },
+    "/academyProgress/{userId}": {
+      "schema": { "$ref": "#/entities/AcademyProgress" },
+      "description": "User progress in Academy courses"
     }
   }
 }

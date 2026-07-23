@@ -58,8 +58,11 @@ export interface UserData {
   totalLeadCount?: number;
   managerCommissionThisMonth?: number;
   teamCommissionToday?: number;
+  subscriptionTier?: 'scout' | 'hustler' | 'brand_partner' | 'venture_elite';
+  subscriptionActive?: boolean;
+  subscriptionExpiresAt?: any;
+  subscriptionTxId?: string | null;
   referralCode?: string;
-  leaderboardRank?: number;
   shopSlug?: string;
   totalSales?: number;
   branding?: {
@@ -84,6 +87,8 @@ export interface UserData {
   };
   tempPhone?: string | null;
   status?: string;
+  networkSize?: number;
+  successRate?: number;
 }
 
 interface AuthContextType {

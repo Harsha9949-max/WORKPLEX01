@@ -41,12 +41,12 @@ const defaultVenturesSeed = [
   { 
     id: 'BuyRix', 
     name: 'BuyRix', 
-    tag: 'E-commerce', 
-    desc: 'Premium e-commerce platform. Earn commissions by promoting high-demand retail products.',
-    potential: 'Up to ₹2,000/day',
+    tag: 'Digital Commerce', 
+    desc: 'Digital products only. Sell premium software, licenses, templates, and courses.',
+    potential: 'Up to ₹2,500/day',
     comingSoon: false,
     active: true,
-    iconName: 'ShoppingBag',
+    iconName: 'Layers',
     color: 'text-blue-400',
     bg: 'bg-blue-400/10',
     roles: ['Reseller', 'Marketer', 'Content Creator']
@@ -54,12 +54,12 @@ const defaultVenturesSeed = [
   { 
     id: 'Vyuma', 
     name: 'Vyuma', 
-    tag: 'Creator', 
-    desc: 'Next-gen media network. Get paid for content creation, video reviews, and social engagement.',
-    potential: 'Up to ₹3,500/day',
+    tag: 'E-commerce', 
+    desc: 'Physical product marketplace. Sell gadgets, accessories, apparel, and direct courier items.',
+    potential: 'Up to ₹4,000/day',
     comingSoon: false,
     active: true,
-    iconName: 'Video',
+    iconName: 'ShoppingBag',
     color: 'text-purple-400',
     bg: 'bg-purple-400/10',
     roles: ['Reseller', 'Marketer', 'Content Creator']
@@ -67,28 +67,28 @@ const defaultVenturesSeed = [
   { 
     id: 'Growplex', 
     name: 'Growplex', 
-    tag: 'Agency', 
-    desc: 'B2B growth engine. Earn big by acquiring high-value clients and providing support services.',
+    tag: 'SMM Panel', 
+    desc: 'B2C Social Media Panel. Sell followers, likes, engagement, and promotional funnels.',
     potential: 'Up to ₹5,000/day',
     comingSoon: false,
     active: true,
-    iconName: 'Users',
+    iconName: 'TrendingUp',
     color: 'text-emerald-400',
     bg: 'bg-emerald-400/10',
-    roles: ['Promoter', 'Content Creator']
+    roles: ['Reseller', 'Marketer', 'Content Creator']
   },
   { 
     id: 'Zaestify', 
     name: 'Zaestify', 
-    tag: 'Fashion', 
-    desc: 'Fashion & lifestyle hub. Influence trends and earn through curated style recommendations.',
+    tag: 'Startup Hub', 
+    desc: 'Startup entrepreneurship incubator. Encouraging next-generation startups is our main motto.',
     potential: 'Coming Soon',
     comingSoon: true,
     active: true,
-    iconName: 'TrendingUp',
+    iconName: 'Target',
     color: 'text-pink-400',
     bg: 'bg-pink-400/10',
-    roles: ['Marketer', 'Content Creator']
+    roles: ['Reseller', 'Marketer', 'Content Creator']
   }
 ];
 

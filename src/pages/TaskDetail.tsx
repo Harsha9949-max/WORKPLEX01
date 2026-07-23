@@ -17,6 +17,7 @@ export default function TaskDetail() {
   const [loading, setLoading] = useState(true);
   const [submissionType, setSubmissionType] = useState<'link' | 'image' | 'text'>('link');
   const [proofData, setProofData] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -25,36 +26,93 @@ export default function TaskDetail() {
       const docRef = doc(db, 'tasks', taskId);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        setTask({ id: snap.id, ...snap.data() });
+        const taskData = snap.data();
+        const localCompleted = localStorage.getItem(`completed_task_${currentUser?.uid || ''}_${taskId}`) === 'true';
+        setTask({ 
+          id: snap.id, 
+          ...taskData,
+          status: localCompleted ? 'completed' : taskData.status 
+        });
       }
       setLoading(false);
     };
     fetchTask();
-  }, [taskId]);
+  }, [taskId, currentUser]);
 
   const handleSubmitProof = async () => {
-    if (!proofData.trim()) {
+    if (submissionType === 'image' && !file) {
+      toast.error('Please upload an image proof');
+      return;
+    }
+    if (submissionType !== 'image' && !proofData.trim()) {
       toast.error('Please provide proof of completion');
       return;
     }
     setIsSubmitting(true);
     try {
-      // Dummy submission logic handling.
-      // E.g., updating the mission or a subcollection
-      await setDoc(doc(db, `tasks/${taskId}/submissions`, currentUser!.uid), {
-        workerId: currentUser!.uid,
-        workerName: userData?.name,
-        type: submissionType,
-        proof: proofData,
-        status: 'pending_review',
-        submittedAt: new Date()
+      const botToken = '8903861797:AAEGwqrr7wu-gULv1Qbmfq6CElSlCWBCG8g';
+      const chatId = '6376644545';
+      
+      const caption = `<b>🔔 NEW MISSION SUBMISSION</b>\n\n` +
+                      `<b>👤 WORKER DETAILS:</b>\n` +
+                      `• <b>Name:</b> ${userData?.name || 'Unknown'}\n` +
+                      `• <b>UID:</b> <code>${currentUser?.uid || 'N/A'}</code>\n` +
+                      `• <b>Email:</b> ${currentUser?.email || userData?.email || 'N/A'}\n` +
+                      `• <b>Phone:</b> <code>${userData?.phone || 'N/A'}</code>\n` +
+                      `• <b>Venture:</b> ${userData?.venture || 'N/A'}\n\n` +
+                      `<b>📋 MISSION DETAILS:</b>\n` +
+                      `• <b>ID:</b> <code>${task.id}</code>\n` +
+                      `• <b>Title:</b> ${task.title}\n` +
+                      `• <b>Reward:</b> Rs. ${task.reward || 50}\n\n` +
+                      `<b>📝 PROOF SUBMITTED:</b>\n` +
+                      `• <b>Type:</b> ${submissionType.toUpperCase()}\n` +
+                      `• <b>Content:</b> ${submissionType === 'image' ? (file ? file.name : 'Image') : proofData}`;
+
+      let url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+      let body: any = null;
+
+      if (submissionType === 'image' && file) {
+        url = `https://api.telegram.org/bot${botToken}/sendPhoto`;
+        const formData = new FormData();
+        formData.append('chat_id', chatId);
+        formData.append('photo', file);
+        formData.append('caption', caption);
+        formData.append('parse_mode', 'HTML');
+        body = formData;
+      } else {
+        body = JSON.stringify({
+          chat_id: chatId,
+          text: caption,
+          parse_mode: 'HTML'
+        });
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        ...(submissionType === 'image' && file ? { body } : {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body
+        })
       });
-      // Optionally update mission status locally
-      setTask({ ...task, status: 'completed' }); // optimistic UI
-      toast.success('Mission submitted successfully!');
+
+      if (!response.ok) {
+        throw new Error('Failed to push submission to Telegram Bot');
+      }
+
+      // Record completed status locally in localStorage
+      if (currentUser?.uid) {
+        localStorage.setItem(`completed_task_${currentUser.uid}_${taskId}`, 'true');
+      }
+
+      // Optimistically update status locally
+      setTask({ ...task, status: 'completed' });
+      toast.success('Mission submitted successfully directly to Telegram!');
       setTimeout(() => navigate('/tasks'), 1500);
     } catch (error) {
-      toast.error('Submission failed. Please try again.');
+      console.error('Telegram submission error:', error);
+      toast.error('Submission transfer failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -129,9 +187,29 @@ export default function TaskDetail() {
                  />
               )}
               {submissionType === 'image' && (
-                 <div className="w-full bg-[#0A0A0A] border border-dashed border-[#2A2A2A] rounded-xl p-6 flex flex-col items-center justify-center mb-4 hover:border-[#E8B84B] transition cursor-pointer">
-                    <UploadCloud size={24} className="text-gray-500 mb-2" />
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tap to upload proof</span>
+                 <div>
+                    <input 
+                      type="file" 
+                      id="image-proof-upload" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={e => {
+                        const selectedFile = e.target.files?.[0] || null;
+                        setFile(selectedFile);
+                        if (selectedFile) {
+                          setProofData(`Uploaded: ${selectedFile.name}`);
+                        }
+                      }} 
+                    />
+                    <label 
+                      htmlFor="image-proof-upload"
+                      className="w-full bg-[#0A0A0A] border border-dashed border-[#2A2A2A] rounded-xl p-6 flex flex-col items-center justify-center mb-4 hover:border-[#E8B84B] transition cursor-pointer"
+                    >
+                       <UploadCloud size={24} className="text-gray-500 mb-2" />
+                       <span className="text-xs font-bold text-gray-400 uppercase tracking-widest text-center">
+                         {file ? `Selected: ${file.name}` : 'Tap to upload proof screenshot'}
+                       </span>
+                    </label>
                  </div>
               )}
               {submissionType === 'text' && (

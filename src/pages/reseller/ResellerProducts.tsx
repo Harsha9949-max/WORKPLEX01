@@ -9,6 +9,8 @@ import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/format';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import SubscriptionLimitsNotice from '../../components/reseller/SubscriptionLimitsNotice';
 
 const ProductImage = ({ images, name, size = 40, className = "" }: { images?: string[], name?: string, size?: number | 'full', className?: string }) => {
   const [imgError, setImgError] = useState(false);
@@ -52,6 +54,7 @@ const ProductImage = ({ images, name, size = 40, className = "" }: { images?: st
 
 export default function ResellerProducts() {
   const { currentUser, userData } = useAuth();
+  const navigate = useNavigate();
   const [shop, setShop] = useState<any>(null);
   const [myProducts, setMyProducts] = useState<any[]>([]);
   const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
@@ -105,6 +108,16 @@ export default function ResellerProducts() {
 
   const handleAddProduct = async (catalogProd: any, sellingPrice: number) => {
     if (!currentUser) return;
+    const currentTier = userData?.subscriptionTier || 'scout';
+    const limit = currentTier === 'scout' ? 5 : currentTier === 'hustler' ? 15 : currentTier === 'brand_partner' ? 50 : Infinity;
+    
+    if (myProducts.length >= limit) {
+      toast.error(`Listing limit reached! Your ${currentTier.toUpperCase().replace('_', ' ')} plan supports up to ${limit} products. Upgrade to list more!`, { duration: 6000 });
+      setShowCatalogModal(false);
+      navigate('/reseller/subscription');
+      return;
+    }
+
     const currentVenture = shop?.venture || userData?.venture || 'BuyRix';
     const adminPrice = catalogProd.suggestedRetailPrice || catalogProd.hvrsBasePrice;
     try {
@@ -189,6 +202,9 @@ export default function ResellerProducts() {
           <Plus size={18} /> Browse Catalog
         </button>
       </div>
+
+      {/* Plan Limits Notice */}
+      <SubscriptionLimitsNotice context="products" />
 
       {myProducts.length === 0 ? (
         <div className="bg-[#111111] border border-[#2A2A2A] rounded-[8px] p-12 text-center flex flex-col items-center">

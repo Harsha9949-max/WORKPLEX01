@@ -35,13 +35,13 @@ import LandingPage from './pages/LandingPage';
 import CompressedOnboarding from './pages/CompressedOnboarding';
 import LoginPage from './pages/LoginPage';
 import HomeDashboard from './pages/HomeDashboard';
+import SubscriptionMatrix from './pages/SubscriptionMatrix';
 import TasksScreen from './pages/TasksScreen';
 import TaskDetail from './pages/TaskDetail';
 import WalletScreen from './pages/WalletScreen';
 import CouponDashboard from './pages/CouponDashboard';
 import ProfileScreen from './pages/ProfileScreen';
 import TeamManagement from './pages/TeamManagement';
-import LeaderboardScreen from './pages/LeaderboardScreen';
 import PromotionCelebration from './components/mlm/PromotionCelebration';
 import LevelUpCelebration from './components/gamification/LevelUpCelebration';
 import PublicProfilePage from './pages/PublicProfilePage';
@@ -52,6 +52,8 @@ import PublicShopPage from './pages/PublicShopPage';
 import AdminCatalogManager from './pages/admin/AdminCatalogManager';
 import AIChatbotWidget from './components/chat/AIChatbotWidget';
 import AppLayout from './components/layout/AppLayout';
+import ContentStudio from './pages/content-creator/ContentStudio';
+import ManagerTeamPanel from './pages/manager/ManagerTeamPanel';
 import { PrivacyPolicy, TermsOfService, CookiePolicy, SecurityPolicy, ContactPage } from './pages/legal/LegalPages';
 
 // Phase 7 Admin Components
@@ -72,10 +74,13 @@ import AnnouncementBroadcaster from './pages/admin/AnnouncementBroadcaster';
 import MainPageCMS from './pages/admin/MainPageCMS';
 import AdminPartnerOrders from './pages/admin/AdminPartnerOrders';
 import SubAdminPanel from './pages/admin/SubAdminPanel';
-import ManagerTeamPanel from './pages/manager/ManagerTeamPanel';
-import ContentStudio from './pages/content-creator/ContentStudio';
 
 import OrderSuccessPage from './pages/OrderSuccessPage';
+
+// Phase 5 Additions
+import AnalyticsHub from './pages/analytics/AnalyticsHub';
+import RewardsCenter from './pages/gamification/RewardsCenter';
+import Academy from './pages/academy/Academy';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { currentUser, loading } = useAuth();
@@ -140,19 +145,22 @@ function AppContent() {
         {/* Protected routes with persistent nav */}
         <Route element={<PrivateRoute><AppLayout /></PrivateRoute>}>
           <Route path="/home" element={<HomeDashboard />} />
+          <Route path="/subscription" element={<SubscriptionMatrix />} />
           <Route path="/tasks" element={<TasksScreen />} />
           <Route path="/tasks/:taskId" element={<TaskDetail />} />
           <Route path="/wallet" element={<WalletScreen />} />
           <Route path="/coupon" element={<CouponDashboard />} />
           <Route path="/profile" element={<ProfileScreen />} />
           <Route path="/team" element={<TeamManagement />} />
-          <Route path="/leaderboard" element={<LeaderboardScreen />} />
           <Route path="/chat/:leadId" element={<TeamChatScreen />} />
           <Route path="/catalog" element={<ResellerCatalogPage />} />
           <Route path="/shop-setup" element={<ShopSetupWizard />} />
           <Route path="/sub-admin" element={<SubAdminPanel />} />
           <Route path="/manager/team" element={<ManagerTeamPanel />} />
           <Route path="/studio" element={<ContentStudio />} />
+          <Route path="/analytics" element={<AnalyticsHub />} />
+          <Route path="/rewards" element={<RewardsCenter />} />
+          <Route path="/academy" element={<Academy />} />
         </Route>
         
         {/* Phase 7 Admin Panel */}
@@ -190,6 +198,7 @@ function AppContent() {
           <Route path="earnings" element={<ResellerEarnings />} />
           <Route path="settings" element={<ResellerSettings />} />
           <Route path="profile" element={<ResellerProfile />} />
+          <Route path="subscription" element={<SubscriptionMatrix />} />
         </Route>
         
         {/* Legal Routes */}

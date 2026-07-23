@@ -43,6 +43,22 @@ export default function WithdrawalModal({ isOpen, onClose, earnedBalance }: Prop
         toast.error('Insufficient available balance');
         return;
      }
+
+     // Tier-based withdrawal caps checking
+     const tier = userData?.subscriptionTier || 'scout';
+     const limits: Record<string, number> = {
+        scout: 1000,
+        hustler: 5000,
+        brand_partner: 15000,
+        venture_elite: 99999999
+     };
+     const currentLimit = limits[tier] || 1000;
+
+     if (val > currentLimit) {
+        toast.error(`Your current tier (${tier.toUpperCase()}) has a maximum withdrawal limit of ₹${currentLimit.toLocaleString('en-IN')}/week. Please upgrade to a higher workspace tier.`);
+        return;
+     }
+
      if (!isKycDone && val > 500) { // arbitrary threshold for KYC check
         setStep(3); // KYC Gate
         return;
@@ -92,20 +108,29 @@ export default function WithdrawalModal({ isOpen, onClose, earnedBalance }: Prop
                    </button>
                 </div>
                 
-                <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-4 mb-6 flex justify-between items-center">
-                   <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Available Balance</span>
-                   <span className="text-[#E8B84B] font-black text-xl">{formatCurrency(earnedBalance)}</span>
+                <div className="bg-[#1A1A1A]/50 border border-[#2A2A2A]/50 rounded-2xl p-4 mb-6 space-y-3">
+                   <div className="flex justify-between items-center">
+                      <span className="text-gray-400 text-xs font-bold uppercase tracking-widest">Available Balance</span>
+                      <span className="text-[#E8B84B] font-black text-xl">{formatCurrency(earnedBalance)}</span>
+                   </div>
+                   <div className="h-px bg-[#2A2A2A]" />
+                   <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 font-bold uppercase tracking-widest">Weekly Tier Limit</span>
+                      <span className="text-gray-300 font-mono font-bold uppercase">
+                         {userData?.subscriptionTier === 'venture_elite' ? 'Unlimited' : `Max ₹${(userData?.subscriptionTier === 'brand_partner' ? 15000 : userData?.subscriptionTier === 'hustler' ? 5000 : 1000).toLocaleString('en-IN')}/wk`}
+                      </span>
+                   </div>
                 </div>
 
                 <div className="mb-6 relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₹</span>
-                  <input 
-                    type="number"
-                    className="w-full bg-[#0A0A0A] border border-[#2A2A2A] text-white p-4 pl-8 rounded-xl font-black text-2xl focus:border-[#E8B84B] outline-none transition"
-                    placeholder="200"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                  />
+                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">₹</span>
+                   <input 
+                     type="number"
+                     className="w-full bg-[#0A0A0A] border border-[#2A2A2A] text-white p-4 pl-8 rounded-xl font-black text-2xl focus:border-[#E8B84B] outline-none transition"
+                     placeholder="200"
+                     value={amount}
+                     onChange={(e) => setAmount(e.target.value)}
+                   />
                 </div>
 
                 <div className="grid grid-cols-4 gap-2 mb-6">
@@ -235,7 +260,7 @@ export default function WithdrawalModal({ isOpen, onClose, earnedBalance }: Prop
                     <button onClick={() => setStep(1)} className="w-full text-xs font-bold text-gray-500 uppercase py-2 hover:text-white transition">
                        Go Back
                     </button>
-                 </div>
+                  </div>
               </div>
             )}
 

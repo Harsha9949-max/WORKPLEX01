@@ -46,7 +46,7 @@ export default function BottomNav() {
      tabs = [
        { path: '/home', icon: Home, label: 'Home', badge: showHomeWarning ? 'red' : null },
        { path: '/tasks', icon: ClipboardList, label: 'Missions', badge: hasPendingTasks ? 'red' : null },
-       { path: '/leaderboard', icon: Trophy, label: 'Rank', badge: null }, // Replaced Coupon with Rank
+       { path: '/coupon', icon: Tag, label: 'Coupon', badge: null }, // Replaced Rank with Coupon back
        { path: '/wallet', icon: Wallet, label: 'Wallet', badge: hasPendingRelease ? 'yellow' : null },
        { path: '/profile', icon: User, label: 'Profile', badge: hasNewBadge ? 'purple' : null }
      ];

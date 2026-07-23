@@ -11,9 +11,10 @@ import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/format';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import toast from 'react-hot-toast';
+import SubscriptionLimitsNotice from '../../components/reseller/SubscriptionLimitsNotice';
 
 export default function ResellerDashboard() {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
   const [shop, setShop] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -172,27 +173,41 @@ export default function ResellerDashboard() {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-white">Dashboard</h1>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-2 mt-1">
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#111111] border border-[#2A2A2A] text-[10px] font-bold uppercase tracking-widest text-gray-300">
               <div className={`w-2 h-2 rounded-full ${shop?.isActive ? 'bg-[#10B981]' : 'bg-[#EF4444]'}`} />
               {shop?.isActive ? 'Shop Live' : 'Shop Inactive'}
+            </span>
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 text-[10px] font-bold uppercase tracking-widest text-[#E8B84B]">
+              👑 {userData?.subscriptionTier?.toUpperCase().replace('_', ' ') || 'SCOUT'} TIER
             </span>
             <span className="text-xs text-gray-500 font-medium">
               {shop?.shopName || 'WorkPlex Reseller'}
             </span>
           </div>
         </div>
-        {shop?.shopSlug && (
-          <a
-            href={`/shop/${shop.shopSlug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 border border-[#00C9A7] text-[#00C9A7] rounded-[6px] text-sm font-bold hover:bg-[#00C9A7]/10 transition-colors"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/reseller/subscription')}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-400 text-black hover:brightness-110 rounded-[6px] text-sm font-black transition-all shadow-lg shadow-yellow-500/10"
           >
-            <ExternalLink size={16} /> View My Shop
-          </a>
-        )}
+            Upgrade & Plans
+          </button>
+          {shop?.shopSlug && (
+            <a
+              href={`/shop/${shop.shopSlug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 border border-[#00C9A7] text-[#00C9A7] rounded-[6px] text-sm font-bold hover:bg-[#00C9A7]/10 transition-colors"
+            >
+              <ExternalLink size={16} /> View My Shop
+            </a>
+          )}
+        </div>
       </div>
+
+      {/* Subscription Tier Limitations & Benefits */}
+      <SubscriptionLimitsNotice context="dashboard" />
 
       {/* Onboarding Checklist */}
       {!shop?.onboardingComplete && (

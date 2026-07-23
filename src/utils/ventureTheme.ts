@@ -6,9 +6,9 @@ export const ventureTheme: Record<string, any> = {
     gradient: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(59,130,246,0.1))',
     couponPrefix: 'BX',
     name: 'BuyRix',
-    tagline: 'Electronics & Gadgets',
+    tagline: 'Digital Products Commerce',
     website: 'buyrix.in',
-    taskFocus: 'electronics promotion'
+    taskFocus: 'digital products'
   },
   vyuma: {
     color: '#8B5CF6',
@@ -17,9 +17,9 @@ export const ventureTheme: Record<string, any> = {
     gradient: 'linear-gradient(135deg, rgba(139,92,246,0.3), rgba(139,92,246,0.1))',
     couponPrefix: 'VY',
     name: 'Vyuma',
-    tagline: 'Lifestyle & Fashion',
+    tagline: 'Physical E-Commerce Marketplace',
     website: 'vyuma.shop',
-    taskFocus: 'lifestyle content'
+    taskFocus: 'e-commerce products'
   },
   growplex: {
     color: '#00C9A7',
@@ -28,10 +28,22 @@ export const ventureTheme: Record<string, any> = {
     gradient: 'linear-gradient(135deg, rgba(0,201,167,0.3), rgba(0,201,167,0.1))',
     couponPrefix: 'GP',
     name: 'Growplex',
-    tagline: 'SMM Services',
+    tagline: 'B2C SMM Panel',
     website: 'growplex.sbs',
-    taskFocus: 'SMM promotion',
+    taskFocus: 'SMM panel engagement',
     manualWallet: true
+  },
+  zaestify: {
+    color: '#E8B84B',
+    lightColor: '#FCD34D',
+    bgColor: 'rgba(232,184,75,0.15)',
+    gradient: 'linear-gradient(135deg, rgba(232,184,75,0.3), rgba(232,184,75,0.1))',
+    couponPrefix: 'ZS',
+    name: 'Zaestify',
+    tagline: 'Startup Incubator & Hub',
+    website: 'zaestify.sbs',
+    taskFocus: 'startup entrepreneurship',
+    comingSoon: true
   }
 };
 

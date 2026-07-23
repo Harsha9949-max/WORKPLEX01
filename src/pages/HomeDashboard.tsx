@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { collection, query, where, onSnapshot, limit, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
-import { Bell, Settings as SettingsIcon, BrainCircuit, TrendingUp, Calendar, Clock, ClipboardCheck, Gift, ChevronRight, Share2, Award, ArrowRight } from 'lucide-react';
+import { Bell, Settings as SettingsIcon, BrainCircuit, TrendingUp, Calendar, Clock, ClipboardCheck, Gift, ChevronRight, Share2, Award, ArrowRight, Crown, GraduationCap } from 'lucide-react';
 import { Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import TeamSummaryCard from '../components/dashboard/TeamSummaryCard';
@@ -265,6 +265,35 @@ export default function HomeDashboard() {
 
             <main className="p-4 max-w-5xl mx-auto space-y-6">
 
+              {/* SECTION 1.5 — WORKSPACE UPGRADE / SAAS SUBSCRIPTION MATRIX */}
+              <section className="bg-gradient-to-r from-[#1E1B4B]/80 to-[#111116] border border-indigo-500/30 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-[0_0_20px_rgba(99,102,241,0.1)]">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                    <Crown size={22} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-black text-xs uppercase tracking-widest">Workspace Tier:</span>
+                      <span className="text-[10px] font-mono font-black text-[#E8B84B] bg-[#E8B84B]/10 px-2 py-0.5 rounded uppercase tracking-wider">
+                        {userData?.subscriptionTier || 'scout'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-300 mt-1">
+                      {userData?.subscriptionTier === 'venture_elite' ? 'Uncapped maximum payouts & premium sub-admin assistance active!' :
+                       userData?.subscriptionTier === 'brand_partner' ? '25% Commission boost, WhatsApp status missions, & white-label live!' :
+                       userData?.subscriptionTier === 'hustler' ? '10% Commission boost & custom catalog sharing active!' :
+                       'You are on the Scout Free tier. Upgrade to unlock 10% - 40% commission multiplier boosts.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/subscription')}
+                  className="bg-[#E8B84B] text-black text-xs font-black uppercase tracking-wider px-4 py-3 rounded-xl hover:scale-102 transition-transform shrink-0 shadow-[0_0_15px_rgba(232,184,75,0.2)]"
+                >
+                  Manage Workspace Tiers
+                </button>
+              </section>
+
               {/* SECTION 2 — HERO STREAK CARD */}
         <section className="bg-gradient-to-br from-[#1A1A1A] to-[#0A0A0A] border border-[#2A2A2A] rounded-2xl p-5 relative overflow-hidden">
            {/* Fire particles CSS in global or style tag */}
@@ -314,7 +343,50 @@ export default function HomeDashboard() {
            </p>
         </section>
 
-        {/* SECTION 3 — EARNINGS SNAPSHOT */}
+        {/* SECTION 2.5 — ₹2,500 GAMIFIED WELCOME INCENTIVE PROGRESS */}
+         <section className="bg-gradient-to-br from-[#111111] to-[#0A0A0A] border border-[#2A2A2A] rounded-2xl p-5 mb-6">
+            <div className="flex justify-between items-center mb-4">
+               <div>
+                  <h3 className="text-white font-black text-sm uppercase tracking-wider flex items-center gap-1.5">
+                     💰 ₹2,500 Welcome Milestone Tracker
+                  </h3>
+                  <p className="text-[11px] text-gray-400">Unlock your welcome incentive chunks by hitting operational goals.</p>
+               </div>
+               <span className="text-xs font-mono font-black text-[#E8B84B] bg-[#E8B84B]/10 px-2.5 py-1 rounded-full">
+                  ₹200 / ₹2,500 Unlocked
+               </span>
+            </div>
+
+            <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden mb-4">
+               <div className="bg-gradient-to-r from-[#E8B84B] to-[#10B981] h-full rounded-full" style={{ width: '8%' }}></div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+               {[
+                  { name: 'Profile Activation', val: '₹200', done: true, desc: 'Setup profile & select venture' },
+                  { name: 'Launch Store / Link', val: '₹500', done: !!userData.firstTaskDone, desc: 'Activate custom reseller store' },
+                  { name: 'First Verified Sale', val: '₹800', done: false, desc: 'Deliver first customer order' },
+                  { name: 'Streak / Volume Hero', val: '₹1,000', done: streak >= 7, desc: 'Complete 5 sales or 7d streak' }
+               ].map((m, idx) => (
+                  <div key={idx} className={`p-3 rounded-xl border flex flex-col justify-between ${m.done ? 'bg-[#10B981]/5 border-[#10B981]/25 text-white' : 'bg-white/[0.02] border-white/5 text-gray-400'}`}>
+                     <div>
+                        <div className="flex justify-between items-start gap-1 mb-1">
+                           <span className="text-[10px] font-bold uppercase tracking-wider line-clamp-1">{m.name}</span>
+                           <span className={`text-[10px] font-mono font-black px-1.5 py-0.5 rounded ${m.done ? 'bg-[#10B981]/20 text-[#10B981]' : 'bg-white/10 text-gray-500'}`}>
+                              {m.val}
+                           </span>
+                        </div>
+                        <p className="text-[9px] text-gray-500 leading-tight">{m.desc}</p>
+                     </div>
+                     <span className={`text-[9px] font-black uppercase tracking-widest mt-2 block ${m.done ? 'text-[#10B981]' : 'text-gray-500'}`}>
+                        {m.done ? '✓ UNLOCKED' : '🔒 LOCKED'}
+                     </span>
+                  </div>
+               ))}
+            </div>
+         </section>
+
+         {/* SECTION 3 — EARNINGS SNAPSHOT */}
         <section className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide snap-x">
            <div className="min-w-[200px] bg-[#111111] border border-[#2A2A2A] p-4 rounded-xl snap-start relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#00C9A7]"></div>
@@ -485,6 +557,37 @@ export default function HomeDashboard() {
            </div>
         </section>
 
+        {/* PHASE 5: GROWTH & GAMIFICATION HUB */}
+        <section className="space-y-4 pt-4">
+           <h2 className="text-white font-black text-lg">GROWTH CENTER</h2>
+           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <button onClick={() => navigate('/analytics')} className="bg-[#111111] border border-[#2A2A2A] hover:border-indigo-500/50 p-4 rounded-xl flex flex-col items-center justify-center text-center transition group">
+                 <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                    <TrendingUp size={20} className="text-indigo-400" />
+                 </div>
+                 <h4 className="text-xs font-bold text-white uppercase tracking-widest mb-1">Analytics</h4>
+                 <p className="text-[10px] text-gray-500">Track Performance</p>
+              </button>
+              
+              <button onClick={() => navigate('/rewards')} className="bg-[#111111] border border-[#2A2A2A] hover:border-yellow-500/50 p-4 rounded-xl flex flex-col items-center justify-center text-center transition group relative overflow-hidden">
+                 <div className="absolute top-0 right-0 w-8 h-8 bg-yellow-500/10 rounded-bl-full"></div>
+                 <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                    <Award size={20} className="text-yellow-400" />
+                 </div>
+                 <h4 className="text-xs font-bold text-white uppercase tracking-widest mb-1">Rewards</h4>
+                 <p className="text-[10px] text-gray-500">View Ranks & Badges</p>
+              </button>
+
+              <button onClick={() => navigate('/academy')} className="bg-[#111111] border border-[#2A2A2A] hover:border-pink-500/50 p-4 rounded-xl flex flex-col items-center justify-center text-center transition group col-span-2 sm:col-span-1">
+                 <div className="w-10 h-10 rounded-full bg-pink-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                    <GraduationCap size={20} className="text-pink-400" />
+                 </div>
+                 <h4 className="text-xs font-bold text-white uppercase tracking-widest mb-1">Academy</h4>
+                 <p className="text-[10px] text-gray-500">Learn & Earn More</p>
+              </button>
+           </div>
+        </section>
+
         {/* SECTION 5 — TODAY'S TASK PREVIEW */}
         <section className="space-y-4">
            <div className="flex justify-between items-center">
@@ -528,24 +631,6 @@ export default function HomeDashboard() {
            )}
         </section>
 
-        {/* SECTION 6 — LEADERBOARD PREVIEW */}
-        <section className="bg-[#111111] border border-[#2A2A2A] rounded-2xl p-5 relative overflow-hidden">
-           {/* Decor */}
-           <Award size={120} className="absolute -right-6 -bottom-6 text-[#1A1A1A] z-0 drop-shadow-xl" />
-           <div className="relative z-10 flex flex-col items-center text-center">
-              <h3 className="text-white font-black text-lg mb-1">YOUR RANK THIS WEEK</h3>
-              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-sm mb-4" style={{ backgroundColor: `${ventureColor}20`, color: ventureColor }}>{userData.venture || 'Global'} Team</span>
-              
-              <div className="flex flex-col items-center mb-4">
-                 <span className="text-5xl font-black text-[#E8B84B] drop-shadow-[0_2px_10px_rgba(232,184,75,0.3)]">#{userData?.leaderboardRank || '-'}</span>
-                 <span className="text-xs text-gray-400 font-medium">Keep climbing!</span>
-              </div>
-              
-              <button onClick={() => navigate('/leaderboard')} className="text-[#00C9A7] text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:underline">
-                 View Full Leaderboard <ChevronRight size={14} />
-              </button>
-           </div>
-        </section>
 
       </main>
 

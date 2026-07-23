@@ -259,7 +259,7 @@ export default function EmailFirstAuth({ defaultIsLogin = true }: { defaultIsLog
 
     if (!snap.exists()) {
       let finalPhone = suppliedPhone || await generateTempPhone();
-      const incentiveAmount = Math.floor(Math.random() * 3) + 19; // 19, 20, or 21
+      const incentiveAmount = 200; // First milestone chunk of the ₹2,500 welcome incentive
 
       await setDoc(userRef, {
         name: user.displayName || 'New User',

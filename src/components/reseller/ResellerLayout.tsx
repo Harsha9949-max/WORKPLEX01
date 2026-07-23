@@ -3,12 +3,13 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, Package, ShoppingCart, Store, 
   BarChart, Wallet, Settings, LogOut,
-  User
+  User, Crown
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { auth } from '../../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { Logo } from '../ui/Logo';
+import SubscriptionLimitsNotice from './SubscriptionLimitsNotice';
 
 export default function ResellerLayout() {
   const { userData, currentUser } = useAuth();
@@ -27,6 +28,7 @@ export default function ResellerLayout() {
     { icon: Store, label: 'My Shop', path: '/reseller/my-shop' },
     { icon: BarChart, label: 'Performance', path: '/reseller/performance' },
     { icon: Wallet, label: 'Earnings', path: '/reseller/earnings' },
+    { icon: Crown, label: 'Upgrade & Plans', path: '/reseller/subscription' },
     { icon: Settings, label: 'Settings', path: '/reseller/settings' },
     { icon: User, label: 'Profile', path: '/reseller/profile' },
   ];
@@ -60,8 +62,13 @@ export default function ResellerLayout() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-[#2A2A2A]">
-          <div className="flex items-center gap-3 mb-4 px-2">
+        <div className="p-4 border-t border-[#2A2A2A] space-y-4">
+          {/* Subscription plan & upgrade quick link */}
+          <div className="px-1">
+            <SubscriptionLimitsNotice context="minimal" />
+          </div>
+
+          <div className="flex items-center gap-3 px-2">
             <div className="w-10 h-10 bg-[#E8B84B]/20 rounded-full flex items-center justify-center text-[#E8B84B] font-bold shrink-0">
               {userData?.name?.charAt(0) || 'R'}
             </div>
@@ -88,7 +95,7 @@ export default function ResellerLayout() {
 
       {/* Bottom Nav (Mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#111111] border-t border-[#2A2A2A] z-50 px-2 py-2 pb-safe flex justify-between items-center text-gray-400">
-        {[navItems[0], navItems[1], navItems[2], navItems[3], navItems[7]].map((item) => {
+        {[navItems[0], navItems[1], navItems[3], navItems[6], navItems[8]].map((item) => {
           const isActive = location.pathname.startsWith(item.path);
           return (
             <NavLink

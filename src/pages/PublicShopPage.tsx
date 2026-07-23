@@ -134,40 +134,71 @@ export default function PublicShopPage() {
     return { emoji: '📦', bg: 'bg-[#ECEFF1]' }; // Default
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-[#f1f3f6] flex flex-col items-center justify-center p-4">
-      <motion.div 
-        animate={{ rotate: 360 }} 
-        transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-        className="w-12 h-12 border-4 border-[#2874f0] border-t-transparent rounded-full shadow-md mb-3" 
-      />
-      <span className="text-xs font-bold text-gray-500 uppercase tracking-widest animate-pulse">Loading Store...</span>
-    </div>
-  );
-
-  if (!shop) return (
-    <div className="min-h-screen bg-[#f1f3f6] flex flex-col items-center justify-center p-8 text-center">
-      <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-6">
-        <Package size={36} className="text-gray-400" />
+  if (loading) {
+    const primaryColor = shop?.theme?.primaryColor || '#2874f0';
+    return (
+      <div className="min-h-screen bg-[#f1f3f6] flex flex-col items-center justify-center p-4">
+        <motion.div 
+          animate={{ rotate: 360 }} 
+          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+          className="w-12 h-12 border-4 border-t-transparent rounded-full shadow-md mb-3" 
+          style={{ borderLeftColor: primaryColor, borderRightColor: primaryColor, borderBottomColor: primaryColor }}
+        />
+        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest animate-pulse">Loading Store...</span>
       </div>
-      <h1 className="text-3xl font-black text-gray-800 mb-2">Storefront Offline</h1>
-      <p className="text-gray-500 mb-8 max-w-sm text-sm">The store coordinates are incorrect, or the seller has taken their storefront offline temporarily.</p>
-      <Link to="/" className="bg-[#2874f0] text-white font-bold px-8 py-3 rounded shadow hover:bg-[#1259c7] transition-all">Go Home</Link>
-    </div>
-  );
+    );
+  }
+
+  if (!shop) {
+    return (
+      <div className="min-h-screen bg-[#f1f3f6] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-6">
+          <Package size={36} className="text-gray-400" />
+        </div>
+        <h1 className="text-3xl font-black text-gray-800 mb-2">Storefront Offline</h1>
+        <p className="text-gray-500 mb-8 max-w-sm text-sm">The store coordinates are incorrect, or the seller has taken their storefront offline temporarily.</p>
+        <Link to="/" className="bg-[#2874f0] text-white font-bold px-8 py-3 rounded shadow hover:bg-[#1259c7] transition-all">Go Home</Link>
+      </div>
+    );
+  }
 
   // Dynamic branding colors & fonts if selected, otherwise fallback to Flipkart palette
-  const themeVars = {
-    '--color-primary': '#2874f0',
-    '--color-secondary': '#ffe11b',
-    backgroundColor: '#f1f3f6'
-  } as React.CSSProperties;
+  const primaryColor = shop.theme?.primaryColor || '#2874f0';
+  const secondaryColor = shop.theme?.secondaryColor || '#ffe11b';
+  const backgroundColor = shop.theme?.backgroundColor || '#f1f3f6';
+  const fontStyle = shop.theme?.fontStyle || 'modern';
+  const buttonStyle = shop.theme?.buttonStyle || 'rounded';
+  const shopLayout = shop.theme?.layout || 'grid';
+
+  const getButtonStyleClass = (style: string) => {
+    switch (style) {
+      case 'sharp': return 'rounded-none';
+      case 'pill': return 'rounded-full';
+      case 'rounded':
+      default:
+        return 'rounded-xl';
+    }
+  };
+
+  const getFontStyleClass = (font: string) => {
+    switch (font) {
+      case 'classic': return 'font-serif';
+      case 'minimal': return 'font-mono tracking-wide';
+      case 'bold': return 'font-sans font-black tracking-tight';
+      case 'modern':
+      default:
+        return 'font-sans';
+    }
+  };
+
+  const fontClass = getFontStyleClass(fontStyle);
+  const btnClass = getButtonStyleClass(buttonStyle);
 
   return (
-    <div className="min-h-screen pb-24 text-gray-800 bg-[#f1f3f6] font-sans antialiased selection:bg-[#2874f0]/20">
+    <div className={`min-h-screen pb-24 text-gray-800 ${fontClass} antialiased`} style={{ backgroundColor }}>
       
       {/* 1. Flipkart-esque Top Header Bar */}
-      <header className="bg-[#2874f0] text-white sticky top-0 z-50 shadow-md">
+      <header style={{ backgroundColor: primaryColor }} className="text-white sticky top-0 z-50 shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           
           {/* Logo Brand Title with "Plus" superscript symbol */}
@@ -175,10 +206,10 @@ export default function PublicShopPage() {
             <Link to="#" className="flex flex-col select-none leading-none">
               <span className="text-lg md:text-xl font-black italic tracking-tight text-white flex items-center">
                 {shop.shopName}
-                <span className="text-[#ffe11b] ml-1 font-extrabold text-xs not-italic">Plus✦</span>
+                <span style={{ color: secondaryColor }} className="ml-1 font-extrabold text-xs not-italic">Plus✦</span>
               </span>
               <span className="text-[9px] font-bold italic text-gray-200 hover:underline flex items-center gap-0.5 mt-0.5">
-                Explore <span className="text-[#ffe11b] font-black uppercase tracking-wider">Choice</span>
+                Explore <span style={{ color: secondaryColor }} className="font-black uppercase tracking-wider">Choice</span>
               </span>
             </Link>
             {shop.logo && (
@@ -199,7 +230,7 @@ export default function PublicShopPage() {
               placeholder="Search for products, brands and more..." 
               className="w-full bg-transparent border-none outline-none text-sm text-gray-800 px-4 py-2 font-medium placeholder:text-gray-400 focus:ring-0"
             />
-            <button className="px-4 text-[#2874f0] hover:text-[#1c56b7] transition-colors">
+            <button style={{ color: primaryColor }} className="px-4 hover:opacity-80 transition-colors">
               <Search size={18} />
             </button>
           </div>
@@ -208,7 +239,8 @@ export default function PublicShopPage() {
           <div className="flex items-center gap-4 text-sm font-bold shrink-0">
             <button 
               onClick={handleShare}
-              className="bg-white text-[#2874f0] hidden md:flex items-center gap-1.5 px-6 py-1.5 rounded-sm shadow hover:bg-gray-50 transition-all font-black uppercase text-xs"
+              className={`bg-white hidden md:flex items-center gap-1.5 px-6 py-1.5 shadow hover:bg-gray-50 transition-all font-black uppercase text-xs ${btnClass}`}
+              style={{ color: primaryColor }}
             >
               <Share2 size={12} /> Share Store
             </button>
@@ -243,7 +275,7 @@ export default function PublicShopPage() {
       </header>
 
       {/* 2. Real-time Promo Marquee Alert Strip */}
-      <div className="bg-[#ffe11b] text-gray-900 border-b border-yellow-400 py-1.5 px-4 text-center text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2">
+      <div style={{ backgroundColor: secondaryColor }} className="text-gray-900 border-b border-black/10 py-1.5 px-4 text-center text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2">
         <Zap size={12} className="text-red-600 fill-red-600 animate-pulse shrink-0" />
         <span>⚡ Super Value Budget Store | Free Home Delivery across India for all Cash on Delivery (COD) orders! ⚡</span>
       </div>
@@ -258,16 +290,20 @@ export default function PublicShopPage() {
               onClick={() => setSelectedCategory('All Items')}
               className="flex flex-col items-center gap-1 shrink-0 group min-w-[70px]"
             >
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                selectedCategory === 'All Items' 
-                  ? 'bg-[#2874f0] text-white ring-4 ring-[#2874f0]/20 scale-105' 
-                  : 'bg-gray-100 text-gray-600 group-hover:scale-105 group-hover:bg-gray-200'
-              }`}>
+              <div 
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  selectedCategory === 'All Items' 
+                    ? 'text-white scale-105' 
+                    : 'bg-gray-100 text-gray-600 group-hover:scale-105 group-hover:bg-gray-200'
+                }`}
+                style={selectedCategory === 'All Items' ? { backgroundColor: primaryColor, boxShadow: `0 0 0 4px ${primaryColor}33` } : {}}
+              >
                 <span className="text-xl">⭐</span>
               </div>
-              <span className={`text-[11px] font-bold tracking-tight text-center ${
-                selectedCategory === 'All Items' ? 'text-[#2874f0] font-extrabold' : 'text-gray-500 group-hover:text-[#2874f0]'
-              }`}>
+              <span 
+                className="text-[11px] font-bold tracking-tight text-center truncate max-w-[80px]"
+                style={selectedCategory === 'All Items' ? { color: primaryColor, fontWeight: 900 } : {}}
+              >
                 For You
               </span>
             </button>
@@ -282,16 +318,20 @@ export default function PublicShopPage() {
                   onClick={() => setSelectedCategory(cat)}
                   className="flex flex-col items-center gap-1 shrink-0 group min-w-[75px]"
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    isSelected 
-                      ? 'bg-[#2874f0] text-white ring-4 ring-[#2874f0]/20 scale-105' 
-                      : `${info.bg} text-gray-800 group-hover:scale-105 group-hover:opacity-90`
-                  }`}>
+                  <div 
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      isSelected 
+                        ? 'text-white scale-105' 
+                        : `${info.bg} text-gray-800 group-hover:scale-105 group-hover:opacity-90`
+                    }`}
+                    style={isSelected ? { backgroundColor: primaryColor, boxShadow: `0 0 0 4px ${primaryColor}33` } : {}}
+                  >
                     <span className="text-xl">{info.emoji}</span>
                   </div>
-                  <span className={`text-[11px] font-bold tracking-tight text-center capitalize max-w-[80px] truncate ${
-                    isSelected ? 'text-[#2874f0] font-extrabold' : 'text-gray-500 group-hover:text-[#2874f0]'
-                  }`}>
+                  <span 
+                    className="text-[11px] font-bold tracking-tight text-center capitalize max-w-[80px] truncate"
+                    style={isSelected ? { color: primaryColor, fontWeight: 900 } : {}}
+                  >
                     {cat}
                   </span>
                 </button>
@@ -303,8 +343,10 @@ export default function PublicShopPage() {
 
       {/* 4. Large Promo Carousel Banner Banner inspired by Big Saving Days */}
       <div className="max-w-7xl mx-auto px-4 mt-6">
-        <div className="relative bg-gradient-to-r from-blue-700 via-blue-600 to-[#1259c7] rounded-md shadow-lg overflow-hidden h-40 md:h-64 flex items-center justify-between text-white border border-blue-500/10">
-          
+        <div 
+          className="relative rounded-md shadow-lg overflow-hidden h-40 md:h-64 flex items-center justify-between text-white border border-black/5"
+          style={{ backgroundColor: primaryColor }}
+        >
           {/* Decorative floating grids */}
           <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,_transparent_1px),_linear-gradient(90deg,_rgba(255,255,255,0.05)_1px,_transparent_1px)] bg-[size:16px_16px] pointer-events-none" />
           
@@ -315,19 +357,25 @@ export default function PublicShopPage() {
           )}
 
           <div className="relative z-10 px-6 md:px-12 py-8 max-w-lg space-y-2">
-            <span className="bg-[#ffe11b] text-gray-900 font-extrabold text-[9px] md:text-xxs px-2 py-0.5 rounded uppercase tracking-wider shadow">
+            <span 
+              className="font-extrabold text-[9px] md:text-xxs px-2 py-0.5 rounded uppercase tracking-wider shadow"
+              style={{ backgroundColor: secondaryColor, color: '#111' }}
+            >
               F-Assured Store Deals
             </span>
             <h2 className="text-xl md:text-4xl font-black italic uppercase tracking-tighter leading-tight text-white drop-shadow-md">
               {shop.branding?.bannerText || "Big Billion Shopping Deals!"}
             </h2>
             <p className="text-gray-100 text-[10px] md:text-sm font-semibold tracking-wide flex items-center gap-1">
-              <CheckCircle2 size={14} className="text-[#ffe11b]" /> Direct reseller pricing with immediate delivery checks.
+              <CheckCircle2 size={14} style={{ color: secondaryColor }} /> Direct reseller pricing with immediate delivery checks.
             </p>
           </div>
 
           <div className="hidden md:flex flex-col items-center gap-2 pr-12 relative z-10">
-            <div className="bg-[#ffe11b] text-gray-900 font-black p-4 rounded-full w-24 h-24 flex flex-col items-center justify-center border-4 border-white shadow-xl animate-bounce">
+            <div 
+              className="font-black p-4 rounded-full w-24 h-24 flex flex-col items-center justify-center border-4 border-white shadow-xl animate-bounce"
+              style={{ backgroundColor: secondaryColor, color: '#111' }}
+            >
               <p className="text-xxs leading-none uppercase">UP TO</p>
               <p className="text-2xl leading-none font-black italic">60%</p>
               <p className="text-[10px] leading-none uppercase font-bold">OFF</p>
@@ -347,7 +395,7 @@ export default function PublicShopPage() {
                   Still looking for these? <span className="text-gray-400 text-xs font-normal capitalize">Curated Selection</span>
                 </h3>
               </div>
-              <span className="text-xs font-bold text-[#2874f0] hover:underline cursor-pointer">View All</span>
+              <span style={{ color: primaryColor }} className="text-xs font-bold hover:underline cursor-pointer">View All</span>
             </div>
 
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
@@ -360,7 +408,7 @@ export default function PublicShopPage() {
                   <div 
                     key={product.id}
                     onClick={() => setSelectedProduct(product)}
-                    className="flex flex-col items-center p-3 border border-gray-100 hover:border-gray-200 bg-[#FCFDFE] hover:shadow-sm cursor-pointer rounded-sm w-[130px] md:w-[160px] shrink-0 transition-all text-center"
+                    className={`flex flex-col items-center p-3 border border-gray-100 hover:border-gray-200 bg-[#FCFDFE] hover:shadow-sm cursor-pointer rounded-sm w-[130px] md:w-[160px] shrink-0 transition-all text-center ${btnClass}`}
                   >
                     <div className="w-24 h-24 md:w-28 md:h-38 bg-white flex items-center justify-center p-1 overflow-hidden relative">
                       <img 
@@ -386,7 +434,7 @@ export default function PublicShopPage() {
         </div>
       )}
 
-      {/* 6. Main Catalog grid - styled exactly like Flipkart department products list */}
+      {/* 6. Main Catalog grid - styled based on personalized Layout and Styling choices */}
       <div className="max-w-7xl mx-auto px-4 mt-6">
         <div className="bg-white rounded-sm shadow-sm border border-gray-200 overflow-hidden">
           
@@ -394,17 +442,17 @@ export default function PublicShopPage() {
           <div className="bg-white p-4 border-b border-gray-100 flex items-center justify-between">
             <div>
               <h2 className="text-base md:text-lg font-black text-gray-800 uppercase tracking-tight flex items-center gap-2">
-                <Award size={18} className="text-[#2874f0]" />
+                <Award size={18} style={{ color: primaryColor }} />
                 {selectedCategory === 'All Items' ? 'Top Suggested Deals' : `${selectedCategory} Collection`}
               </h2>
               <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">100% Authentic Quality Assured</p>
             </div>
-            <div className="flex items-center gap-1 text-[11px] font-extrabold text-[#2874f0] bg-blue-50 px-2.5 py-1 rounded-sm">
+            <div style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }} className="flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-sm">
               <span>{filteredProducts.length} Premium items found</span>
             </div>
           </div>
 
-          {/* Catalog grid */}
+          {/* Catalog content */}
           {filteredProducts.length === 0 ? (
             <div className="text-center py-20 bg-white space-y-4 px-4">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
@@ -414,7 +462,13 @@ export default function PublicShopPage() {
               <p className="text-xs text-gray-400 max-w-xs mx-auto">Try selecting another department filter on the circular bar or adjusting your search input.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 divide-x divide-y divide-gray-100 bg-white border-t border-gray-100">
+            <div className={
+              shopLayout === 'list' 
+                ? 'grid grid-cols-1 divide-y divide-gray-100 bg-white border-t border-gray-100'
+                : shopLayout === 'masonry'
+                  ? 'columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 p-4 bg-white border-t border-gray-100'
+                  : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 divide-x divide-y divide-gray-100 bg-white border-t border-gray-100'
+            }>
               {filteredProducts.map((product) => {
                 
                 // Beautiful Flipkart pricing variables
@@ -432,7 +486,13 @@ export default function PublicShopPage() {
                     key={product.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="p-4 bg-white hover:shadow-md transition-shadow relative flex flex-col justify-between group cursor-pointer"
+                    className={`p-4 bg-white hover:shadow-md transition-shadow relative flex group cursor-pointer ${
+                      shopLayout === 'list' 
+                        ? 'flex-col sm:flex-row items-center gap-6 border-b border-gray-100' 
+                        : shopLayout === 'masonry'
+                          ? 'flex-col justify-between border border-gray-100 mb-4 break-inside-avoid rounded-xl'
+                          : 'flex-col justify-between'
+                    }`}
                     onClick={() => setSelectedProduct(product)}
                   >
                     
@@ -444,7 +504,9 @@ export default function PublicShopPage() {
                     </div>
 
                     {/* Image Area */}
-                    <div className="aspect-square bg-white flex items-center justify-center p-2 overflow-hidden relative">
+                    <div className={`bg-white flex items-center justify-center p-2 overflow-hidden relative shrink-0 ${
+                      shopLayout === 'list' ? 'w-32 h-32 md:w-40 md:h-40' : 'aspect-square w-full'
+                    }`}>
                       <img 
                         src={product.images?.[0] || product.productData?.image || 'https://via.placeholder.com/400'} 
                         className="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-300"
@@ -454,11 +516,11 @@ export default function PublicShopPage() {
                     </div>
 
                     {/* Text & Specs */}
-                    <div className="mt-4 flex-1 flex flex-col justify-between">
+                    <div className={`mt-4 flex-1 flex flex-col justify-between ${shopLayout === 'list' ? 'w-full sm:mt-0' : 'w-full'}`}>
                       <div className="space-y-1">
                         
                         {/* Title label */}
-                        <h3 className="text-xs font-bold text-gray-800 line-clamp-2 leading-relaxed tracking-tight uppercase group-hover:text-[#2874f0] transition-colors">
+                        <h3 className="text-xs font-bold text-gray-800 line-clamp-2 leading-relaxed tracking-tight uppercase group-hover:opacity-85 transition-opacity">
                           {product.name}
                         </h3>
 
@@ -497,7 +559,8 @@ export default function PublicShopPage() {
                             e.stopPropagation();
                             setSelectedProduct(product);
                           }}
-                          className="w-full mt-2.5 py-2.5 bg-[#ffe11b] hover:bg-[#ffe500] text-gray-900 border border-yellow-400 hover:border-yellow-500 font-extrabold text-[10px] tracking-wider uppercase rounded-sm flex items-center justify-center gap-1 text-center transition-all shadow-sm group-hover:shadow"
+                          className={`w-full mt-2.5 py-2.5 text-gray-900 hover:opacity-90 font-extrabold text-[10px] tracking-wider uppercase flex items-center justify-center gap-1 text-center transition-all shadow-sm group-hover:shadow ${btnClass}`}
+                          style={{ backgroundColor: secondaryColor, border: `1px solid ${secondaryColor}` }}
                         >
                           Buy Now <ArrowRight size={10} />
                         </button>
@@ -520,7 +583,7 @@ export default function PublicShopPage() {
           <div className="space-y-3">
             <h4 className="text-xs uppercase font-black text-gray-400 tracking-wider">Secure Shopping</h4>
             <div className="text-xs text-gray-300 leading-relaxed space-y-1 font-medium">
-              <p className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-[#ffe11b]" /> Instant Order Sync with Partners</p>
+              <p className="flex items-center gap-1.5"><ShieldCheck size={14} style={{ color: secondaryColor }} /> Instant Order Sync with Partners</p>
               <p className="flex items-center gap-1.5">✓ Zero advance payments for COD</p>
               <p className="flex items-center gap-1.5">✓ Encrypted checkout security and logging</p>
             </div>
@@ -537,7 +600,7 @@ export default function PublicShopPage() {
           {/* Column 3 */}
           <div className="space-y-3">
             <h4 className="text-xs uppercase font-black text-gray-400 tracking-wider">Merchant Address & Profile</h4>
-            <p className="text-xs font-bold text-[#ffe11b] uppercase tracking-wide">
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: secondaryColor }}>
               {shop.shopName} Inc.
             </p>
             {shop.branding?.tagline && (
@@ -546,7 +609,8 @@ export default function PublicShopPage() {
             <div className="pt-2 flex items-center gap-3">
               <button 
                 onClick={handleShare}
-                className="text-[10px] uppercase font-black tracking-widest text-[#ffe11b] border border-[#ffe11b]/20 px-3 py-1 rounded bg-[#ffe11b]/5 hover:bg-[#ffe11b]/15"
+                className={`text-[10px] uppercase font-black tracking-widest border px-3 py-1 bg-white/5 hover:bg-white/15 ${btnClass}`}
+                style={{ color: secondaryColor, borderColor: `${secondaryColor}33` }}
               >
                 Copy Merchant Link
               </button>
@@ -576,3 +640,4 @@ export default function PublicShopPage() {
     </div>
   );
 }
+

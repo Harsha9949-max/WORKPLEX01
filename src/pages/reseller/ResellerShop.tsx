@@ -10,6 +10,7 @@ import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import toast from 'react-hot-toast';
 import { ExternalLink, Copy, Share2, Download, Check, Save, Sparkles, CheckCircle2 } from 'lucide-react';
 import ResellerProducts from './ResellerProducts';
+import SubscriptionLimitsNotice from '../../components/reseller/SubscriptionLimitsNotice';
 
 const getOAuthAuthInstance = () => {
   const name = 'GoogleOAuthApp';
@@ -535,6 +536,9 @@ export default function ResellerShop() {
           </div>
         )}
       </div>
+
+      {/* Subscription Tier Limits Warning & Upgrade prompts */}
+      <SubscriptionLimitsNotice context="shop" />
 
       <div className="flex gap-6 border-b border-[#2A2A2A] overflow-x-auto scrollbar-hide">
         {['Appearance', 'Products', 'SEO', 'Share'].map(tab => (
