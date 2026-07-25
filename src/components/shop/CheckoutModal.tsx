@@ -30,9 +30,10 @@ interface Props {
   shopSlug: string | undefined;
   resellerId?: string;
   resellerName?: string;
+  razorpayConnected?: boolean;
 }
 
-export default function CheckoutModal({ isOpen, onClose, product, shopSlug, resellerId, resellerName }: Props) {
+export default function CheckoutModal({ isOpen, onClose, product, shopSlug, resellerId, resellerName, razorpayConnected = false }: Props) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Address, 2: Review, 3: Payment
@@ -195,11 +196,23 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug, rese
     );
   };
 
-  const paymentMethods = [
-    { id: 'UPI', label: 'UPI / GPay / PhonePe', description: 'Currently Unavailable', disabled: true },
-    { id: 'CARD', label: 'Credit / Debit Card', description: 'Currently Unavailable', disabled: true },
-    { id: 'NET', label: 'Net Banking', description: 'Currently Unavailable', disabled: true },
-    { id: 'COD', label: 'Cash On Delivery', description: 'Elegantly Selected', disabled: false }
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'ONLINE' | 'COD'>(
+    razorpayConnected ? 'ONLINE' : 'COD'
+  );
+
+  useEffect(() => {
+    if (!razorpayConnected) {
+      setSelectedPaymentMethod('COD');
+    } else {
+      setSelectedPaymentMethod('ONLINE');
+    }
+  }, [razorpayConnected]);
+
+  const paymentMethods = razorpayConnected ? [
+    { id: 'ONLINE', label: 'Online Pay (UPI / Cards / NetBanking)', description: 'Instant Razorpay Secure Settlement', disabled: false, icon: Zap },
+    { id: 'COD', label: 'Cash On Delivery (COD)', description: 'Pay hard-cash on doorstep arrival', disabled: false, icon: ShieldCheck }
+  ] : [
+    { id: 'COD', label: 'Cash On Delivery (COD)', description: 'Pay hard-cash on doorstep arrival', disabled: false, icon: ShieldCheck }
   ];
 
   return (
@@ -498,92 +511,128 @@ export default function CheckoutModal({ isOpen, onClose, product, shopSlug, rese
                         </div>
 
                         <div className="flex flex-col md:flex-row gap-4">
-                          {/* Left Panel: List of interactive mock checkout channels */}
+                          {/* Left Panel: List of interactive checkout channels */}
                           <div className="md:w-2/5 flex flex-col gap-2 border-b md:border-b-0 md:border-r border-white/5 pb-4 md:pb-0 md:pr-4">
                             {paymentMethods.map(pm => {
-                              const isCOD = pm.id === 'COD';
+                              const isSelected = selectedPaymentMethod === pm.id;
                               return (
-                                <div
+                                <button
+                                  type="button"
                                   key={pm.id}
-                                  className={`p-3 rounded-xl flex flex-col gap-1 transition-all text-left ${
-                                    isCOD 
-                                      ? 'bg-[#E8B84B]/10 border border-[#E8B84B]/40 ring-1 ring-[#E8B84B]/20' 
-                                      : 'border border-transparent bg-white/5 opacity-30 select-none'
+                                  onClick={() => setSelectedPaymentMethod(pm.id as 'ONLINE' | 'COD')}
+                                  className={`p-3 rounded-xl flex flex-col gap-1 transition-all text-left cursor-pointer ${
+                                    isSelected 
+                                      ? 'bg-[#E8B84B]/10 border border-[#E8B84B]/40 ring-1 ring-[#E8B84B]/20 text-white' 
+                                      : 'border border-white/5 bg-white/5 text-gray-400 hover:bg-white/10'
                                   }`}
                                 >
                                   <div className="flex justify-between items-center">
-                                    <span className={`text-[10px] font-black uppercase tracking-wider ${
-                                      isCOD ? 'text-[#E8B84B]' : 'text-gray-400'
+                                    <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                                      isSelected ? 'text-[#E8B84B]' : 'text-gray-300'
                                     }`}>
+                                      <pm.icon size={12} className={isSelected ? 'text-[#E8B84B]' : 'text-gray-400'} />
                                       {pm.label}
                                     </span>
-                                    {!isCOD && (
-                                      <Lock size={10} className="text-gray-500" />
-                                    )}
+                                    {isSelected && <BadgeCheck size={12} className="text-[#E8B84B]" />}
                                   </div>
-                                  <span className="text-[8px] font-black uppercase tracking-widest text-gray-500">
+                                  <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">
                                     {pm.description}
                                   </span>
-                                </div>
+                                </button>
                               );
                             })}
                           </div>
 
-                          {/* Right Panel: Selected Payment channel layout (Cash On Delivery ONLY) */}
+                          {/* Right Panel: Selected Payment channel layout */}
                           <div className="md:w-3/5 pl-0 md:pl-2 flex flex-col justify-between space-y-4">
-                            <div className="space-y-2">
-                              <h5 className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
-                                <BadgeCheck size={16} className="text-[#10B981]" /> Cash On Delivery Enabled
-                              </h5>
-                              <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
-                                No credit/debit card information is required! Pay securely with hard-cash or local UPI scan when the parcel is delivered right at your shipping address landmark.
-                              </p>
-                            </div>
-
-                            {/* Secure Captcha layout inspired by Flipkart */}
-                            <div className="bg-[#050505] border border-white/5 rounded-2xl p-4 space-y-3">
-                              <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                                <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">Security Human Captcha</span>
-                                <button 
-                                  type="button"
-                                  onClick={generateCaptcha}
-                                  className="text-[#E8B84B] hover:text-[#E8B84B]/80 flex items-center gap-1 text-[8px] uppercase tracking-widest font-black"
-                                >
-                                  <RefreshCw size={10} /> Refresh PIN
-                                </button>
-                              </div>
-
-                              <div className="flex items-center gap-4">
-                                {/* Captcha Display Frame with Security Line Mesh overlay */}
-                                <div className="bg-[#E8B84B]/5 border border-[#E8B84B]/30 text-[#E8B84B] tracking-[5px] px-4 py-2 rounded-xl font-bold text-xl select-none font-mono relative overflow-hidden flex items-center justify-center shrink-0">
-                                  <div className="absolute inset-0 bg-[linear-gradient(45deg,#222_25%,transparent_25%),linear-gradient(-45deg,#222_25%,transparent_25%)] bg-[size:5px_5px] opacity-20 pointer-events-none" />
-                                  <span className="relative z-10 select-none italic text-shadow-sm">{captchaCode}</span>
+                            {selectedPaymentMethod === 'ONLINE' ? (
+                              <div className="space-y-3">
+                                <div className="space-y-2">
+                                  <h5 className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
+                                    <Zap size={16} className="text-[#E8B84B]" /> Razorpay Online Settlement (UPI / Cards / NetBanking)
+                                  </h5>
+                                  <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                                    Pay instantly with Google Pay, PhonePe, Paytm, Credit/Debit Cards, or NetBanking. Real-time split settlement via Razorpay.
+                                  </p>
                                 </div>
-                                
-                                <input
-                                  required
-                                  type="text"
-                                  maxLength={4}
-                                  value={captchaInput}
-                                  onChange={(e) => setCaptchaInput(e.target.value.replace(/\D/g, ''))}
-                                  placeholder="Enter Pin"
-                                  className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-center text-xs font-black text-white focus:border-[#E8B84B] outline-none tracking-[5px] font-mono transition-colors"
-                                />
+
+                                <div className="bg-[#E8B84B]/10 border border-[#E8B84B]/20 rounded-xl p-3 space-y-1.5">
+                                  <div className="flex justify-between text-[10px] font-bold text-gray-300">
+                                    <span>Base Product & Transit Cost (HVRS):</span>
+                                    <span className="font-mono text-white">₹{(product?.price || product?.productData?.price || 0)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-[10px] font-bold text-[#10B981]">
+                                    <span>Partner Margin Split (Direct Wallet):</span>
+                                    <span className="font-mono">₹{((product?.partnerSellingPrice || product?.price || 0) - (product?.price || 0))}</span>
+                                  </div>
+                                  <p className="text-[8px] text-gray-400 uppercase font-black tracking-wider pt-1 border-t border-white/10">
+                                    ✓ Instant automated split transaction powered by Razorpay Route & WorkPlex
+                                  </p>
+                                </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <div className="space-y-2">
+                                  <h5 className="text-[11px] font-black uppercase tracking-widest text-white flex items-center gap-2">
+                                    <BadgeCheck size={16} className="text-[#10B981]" /> Cash On Delivery (COD) Enabled
+                                  </h5>
+                                  <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                                    Pay securely with cash or doorstep UPI scan upon parcel delivery. Partner margin reflects in wallet once marked delivered by HVRS logistics.
+                                  </p>
+                                </div>
+
+                                {/* Secure Captcha layout inspired by Flipkart */}
+                                <div className="bg-[#050505] border border-white/5 rounded-2xl p-4 space-y-3">
+                                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">Security Human Captcha</span>
+                                    <button 
+                                      type="button"
+                                      onClick={generateCaptcha}
+                                      className="text-[#E8B84B] hover:text-[#E8B84B]/80 flex items-center gap-1 text-[8px] uppercase tracking-widest font-black"
+                                    >
+                                      <RefreshCw size={10} /> Refresh PIN
+                                    </button>
+                                  </div>
+
+                                  <div className="flex items-center gap-4">
+                                    {/* Captcha Display Frame with Security Line Mesh overlay */}
+                                    <div className="bg-[#E8B84B]/5 border border-[#E8B84B]/30 text-[#E8B84B] tracking-[5px] px-4 py-2 rounded-xl font-bold text-xl select-none font-mono relative overflow-hidden flex items-center justify-center shrink-0">
+                                      <div className="absolute inset-0 bg-[linear-gradient(45deg,#222_25%,transparent_25%),linear-gradient(-45deg,#222_25%,transparent_25%)] bg-[size:5px_5px] opacity-20 pointer-events-none" />
+                                      <span className="relative z-10 select-none italic text-shadow-sm">{captchaCode}</span>
+                                    </div>
+                                    
+                                    <input
+                                      required={selectedPaymentMethod === 'COD'}
+                                      type="text"
+                                      maxLength={4}
+                                      value={captchaInput}
+                                      onChange={(e) => setCaptchaInput(e.target.value.replace(/\D/g, ''))}
+                                      placeholder="Enter Pin"
+                                      className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2.5 text-center text-xs font-black text-white focus:border-[#E8B84B] outline-none tracking-[5px] font-mono transition-colors"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
 
                       <button
                         type="submit"
-                        disabled={loading || captchaInput !== captchaCode}
-                        className="w-full py-4.5 bg-[#10B981] disabled:bg-gray-800 text-black disabled:text-gray-500 flex justify-center items-center gap-2 font-black uppercase text-xs tracking-wider rounded-2xl transition-all cursor-pointer shadow-lg shadow-[#10B981]/10 disabled:shadow-none"
+                        disabled={loading || (selectedPaymentMethod === 'COD' && captchaInput !== captchaCode)}
+                        className={`w-full py-4.5 ${
+                          selectedPaymentMethod === 'ONLINE' ? 'bg-[#E8B84B] text-black' : 'bg-[#10B981] text-black'
+                        } disabled:bg-gray-800 disabled:text-gray-500 flex justify-center items-center gap-2 font-black uppercase text-xs tracking-wider rounded-2xl transition-all cursor-pointer shadow-lg`}
                       >
                         {loading ? (
                           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-5 h-5 border-2 border-black border-t-transparent rounded-full" />
                         ) : (
-                          <>Confirm Order & Deliver (COD)</>
+                          selectedPaymentMethod === 'ONLINE' ? (
+                            <>Pay {formatCurrency(finalPrice)} Online via Razorpay <Zap size={14} /></>
+                          ) : (
+                            <>Confirm Order & Deliver (COD)</>
+                          )
                         )}
                       </button>
                     </form>

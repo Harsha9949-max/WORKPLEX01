@@ -8,9 +8,10 @@ import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { useAuth } from '../../context/AuthContext';
 import { handleFirestoreError, OperationType } from '../../utils/errorHandlers';
 import toast from 'react-hot-toast';
-import { ExternalLink, Copy, Share2, Download, Check, Save, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ExternalLink, Copy, Share2, Download, Check, Save, Sparkles, CheckCircle2, Zap, PhoneCall, Clock, ShieldCheck, AlertCircle } from 'lucide-react';
 import ResellerProducts from './ResellerProducts';
 import SubscriptionLimitsNotice from '../../components/reseller/SubscriptionLimitsNotice';
+import RazorpayOnboardingModal from '../../components/reseller/RazorpayOnboardingModal';
 
 const getOAuthAuthInstance = () => {
   const name = 'GoogleOAuthApp';
@@ -273,6 +274,12 @@ export default function ResellerShop() {
     keywords: ''
   });
 
+  const [razorpayConnected, setRazorpayConnected] = useState(false);
+  const [razorpayKeyId, setRazorpayKeyId] = useState('');
+  const [razorpayAccountId, setRazorpayAccountId] = useState('');
+  const [razorpayStatus, setRazorpayStatus] = useState<string>('none');
+  const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
+
   const [localShopName, setLocalShopName] = useState('');
   const [localShopSlug, setLocalShopSlug] = useState('');
 
@@ -301,6 +308,12 @@ export default function ResellerShop() {
         if (data.googleDriveEmail) {
           setDriveLinkedEmail(data.googleDriveEmail);
         }
+        if (data.razorpayConnected !== undefined) setRazorpayConnected(Boolean(data.razorpayConnected || data.paymentGateway?.razorpayConnected));
+        if (data.razorpayStatus) setRazorpayStatus(data.razorpayStatus);
+        else if (data.razorpayConnected) setRazorpayStatus('active');
+        if (data.razorpayKeyId || data.paymentGateway?.razorpayKeyId) setRazorpayKeyId(data.razorpayKeyId || data.paymentGateway?.razorpayKeyId || '');
+        if (data.razorpayAccountId || data.paymentGateway?.razorpayAccountId) setRazorpayAccountId(data.razorpayAccountId || data.paymentGateway?.razorpayAccountId || '');
+
         if (!initialLoaded) {
           if (data.theme) setTheme(data.theme);
           if (data.branding) setBranding(data.branding);
@@ -325,6 +338,9 @@ export default function ResellerShop() {
     const isUnchanged = (
       localShopName === (shop?.shopName || '') &&
       localShopSlug === (shop?.shopSlug || '') &&
+      razorpayConnected === Boolean(shop?.razorpayConnected) &&
+      razorpayKeyId === (shop?.razorpayKeyId || '') &&
+      razorpayAccountId === (shop?.razorpayAccountId || '') &&
       JSON.stringify(theme) === JSON.stringify(shop?.theme || {}) &&
       JSON.stringify(branding) === JSON.stringify(shop?.branding || {}) &&
       JSON.stringify(seo) === JSON.stringify(shop?.seo || {})
@@ -341,7 +357,15 @@ export default function ResellerShop() {
           seo,
           shopName: localShopName.trim(),
           shopSlug: localShopSlug.trim().toLowerCase().replace(/\s+/g, '-'),
-          logo: branding.logo || '' // Keep root-level logo perfectly synced
+          logo: branding.logo || '', // Keep root-level logo perfectly synced
+          razorpayConnected,
+          razorpayKeyId,
+          razorpayAccountId,
+          paymentGateway: {
+            razorpayConnected,
+            razorpayKeyId,
+            razorpayAccountId
+          }
         }, { merge: true });
         setSaveStatus('saved');
         // Clear status to prevent stale state indicators
@@ -353,7 +377,7 @@ export default function ResellerShop() {
     }, 800); // Optimized for 800ms super responsive debounce
 
     return () => clearTimeout(delayDebounce);
-  }, [theme, branding, seo, localShopName, localShopSlug, currentUser, initialLoaded]);
+  }, [theme, branding, seo, localShopName, localShopSlug, razorpayConnected, razorpayKeyId, razorpayAccountId, currentUser, initialLoaded]);
 
   // Manual save backup handler (fixing unhandled exceptions and infinite saving)
   const handleSave = async () => {
@@ -374,7 +398,15 @@ export default function ResellerShop() {
         seo,
         shopName: localShopName.trim(),
         shopSlug: localShopSlug.trim().toLowerCase().replace(/\s+/g, '-'),
-        logo: branding.logo || '' // Keep root-level logo synced
+        logo: branding.logo || '', // Keep root-level logo synced
+        razorpayConnected,
+        razorpayKeyId,
+        razorpayAccountId,
+        paymentGateway: {
+          razorpayConnected,
+          razorpayKeyId,
+          razorpayAccountId
+        }
       }, { merge: true });
       toast.success('Shop settings saved successfully! Your store link is active immediately.');
       setSaveStatus('saved');
@@ -541,7 +573,7 @@ export default function ResellerShop() {
       <SubscriptionLimitsNotice context="shop" />
 
       <div className="flex gap-6 border-b border-[#2A2A2A] overflow-x-auto scrollbar-hide">
-        {['Appearance', 'Products', 'SEO', 'Share'].map(tab => (
+        {['Appearance', 'Products', 'SEO', 'Payments', 'Share'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -561,6 +593,179 @@ export default function ResellerShop() {
           <ResellerProducts />
         </div>
       )}
+
+      {activeTab === 'Payments' && (
+        <div className="max-w-2xl space-y-6">
+          <div className="bg-[#111111] p-6 rounded-xl border border-[#2A2A2A] space-y-6 shadow-xl">
+            <div className="flex items-center justify-between border-b border-[#2A2A2A] pb-4">
+              <div>
+                <h2 className="font-extrabold text-white uppercase tracking-widest text-sm flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#E8B84B]" /> Razorpay Online Payment Gateway
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">Connect your Razorpay account via WorkPlex to enable instant online checkout.</p>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                razorpayConnected 
+                  ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                  : razorpayStatus === 'pending_verification'
+                  ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                  : razorpayStatus === 'assistance_requested'
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+              }`}>
+                {razorpayConnected ? 'Connected & Verified' : razorpayStatus === 'pending_verification' ? 'Verification Under Process' : razorpayStatus === 'assistance_requested' ? '24h Call Requested' : 'Only COD Active'}
+              </span>
+            </div>
+
+            {/* Banner status */}
+            {razorpayConnected ? (
+              <div className="bg-green-500/10 border border-green-500/20 p-5 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-green-400 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 size={16} /> Razorpay Account Linked & Verified
+                  </p>
+                  <span className="text-[10px] font-mono bg-black/40 text-gray-300 px-2.5 py-1 rounded-md border border-white/10">
+                    ID: {razorpayAccountId || 'acc_rzp_workplex_' + currentUser?.uid?.slice(0, 8)}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-300 leading-relaxed">
+                  Your store is fully setup to receive online payments (Google Pay, PhonePe, Cards, NetBanking). Product cost will automatically route to HVRS while profit margin flows directly into your account!
+                </p>
+                
+                <div className="pt-2 flex items-center gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setIsRazorpayModalOpen(true)}
+                    className="text-[11px] font-bold text-[#E8B84B] hover:underline"
+                  >
+                    Update Razorpay Credentials
+                  </button>
+                  <span className="text-gray-600">•</span>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setRazorpayConnected(false);
+                      setRazorpayStatus('none');
+                      toast.success('Razorpay account disconnected. Your store is now on Cash On Delivery (COD) mode.');
+                    }}
+                    className="text-[11px] font-bold text-red-400 hover:text-red-300 underline"
+                  >
+                    Disconnect Razorpay
+                  </button>
+                </div>
+              </div>
+            ) : razorpayStatus === 'pending_verification' ? (
+              <div className="bg-blue-500/10 border border-blue-500/20 p-5 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-blue-400 font-bold flex items-center gap-1.5">
+                    <Clock size={16} className="animate-spin" /> Verification Under Process
+                  </p>
+                  <span className="text-[10px] font-mono bg-blue-500/20 text-blue-300 px-2.5 py-1 rounded-md">
+                    Queue Status: In Review
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-300 leading-relaxed">
+                  Your Razorpay details have been submitted to the WorkPlex technical onboarding team! Verification is in progress and team will activate your account soon. In the meantime, your store remains 100% active on <strong>Cash On Delivery (COD)</strong> mode.
+                </p>
+                
+                <div className="pt-2 flex items-center gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setIsRazorpayModalOpen(true)}
+                    className="text-[11px] font-bold text-[#E8B84B] hover:underline flex items-center gap-1"
+                  >
+                    Update Submitted Details
+                  </button>
+                </div>
+              </div>
+            ) : razorpayStatus === 'assistance_requested' ? (
+              <div className="bg-amber-500/10 border border-amber-500/20 p-5 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-amber-400 font-bold flex items-center gap-1.5">
+                    <PhoneCall size={16} className="animate-pulse" /> 24-Hour Setup Call Requested
+                  </p>
+                  <span className="text-[10px] font-mono bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-md">
+                    Callback Scheduled
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-300 leading-relaxed">
+                  You requested 1-on-1 onboarding assistance! Our WorkPlex technical onboarding specialist will contact you on your registered phone within 24 hours to guide you step-by-step.
+                </p>
+                
+                <div className="pt-2 flex items-center gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setIsRazorpayModalOpen(true)}
+                    className="text-[11px] font-bold text-[#E8B84B] hover:underline"
+                  >
+                    Submit Razorpay Details Directly
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#1A1A1A] border border-[#2A2A2A] p-6 rounded-2xl text-center space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[#E8B84B] flex items-center justify-center mx-auto">
+                  <Zap size={24} />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">Connect Razorpay Payment Gateway</h3>
+                  <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
+                    Connect your Razorpay account directly through WorkPlex or request 1-on-1 assistance within 24 hours from our technical team.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsRazorpayModalOpen(true)}
+                    className="w-full sm:w-auto px-6 py-3.5 bg-[#E8B84B] hover:bg-[#E8B84B]/90 text-black font-black uppercase text-xs tracking-wider rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Zap size={16} /> Connect Razorpay Account Now
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Toggle Online Payments */}
+            {razorpayConnected && (
+              <div className="flex items-center justify-between p-4 bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl">
+                <div>
+                  <span className="text-xs font-bold text-white uppercase tracking-wider block">Online Payment Option on Checkout</span>
+                  <span className="text-[11px] text-gray-400">Turn OFF if you temporarily want buyers to pay via COD only.</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={razorpayConnected}
+                    onChange={(e) => setRazorpayConnected(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E8B84B]"></div>
+                </label>
+              </div>
+            )}
+
+            <button 
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full py-3.5 bg-[#E8B84B] text-black font-black uppercase text-xs tracking-wider rounded-xl hover:bg-[#E8B84B]/90 transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+            >
+              <Save size={16} /> {saving ? 'Saving Changes...' : 'Save Razorpay Payment Settings'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Razorpay Onboarding Modal */}
+      <RazorpayOnboardingModal
+        isOpen={isRazorpayModalOpen}
+        onClose={() => setIsRazorpayModalOpen(false)}
+        partnerShopName={shopName}
+        partnerShopSlug={localShopSlug}
+        onSuccess={() => {
+          setIsRazorpayModalOpen(false);
+        }}
+      />
 
       {activeTab === 'Appearance' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

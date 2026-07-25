@@ -73,6 +73,7 @@ import FraudAlerts from './pages/admin/FraudAlerts';
 import AnnouncementBroadcaster from './pages/admin/AnnouncementBroadcaster';
 import MainPageCMS from './pages/admin/MainPageCMS';
 import AdminPartnerOrders from './pages/admin/AdminPartnerOrders';
+import AdminRazorpayOnboarding from './pages/admin/AdminRazorpayOnboarding';
 import SubAdminPanel from './pages/admin/SubAdminPanel';
 
 import OrderSuccessPage from './pages/OrderSuccessPage';
@@ -111,20 +112,30 @@ function AppContent() {
   const [prevRole, setPrevRole] = useState<string | null>(null);
   const [prevLevel, setPrevLevel] = useState<string | null>(null);
 
+  const isAdmin = userData?.role === 'admin' || userData?.role === 'super_admin' || userData?.role === 'sub_admin';
+
   useEffect(() => {
     if (userData) {
-      if (prevRole && userData.role !== prevRole) {
+      if (isAdmin) {
+        setShowPromotion(false);
+        setShowLevelUp(false);
+        return;
+      }
+
+      if (prevRole && userData.role && userData.role !== prevRole) {
         if (userData.role === 'Lead Marketer' || userData.role === 'Manager') {
           setShowPromotion(true);
         }
       }
-      if (prevLevel && userData.level !== prevLevel) {
+
+      if (prevLevel && userData.level && userData.level !== prevLevel) {
         setShowLevelUp(true);
       }
-      setPrevRole(userData.role);
-      setPrevLevel(userData.level);
+
+      if (userData.role) setPrevRole(userData.role);
+      if (userData.level) setPrevLevel(userData.level);
     }
-  }, [userData, prevRole, prevLevel]);
+  }, [userData, isAdmin]);
 
   return (
     <Router>
@@ -174,6 +185,7 @@ function AppContent() {
           <Route path="tasks" element={<TaskManagement />} />
           <Route path="coupons" element={<CouponManagement />} />
           <Route path="withdrawals" element={<WithdrawalManagement />} />
+          <Route path="razorpay-requests" element={<AdminRazorpayOnboarding />} />
           <Route path="catalog" element={<AdminCatalogManager />} />
           <Route path="sub-admins" element={<SubAdminCreation />} />
           <Route path="fraud" element={<FraudAlerts />} />
@@ -210,16 +222,20 @@ function AppContent() {
       </Routes>
       <ConditionalFooter />
       <AIChatbotWidget />
-      <PromotionCelebration 
-        isOpen={showPromotion} 
-        onClose={() => setShowPromotion(false)} 
-        newRole={userData?.role || ''} 
-      />
-      <LevelUpCelebration 
-        isOpen={showLevelUp} 
-        onClose={() => setShowLevelUp(false)} 
-        newLevel={userData?.level || ''} 
-      />
+      {!isAdmin && (
+        <>
+          <PromotionCelebration 
+            isOpen={showPromotion} 
+            onClose={() => setShowPromotion(false)} 
+            newRole={userData?.role || ''} 
+          />
+          <LevelUpCelebration 
+            isOpen={showLevelUp} 
+            onClose={() => setShowLevelUp(false)} 
+            newLevel={userData?.level || ''} 
+          />
+        </>
+      )}
     </Router>
   );
 }

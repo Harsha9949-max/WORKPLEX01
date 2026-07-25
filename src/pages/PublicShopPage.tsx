@@ -635,6 +635,7 @@ export default function PublicShopPage() {
         shopSlug={slug}
         resellerId={shop.ownerUID || shop.id}
         resellerName={shop.shopName}
+        razorpayConnected={Boolean(shop?.razorpayConnected || shop?.paymentGateway?.razorpayConnected)}
       />
 
     </div>

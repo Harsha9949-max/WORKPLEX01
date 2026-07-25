@@ -18,7 +18,8 @@ import {
   Briefcase,
   Mail,
   TrendingUp,
-  Sliders
+  Sliders,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -40,6 +41,7 @@ export default function AdminLayout() {
     { name: 'Missions', path: '/admin/tasks', icon: CheckSquare },
     { name: 'Coupons', path: '/admin/coupons', icon: Ticket },
     { name: 'Withdrawals', path: '/admin/withdrawals', icon: CreditCard },
+    { name: 'Razorpay Gateways', path: '/admin/razorpay-requests', icon: Zap },
     { name: 'Catalog', path: '/admin/catalog', icon: Briefcase },
     { name: 'Sub-Admins', path: '/admin/sub-admins', icon: UserPlus },
     { name: 'Fraud Alerts', path: '/admin/fraud', icon: ShieldAlert },
